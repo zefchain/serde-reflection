@@ -65,6 +65,22 @@ namespace Serde
             return utf8.GetString(content);
         }
 
+        public ValueArray<ValueArray<byte>> deserialize_vec_bytes() {
+            long len = deserialize_len();
+            ValueArray<byte>[] content = new ValueArray<byte>[len];
+
+            if (len < 0 || len > int.MaxValue)
+            {
+                throw new DeserializationException("Incorrect length value for C# array");
+            }
+
+            for (long i = 0; i < len; i++) {
+                content[i] = deserialize_bytes();
+            }
+
+            return new ValueArray<ValueArray<byte>>(content);
+        }
+
         public ValueArray<byte> deserialize_bytes()
         {
             long len = deserialize_len();

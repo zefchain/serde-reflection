@@ -4,6 +4,7 @@
 package com.novi.serde;
 
 import java.math.BigInteger;
+import java.util.List;
 
 public abstract class BinarySerializer implements Serializer {
     protected MyByteArrayOutputStream output;
@@ -27,6 +28,13 @@ public abstract class BinarySerializer implements Serializer {
 
     public void serialize_str(String value) throws SerializationError {
         serialize_bytes(new Bytes(value.getBytes()));
+    }
+
+    public void serialize_vec_bytes(List<Bytes> value) throws SerializationError {
+        serialize_len(value.size());
+        for (Bytes bytes : value) {
+            serialize_bytes(bytes);
+        }
     }
 
     public void serialize_bytes(Bytes value) throws SerializationError {

@@ -6,6 +6,8 @@ package serde
 type Serializer interface {
 	SerializeStr(value string) error
 
+	SerializeVecBytes(value [][]byte) error
+
 	SerializeBytes(value []byte) error
 
 	SerializeBool(value bool) error
@@ -57,6 +59,8 @@ type Serializer interface {
 
 type Deserializer interface {
 	DeserializeStr() (string, error)
+
+	DeserializeVecBytes() ([][]byte, error)
 
 	DeserializeBytes() ([]byte, error)
 

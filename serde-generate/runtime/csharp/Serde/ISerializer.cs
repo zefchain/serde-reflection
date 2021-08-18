@@ -9,6 +9,8 @@ namespace Serde
     {
         void serialize_str(string value);
 
+        void serialize_vec_bytes(ValueArray<ValueArray<byte>> value);
+
         void serialize_bytes(ValueArray<byte> value);
 
         void serialize_bool(bool value);

@@ -34,6 +34,10 @@ func (s *serializer) SerializeStr(value string) error {
 	return s.BinarySerializer.SerializeStr(value, s.SerializeLen)
 }
 
+func (s *serializer) SerializeVecBytes(value [][]byte) error {
+	return s.BinarySerializer.SerializeVecBytes(value, s.SerializeLen)
+}
+
 func (s *serializer) SerializeBytes(value []byte) error {
 	return s.BinarySerializer.SerializeBytes(value, s.SerializeLen)
 }

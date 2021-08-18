@@ -32,6 +32,10 @@ func (d *deserializer) DeserializeF64() (float64, error) {
 	return math.Float64frombits(ret), err
 }
 
+func (d *deserializer) DeserializeVecBytes() ([][]byte, error) {
+	return d.BinaryDeserializer.DeserializeVecBytes(d.DeserializeLen)
+}
+
 func (d *deserializer) DeserializeBytes() ([]byte, error) {
 	return d.BinaryDeserializer.DeserializeBytes(d.DeserializeLen)
 }

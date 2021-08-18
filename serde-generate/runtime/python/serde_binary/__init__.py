@@ -47,7 +47,14 @@ class BinarySerializer:
             st.char: self.serialize_char,
             str: self.serialize_str,
             bytes: self.serialize_bytes,
+            typing.Sequence[bytes]: self.serialize_vec_bytes,
         }
+
+    def serialize_vec_bytes(self, value: typing.Sequence[bytes]):
+        self.serialize_len(len(value))
+        for byte_vec in value:
+            self.serialize_bytes(byte_vec)
+
 
     def serialize_bytes(self, value: bytes):
         self.serialize_len(len(value))
@@ -227,6 +234,7 @@ class BinaryDeserializer:
             st.char: self.deserialize_char,
             str: self.deserialize_str,
             bytes: self.deserialize_bytes,
+            typing.Sequence[bytes]: self.deserialize_vec_bytes,
         }
 
     def read(self, length: int) -> bytes:
@@ -234,6 +242,10 @@ class BinaryDeserializer:
         if value is None or len(value) < length:
             raise st.DeserializationError("Input is too short")
         return value
+
+    def deserialize_vec_bytes(self) -> typing.Sequence[bytes]:
+        length = self.deserialize_len()
+        return [self.deserialize_bytes() for _ in range(length)]
 
     def deserialize_bytes(self) -> bytes:
         length = self.deserialize_len()

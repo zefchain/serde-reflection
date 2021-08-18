@@ -9,6 +9,8 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.CharacterCodingException;
 import java.math.BigInteger;
+import java.util.List;
+import java.util.ArrayList;
 
 public abstract class BinaryDeserializer implements Deserializer {
     protected ByteBuffer input;
@@ -45,6 +47,19 @@ public abstract class BinaryDeserializer implements Deserializer {
             throw new DeserializationError("Incorrect UTF8 string");
         }
         return new String(content);
+    }
+
+    public List<Bytes> deserialize_vec_bytes() throws DeserializationError {
+        long len = deserialize_len();
+        if (len < 0 || len > Integer.MAX_VALUE) {
+            throw new DeserializationError("Incorrect length value for Java array");
+        }
+        List<Bytes> content = new ArrayList<Bytes>();
+        for (int i = 0; i < len; i++) {
+            content.add(deserialize_bytes());
+        }
+
+        return content;
     }
 
     public Bytes deserialize_bytes() throws DeserializationError {

@@ -37,6 +37,10 @@ func (d *deserializer) DeserializeF64() (float64, error) {
 	return 0, errors.New("unimplemented")
 }
 
+func (d *deserializer) DeserializeVecBytes() ([][]byte, error) {
+	return d.BinaryDeserializer.DeserializeVecBytes(d.DeserializeLen)
+}
+
 func (d *deserializer) DeserializeBytes() ([]byte, error) {
 	return d.BinaryDeserializer.DeserializeBytes(d.DeserializeLen)
 }

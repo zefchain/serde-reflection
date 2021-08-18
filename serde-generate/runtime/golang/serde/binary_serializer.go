@@ -33,6 +33,14 @@ func (d *BinarySerializer) DecreaseContainerDepth() {
 	d.containerDepthBudget += 1
 }
 
+func (s *BinarySerializer) SerializeVecBytes(value [][]byte, serializeLen func(uint64) error) error {
+	serializeLen(uint64(len(value)))
+	for _, bytes := range value {
+		s.SerializeBytes(bytes, serializeLen)
+	}
+	return nil
+}
+
 // `serializeLen` to be provided by the extending struct.
 func (s *BinarySerializer) SerializeBytes(value []byte, serializeLen func(uint64) error) error {
 	serializeLen(uint64(len(value)))
