@@ -111,7 +111,7 @@ abstract class BinaryDeserializer {
   int deserializeVariantIndex();
 
   String deserializeString() {
-    return String.fromCharCodes(deserializeUint8List());
+    return utf8.decode(deserializeUint8List());
   }
 
   int deserializeLength();

@@ -3,6 +3,7 @@
 
 library serde;
 
+import 'dart:convert' show utf8;
 import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
