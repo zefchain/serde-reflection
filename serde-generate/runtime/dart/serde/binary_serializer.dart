@@ -123,7 +123,7 @@ abstract class BinarySerializer {
   void serializeVariantIndex(int index);
 
   void serializeString(String str) {
-    serializeUint8List(Uint8List.fromList(str.codeUnits));
+    serializeUint8List(Uint8List.fromList(utf8.encode(str)));
   }
 
   void serializeLength(int len);
