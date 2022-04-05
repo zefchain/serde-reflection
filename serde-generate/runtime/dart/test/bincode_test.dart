@@ -94,4 +94,11 @@ void main() {
     expect(() => serializer.serializeInt32(2147483648), throwsException);
     expect(() => serializer.serializeInt32(-2147483649), throwsException);
   });
+
+  test('serializeString', () {
+    final serializer = BincodeSerializer();
+    serializer.serializeString('dummy text / ダミーテキスト');
+    final deserializer = BincodeDeserializer(serializer.bytes);
+    expect(deserializer.deserializeString(), 'dummy text / ダミーテキスト');
+  });
 }
