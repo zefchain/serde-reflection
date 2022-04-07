@@ -24,6 +24,7 @@ serde_bytes = "0.11.5"
 serde_yaml = "0.8.17"
 structopt = "0.3.21"
 textwrap = "0.13.4"
+phf = { version = "0.10", features = ["macros"] }
 
 serde-reflection = { path = "../serde-reflection", version = "0.3.5" }
 bincode = "1.3.3"

@@ -225,3 +225,36 @@ fn test_that_installed_java_code_compiles() {
         .unwrap();
     assert!(status.success());
 }
+
+#[test]
+fn test_that_installed_ocaml_code_compiles() {
+    let registry = test_utils::get_registry().unwrap();
+    let dir = tempdir().unwrap();
+    let yaml_path = dir.path().join("test.yaml");
+    std::fs::write(yaml_path.clone(), serde_yaml::to_string(&registry).unwrap()).unwrap();
+
+    let status = Command::new("cargo")
+        .arg("run")
+        .arg("-p")
+        .arg("serde-generate")
+        .arg("--")
+        .arg("--language")
+        .arg("ocaml")
+        .arg("--target-source-dir")
+        .arg(dir.path())
+        .arg("--with-runtimes")
+        .arg("serde")
+        .arg("--")
+        .arg(yaml_path)
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let status = Command::new("dune")
+        .arg("build")
+        .arg("--root")
+        .arg(dir.path())
+        .status()
+        .unwrap();
+    assert!(status.success());
+}

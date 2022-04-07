@@ -1,0 +1,5 @@
+(library
+ (name runtime)
+ (virtual_modules serialize deserialize runtime)
+ (libraries common)
+ (default_implementation serde_runtime))

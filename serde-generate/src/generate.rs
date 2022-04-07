@@ -8,7 +8,7 @@
 //! '''
 
 use serde_generate::{
-    cpp, csharp, dart, golang, java, python3, rust, swift, typescript, CodeGeneratorConfig,
+    cpp, csharp, dart, golang, java, ocaml, python3, rust, swift, typescript, CodeGeneratorConfig,
     Encoding, SourceInstaller,
 };
 use serde_reflection::Registry;
@@ -27,6 +27,7 @@ enum Language {
     TypeScript,
     CSharp,
     Swift,
+    OCaml,
 }
 }
 
@@ -155,6 +156,9 @@ fn main() {
                     Language::Swift => swift::CodeGenerator::new(&config)
                         .output(&mut out, &registry)
                         .unwrap(),
+                    Language::OCaml => ocaml::CodeGenerator::new(&config)
+                        .output(&mut out, &registry)
+                        .unwrap(),
                 }
             }
         }
@@ -175,6 +179,7 @@ fn main() {
                     Language::TypeScript => Box::new(typescript::Installer::new(install_dir)),
                     Language::CSharp => Box::new(csharp::Installer::new(install_dir)),
                     Language::Swift => Box::new(swift::Installer::new(install_dir)),
+                    Language::OCaml => Box::new(ocaml::Installer::new(install_dir)),
                 };
 
             if let Some((registry, name)) = named_registry_opt {

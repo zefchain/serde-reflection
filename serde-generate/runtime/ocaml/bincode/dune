@@ -1,0 +1,4 @@
+(library
+ (name bincode_runtime)
+ (modules serialize deserialize runtime)
+ (implements runtime))
