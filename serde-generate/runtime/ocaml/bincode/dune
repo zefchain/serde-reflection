@@ -1,0 +1,10 @@
+(library
+ (name bincode_runtime)
+ (modules serialize deserialize runtime)
+ (implements runtime))
+
+(executable
+ (name test_bincode)
+ (modules test_bincode)
+ (preprocess (pps ppx))
+ (libraries alcotest bincode_runtime))

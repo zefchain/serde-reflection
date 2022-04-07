@@ -1,0 +1,4 @@
+(library
+ (name serde_runtime)
+ (modules serialize deserialize runtime)
+ (implements runtime))
