@@ -1,0 +1,9 @@
+(library
+ (name common)
+ (modules map serialize deserialize)
+ (libraries stdint uutf))
+
+(library
+ (name serde)
+ (modules serde)
+ (libraries runtime))

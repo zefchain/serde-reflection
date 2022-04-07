@@ -1,0 +1,6 @@
+(library
+ (name ppx)
+ (modules ppx)
+ (kind ppx_deriver)
+ (ppx_runtime_libraries serde)
+ (libraries ppxlib))

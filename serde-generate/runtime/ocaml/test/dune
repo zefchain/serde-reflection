@@ -1,0 +1,11 @@
+(test
+ (name test_bcs)
+ (modules test_bcs)
+ (preprocess (pps ppx))
+ (libraries alcotest bcs_runtime))
+
+(test
+ (name test_bincode)
+ (modules test_bincode)
+ (preprocess (pps ppx))
+ (libraries alcotest bincode_runtime))

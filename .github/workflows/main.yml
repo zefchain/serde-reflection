@@ -93,6 +93,10 @@ jobs:
           sudo mkdir -p /opt
           sudo mv swift-5.3.3-RELEASE-ubuntu20.04 /opt/swift
           echo '/opt/swift/usr/bin' >> $GITHUB_PATH
+          sudo apt-get install opam
+          opam init --disable-sandboxing -y
+          eval $(opam env)
+          opam install -y stdint uutf ppxlib
 
       - name: Version Information
         run: |
@@ -108,11 +112,12 @@ jobs:
           deno --version
           dart --version
           swift --version
+          ocaml --version
 
       - name: Build and Test
         run: |
+          eval $(opam env)
           cargo build --all-targets
           cargo test
           cargo build --release --all-targets --all-features
           cargo test --release --all-features
-

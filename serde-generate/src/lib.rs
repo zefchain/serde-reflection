@@ -17,6 +17,7 @@
 //! * Go >= 1.14
 //! * C# (NetCoreApp >= 2.1)
 //! * Swift 5.3
+//! * OCaml
 //!
 //! The following languages are partially supported and still considered under development:
 //!
@@ -148,6 +149,8 @@ pub mod dart;
 pub mod golang;
 /// Support for code-generation in Java
 pub mod java;
+/// Support for code-generation in OCaml
+pub mod ocaml;
 /// Support for code-generation in Python 3
 pub mod python3;
 /// Support for code-generation in Rust
