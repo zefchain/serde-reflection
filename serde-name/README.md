@@ -2,7 +2,6 @@
 
 [![serde-name on crates.io](https://img.shields.io/crates/v/serde-name)](https://crates.io/crates/serde-name)
 [![Documentation (latest release)](https://docs.rs/serde-name/badge.svg)](https://docs.rs/serde-name/)
-[![Documentation (main)](https://img.shields.io/badge/docs-main-brightgreen)](https://novifinancial.github.io/serde-reflection/serde_name/)
 [![License](https://img.shields.io/badge/license-Apache-green.svg)](../LICENSE-APACHE)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](../LICENSE-MIT)
 
