@@ -1,10 +1,6 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
     branches: [ main ]
   pull_request:
@@ -13,24 +9,110 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+env:
+  CARGO_TERM_COLOR: always
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    container: circleci/rust:bullseye
+
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      # The Docker file changes sets USER to circleci instead of using the default user, so we need to update file permissions for this image to work on GH Actions.
+      # See https://docs.github.com/actions/reference/virtual-environments-for-github-hosted-runners#docker-container-filesystem
+      - name: Setup file system permissions
+        run: sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
+
       - uses: actions/checkout@v3
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Install Rust
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          rustup toolchain install 1.55.0-x86_64-unknown-linux-gnu
+          rustup component add rustfmt --toolchain 1.55.0-x86_64-unknown-linux-gnu
+          rustup component add clippy --toolchain 1.55.0-x86_64-unknown-linux-gnu
+          sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
+          echo 'RUSTFLAGS=-D warnings' >> $GITHUB_ENV
+
+      - name: Version Information
+        run: |
+          rustc --version
+          cargo --version
+          rustup --version
+          cargo fmt -- --version
+          cargo clippy -- --version
+
+      - name: Lint (rustfmt)
+        run: |
+          cargo fmt -- --check
+
+      - name: Lint (clippy)
+        run: |
+          cargo clippy --all-features
+
+  tests:
+    runs-on: ubuntu-latest
+    container: circleci/rust:bullseye
+
+    steps:
+      # The Docker file changes sets USER to circleci instead of using the default user, so we need to update file permissions for this image to work on GH Actions.
+      # See https://docs.github.com/actions/reference/virtual-environments-for-github-hosted-runners#docker-container-filesystem
+      - name: Setup file system permissions
+        run: sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
+
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install 1.55.0-x86_64-unknown-linux-gnu
+          sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
+          echo 'RUSTFLAGS=-D warnings' >> $GITHUB_ENV
+
+      - name: Setup Additional Languages
+        run: |
+          sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https python3-all-dev python3-pip default-jdk golang-1.15-go
+          echo '/usr/lib/go-1.15/bin' >> $GITHUB_PATH
+          python3 -m pip install pyre-check==0.0.59
+          python3 -m pip install numpy==1.20.1
+          echo '/github/home/.local/bin' >> $GITHUB_PATH
+          wget https://packages.microsoft.com/config/debian/10/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y dotnet-sdk-2.1 dotnet-sdk-3.1
+          curl -fsSL https://deno.land/x/install/install.sh | sh
+          echo 'DENO_INSTALL=/github/home/.deno' >> $GITHUB_ENV
+          echo '/github/home/.deno/bin' >> $GITHUB_PATH
+          sudo sh -c 'wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -'
+          sudo sh -c 'wget -qO- https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > /etc/apt/sources.list.d/dart_stable.list'
+          sudo apt-get update
+          sudo apt-get install dart
+          sudo apt-get install binutils git gnupg2 libc6-dev libcurl4 libedit2 libgcc-9-dev libpython2.7 libsqlite3-0 libstdc++-9-dev libxml2 libz3-dev pkg-config tzdata zlib1g-dev -y
+          wget https://swift.org/builds/swift-5.3.3-release/ubuntu2004/swift-5.3.3-RELEASE/swift-5.3.3-RELEASE-ubuntu20.04.tar.gz
+          tar xzf swift-5.3.3-RELEASE-ubuntu20.04.tar.gz
+          sudo mkdir -p /opt
+          sudo mv swift-5.3.3-RELEASE-ubuntu20.04 /opt/swift
+          echo '/opt/swift/usr/bin' >> $GITHUB_PATH
+
+      - name: Version Information
+        run: |
+          rustc --version
+          cargo --version
+          rustup --version
+          python3 --version
+          pyre --version
+          clang++ --version
+          javac -version
+          go version
+          dotnet --list-sdks
+          deno --version
+          dart --version
+          swift --version
+
+      - name: Build and Test
+        run: |
+          cargo build --all-targets
+          cargo test
+          cargo build --release --all-targets --all-features
+          cargo test --release --all-features
+
