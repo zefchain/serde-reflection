@@ -133,7 +133,7 @@ import typing
             .cloned()
             .unwrap_or_else(|| {
                 // Need quotes because of circular dependencies.
-                format!("\"{}\"", name.to_string())
+                format!("\"{}\"", name)
             })
     }
 

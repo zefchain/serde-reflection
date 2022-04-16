@@ -76,7 +76,7 @@ fn make_test_project(
     test_name: &str,
     library_name: &str,
 ) -> std::io::Result<PathBuf> {
-    let test_dir = tmp_dir.join(test_name.replace(".", "/"));
+    let test_dir = tmp_dir.join(test_name.replace('.', "/"));
     std::fs::create_dir(&test_dir)?;
     let mut proj = std::fs::File::create(test_dir.join(format!("{}.csproj", test_name)))?;
     write!(

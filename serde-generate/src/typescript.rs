@@ -510,7 +510,7 @@ return list;
         name: &str,
         fields: &[Named<Format>],
     ) -> Result<()> {
-        let mut variant_base_name = format!("");
+        let mut variant_base_name = String::new();
 
         // Beginning of class
         if let Some(base) = variant_base {
