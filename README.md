@@ -1,6 +1,6 @@
 # serde-reflection: Format Description and Code Generation for Serde
 
-[![Build Status](https://circleci.com/gh/novifinancial/serde-reflection/tree/main.svg?style=shield&circle-token=4380502426d703f8f000b5467195728e5e8e4ff5)](https://circleci.com/gh/novifinancial/serde-reflection/tree/main)
+[![Build Status](https://github.com/zefchain/serde-reflection/actions/workflows/main.yml/badge.svg)](https://github.com/zefchain/serde-reflection/actions/workflows/main.yml)
 [![License](https://img.shields.io/badge/license-Apache-green.svg)](LICENSE-APACHE)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE-MIT)
 
