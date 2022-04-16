@@ -25,7 +25,7 @@ fn test_that_csharp_code_compiles_with_config(
     installer.install_bincode_runtime().unwrap();
     installer.install_bcs_runtime().unwrap();
 
-    let proj_path = dir_path.join(config.module_name().replace(".", "/"));
+    let proj_path = dir_path.join(config.module_name().replace('.', "/"));
     {
         let _lock = MUTEX.lock();
         let status = Command::new("dotnet")

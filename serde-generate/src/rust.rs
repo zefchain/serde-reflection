@@ -81,8 +81,8 @@ impl<'a> CodeGenerator<'a> {
             .config
             .external_definitions
             .values()
-            .cloned()
             .flatten()
+            .cloned()
             .collect();
         let dependencies =
             analyzer::get_dependency_map_with_external_dependencies(registry, &external_names)?;
@@ -183,8 +183,8 @@ where
             .config
             .external_definitions
             .values()
-            .cloned()
             .flatten()
+            .cloned()
             .collect::<HashSet<_>>();
         writeln!(self.out, "#![allow(unused_imports)]")?;
         if !external_names.contains("Map") {
