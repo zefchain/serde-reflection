@@ -52,7 +52,7 @@ let int64 (i : int64) =
   b
 
 let int128 (i : int128) =
-  let b = Bytes.create 8 in
+  let b = Bytes.create 16 in
   Int128.to_bytes_little_endian i b 0;
   b
 

@@ -1,7 +1,7 @@
 use crate::{
     common::capitalize,
     indent::{IndentConfig, IndentedWriter},
-    CodeGeneratorConfig,
+    CodeGeneratorConfig, Encoding,
 };
 use heck::CamelCase;
 use heck::SnakeCase;
@@ -22,6 +22,7 @@ pub struct CodeGenerator<'a> {
 struct OCamlEmitter<'a, T> {
     out: IndentedWriter<T>,
     generator: &'a CodeGenerator<'a>,
+    current_namespace: Vec<String>,
 }
 
 impl<'a> CodeGenerator<'a> {
@@ -40,9 +41,16 @@ impl<'a> CodeGenerator<'a> {
     }
 
     pub fn output(&self, out: &mut dyn Write, registry: &Registry) -> Result<()> {
+        let current_namespace = self
+            .config
+            .module_name
+            .split('.')
+            .map(String::from)
+            .collect();
         let mut emitter = OCamlEmitter {
             out: IndentedWriter::new(out, IndentConfig::Space(2)),
             generator: self,
+            current_namespace,
         };
         emitter.output_preamble()?;
         let n = registry.len();
@@ -50,6 +58,9 @@ impl<'a> CodeGenerator<'a> {
             let first = i == 0;
             let last = i == n - 1;
             emitter.output_container(name, format, first, last)?;
+        }
+        for (name, _) in registry.iter() {
+            emitter.output_custom_code(name)?;
         }
         Ok(())
     }
@@ -80,9 +91,33 @@ impl<'a, T> OCamlEmitter<'a, T>
 where
     T: Write,
 {
+    fn output_comment(&mut self, name: &str) -> std::io::Result<()> {
+        let mut path = self.current_namespace.clone();
+        path.push(name.to_string());
+        if let Some(doc) = self.generator.config.comments.get(&path) {
+            writeln!(self.out, "(*")?;
+            self.out.indent();
+            write!(self.out, "{}", doc)?;
+            self.out.unindent();
+            writeln!(self.out, "*)")?;
+        }
+        Ok(())
+    }
+
+    fn output_custom_code(&mut self, name: &str) -> std::io::Result<()> {
+        let mut path = self.current_namespace.clone();
+        path.push(name.to_string());
+        if let Some(code) = self.generator.config.custom_code.get(&path) {
+            write!(self.out, "\n{}", code)?;
+        }
+        Ok(())
+    }
+
     fn output_preamble(&mut self) -> Result<()> {
         for namespace in self.generator.libraries.iter() {
-            writeln!(self.out, "open {}", capitalize(namespace))?;
+            if !namespace.is_empty() {
+                writeln!(self.out, "open {}", capitalize(namespace))?
+            }
         }
         Ok(())
     }
@@ -113,7 +148,7 @@ where
             U32 => write!(self.out, "Stdint.uint32"),
             U64 => write!(self.out, "Stdint.uint64"),
             U128 => write!(self.out, "Stdint.uint128"),
-            F32 => write!(self.out, "float"),
+            F32 => write!(self.out, "(float [@float32])"),
             F64 => write!(self.out, "float"),
             Char => write!(self.out, "char"),
             Str => write!(self.out, "string"),
@@ -166,13 +201,14 @@ where
         formats
             .iter()
             .map(|f| {
+                self.output_comment(&f.name)?;
                 write!(self.out, "{}: ", f.name)?;
                 self.output_format(&f.value)?;
                 writeln!(self.out, ";")
             })
             .collect::<Result<Vec<_>>>()?;
         self.out.unindent();
-        write!(self.out, "\n}}")
+        write!(self.out, "}}")
     }
 
     fn output_variant(&mut self, format: &VariantFormat) -> Result<()> {
@@ -197,15 +233,21 @@ where
         }
     }
 
-    fn output_enum(&mut self, formats: &BTreeMap<u32, Named<VariantFormat>>) -> Result<()> {
+    fn output_enum(
+        &mut self,
+        formats: &BTreeMap<u32, Named<VariantFormat>>,
+        cyclic: bool,
+    ) -> Result<()> {
         writeln!(self.out)?;
         self.out.indent();
+        let c = if cyclic { " [@cyclic]" } else { "" };
         formats
             .iter()
             .map(|(_, f)| {
+                self.output_comment(&f.name)?;
                 write!(self.out, "| {}", f.name)?;
                 self.output_variant(&f.value)?;
-                writeln!(self.out)
+                writeln!(self.out, "{}", c)
             })
             .collect::<Result<Vec<_>>>()?;
         self.out.unindent();
@@ -233,6 +275,7 @@ where
         last: bool,
     ) -> Result<()> {
         use ContainerFormat::*;
+        self.output_comment(name)?;
         write!(
             self.out,
             "{} {} = ",
@@ -250,13 +293,14 @@ where
                         value: VariantFormat::NewType(format.clone()),
                     },
                 );
-                self.output_enum(&map)
+                self.output_enum(&map, true)
             }
             NewTypeStruct(format) => self.output_format(format.as_ref()),
             TupleStruct(formats) => self.output_tuple(formats),
             Struct(fields) => self.output_record(fields),
-            Enum(variants) => self.output_enum(variants),
+            Enum(variants) => self.output_enum(variants, false),
         }?;
+
         writeln!(
             self.out,
             "{}",
@@ -309,10 +353,19 @@ impl crate::SourceInstaller for Installer {
         let dune_source_path = dir_path.join("dune");
         let mut dune_file = std::fs::File::create(dune_source_path)?;
         let name = config.module_name.to_snake_case();
+        let mut runtime_str = "";
+        if config.encodings.len() == 1 {
+            for enc in config.encodings.iter() {
+                match enc {
+                    Encoding::Bcs => runtime_str = "n(libraries bcs_runtime)",
+                    Encoding::Bincode => runtime_str = "\n(libraries bincode_runtime)",
+                }
+            }
+        }
         writeln!(
             dune_file,
-            "(env (_ (flags (:standard -w -30-42))))\n\n(library\n (name {0})\n (modules {0})\n (preprocess (pps ppx)))",
-            name
+            "(env (_ (flags (:standard -w -30-42 -warn-error -a))))\n\n(library\n (name {0})\n (modules {0})\n (preprocess (pps ppx)){1})",
+            name, runtime_str
         )?;
         let source_path = dir_path.join(format!("{}.ml", name));
         let mut file = std::fs::File::create(source_path)?;
