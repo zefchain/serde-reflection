@@ -131,60 +131,70 @@ where
         }
     }
 
-    fn output_format(&mut self, format: &Format) -> Result<()> {
+    fn output_format(&mut self, format: &Format, is_struct: bool) -> Result<()> {
         use Format::*;
+        if is_struct {
+            write!(self.out, "(")?
+        }
         match format {
             Variable(_) => panic!("incorrect value"),
-            TypeName(s) => write!(self.out, "{}", self.type_name(s)),
-            Unit => write!(self.out, "unit"),
-            Bool => write!(self.out, "bool"),
-            I8 => write!(self.out, "Stdint.int8"),
-            I16 => write!(self.out, "Stdint.int16"),
-            I32 => write!(self.out, "int32"),
-            I64 => write!(self.out, "int64"),
-            I128 => write!(self.out, "Stdint.int128"),
-            U8 => write!(self.out, "Stdint.uint8"),
-            U16 => write!(self.out, "Stdint.uint16"),
-            U32 => write!(self.out, "Stdint.uint32"),
-            U64 => write!(self.out, "Stdint.uint64"),
-            U128 => write!(self.out, "Stdint.uint128"),
-            F32 => write!(self.out, "(float [@float32])"),
-            F64 => write!(self.out, "float"),
-            Char => write!(self.out, "char"),
-            Str => write!(self.out, "string"),
-            Bytes => write!(self.out, "bytes"),
+            TypeName(s) => write!(self.out, "{}", self.type_name(s))?,
+            Unit => write!(self.out, "unit")?,
+            Bool => write!(self.out, "bool")?,
+            I8 => write!(self.out, "Stdint.int8")?,
+            I16 => write!(self.out, "Stdint.int16")?,
+            I32 => write!(self.out, "int32")?,
+            I64 => write!(self.out, "int64")?,
+            I128 => write!(self.out, "Stdint.int128")?,
+            U8 => write!(self.out, "Stdint.uint8")?,
+            U16 => write!(self.out, "Stdint.uint16")?,
+            U32 => write!(self.out, "Stdint.uint32")?,
+            U64 => write!(self.out, "Stdint.uint64")?,
+            U128 => write!(self.out, "Stdint.uint128")?,
+            F32 => write!(self.out, "(float [@float32])")?,
+            F64 => write!(self.out, "float")?,
+            Char => write!(self.out, "char")?,
+            Str => write!(self.out, "string")?,
+            Bytes => write!(self.out, "bytes")?,
             Option(f) => {
-                self.output_format(f)?;
-                write!(self.out, " option")
+                self.output_format(f, false)?;
+                write!(self.out, " option")?
             }
             Seq(f) => {
-                self.output_format(f)?;
-                write!(self.out, " list")
+                self.output_format(f, false)?;
+                write!(self.out, " list")?
             }
-            Map { key, value } => self.output_map(key, value),
-            Tuple(fs) => self.output_tuple(fs),
+            Map { key, value } => self.output_map(key, value)?,
+            Tuple(fs) => self.output_tuple(fs, false)?,
             TupleArray { content, size } => {
-                self.output_tuple(&vec![content.as_ref().clone(); *size])
+                self.output_tuple(&vec![content.as_ref().clone(); *size], false)?
             }
         }
+        if is_struct {
+            write!(self.out, " [@struct])")?
+        }
+        Ok(())
     }
 
     fn output_map(&mut self, key: &Format, value: &Format) -> Result<()> {
         write!(self.out, "(")?;
-        self.output_format(key)?;
+        self.output_format(key, false)?;
         write!(self.out, ", ")?;
-        self.output_format(value)?;
+        self.output_format(value, false)?;
         write!(self.out, ") Serde.map")
     }
 
-    fn output_tuple(&mut self, formats: &[Format]) -> Result<()> {
+    fn output_tuple(&mut self, formats: &[Format], is_struct: bool) -> Result<()> {
+        if is_struct {
+            write!(self.out, "(")?
+        }
         write!(self.out, "(")?;
         let n = formats.len();
         formats
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                self.output_format(f)?;
+                self.output_format(f, false)?;
                 if i != n - 1 {
                     write!(self.out, " * ")
                 } else {
@@ -192,7 +202,11 @@ where
                 }
             })
             .collect::<Result<Vec<_>>>()?;
-        write!(self.out, ")")
+        write!(self.out, ")")?;
+        if is_struct {
+            write!(self.out, " [@struct])")?
+        }
+        Ok(())
     }
 
     fn output_record(&mut self, formats: &[Named<Format>]) -> Result<()> {
@@ -203,7 +217,7 @@ where
             .map(|f| {
                 self.output_comment(&f.name)?;
                 write!(self.out, "{}: ", f.name)?;
-                self.output_format(&f.value)?;
+                self.output_format(&f.value, false)?;
                 writeln!(self.out, ";")
             })
             .collect::<Result<Vec<_>>>()?;
@@ -218,12 +232,12 @@ where
             Unit => Ok(()),
             NewType(f) => {
                 write!(self.out, " of ")?;
-                self.output_format(f)
+                self.output_format(f, false)
             }
             Tuple(fields) if fields.is_empty() => Ok(()),
             Tuple(fields) => {
                 write!(self.out, " of ")?;
-                self.output_tuple(fields)
+                self.output_tuple(fields, false)
             }
             Struct(fields) if fields.is_empty() => Ok(()),
             Struct(fields) => {
@@ -295,8 +309,8 @@ where
                 );
                 self.output_enum(&map, true)
             }
-            NewTypeStruct(format) => self.output_format(format.as_ref()),
-            TupleStruct(formats) => self.output_tuple(formats),
+            NewTypeStruct(format) => self.output_format(format.as_ref(), true),
+            TupleStruct(formats) => self.output_tuple(formats, true),
             Struct(fields) => self.output_record(fields),
             Enum(variants) => self.output_enum(variants, false),
         }?;

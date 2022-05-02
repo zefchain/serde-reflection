@@ -12,43 +12,43 @@ let mk buffer = { De.buffer; offset = 0 }
 let check_fail f =
   (check bool) "fail" true (try let _ = f () in false with _ -> true)
 
-let test_bool_ser_false () = (check bytes) "same bytes" (vec [|0|]) (Ser.bool false)
-let test_bool_ser_true () = (check bytes) "same bytes" (vec [|1|]) (Ser.bool true)
-let test_bool_de_false () = (check bool) "same bool" false (De.bool @@ mk @@ vec [|0|])
-let test_bool_de_true () = (check bool) "same bool" true (De.bool @@ mk @@ vec [|1|])
+let test_bool_ser_false () = (check bytes) "same bytes" (vec [|0|]) (Ser.bool false).r
+let test_bool_ser_true () = (check bytes) "same bytes" (vec [|1|]) (Ser.bool true).r
+let test_bool_de_false () = (check bool) "same bool" false (De.bool @@ mk @@ vec [|0|]).r
+let test_bool_de_true () = (check bool) "same bool" true (De.bool @@ mk @@ vec [|1|]).r
 let test_bool_fail_2 () = check_fail (fun () -> De.bool @@ mk @@ vec [|2|])
 let test_bool_fail_empty () = check_fail (fun () -> De.bool @@ mk @@ vec [||])
 
-let test_u8_ser () = (check bytes) "same bytes" (vec [|1|]) (Ser.uint8 (Uint8.of_int 1))
-let test_u8_de () = (check int) "same int" 255 (Uint8.to_int @@ De.uint8 @@ mk @@ vec [|0xff|])
+let test_u8_ser () = (check bytes) "same bytes" (vec [|1|]) (Ser.uint8 (Uint8.of_int 1)).r
+let test_u8_de () = (check int) "same int" 255 (Uint8.to_int (De.uint8 @@ mk @@ vec [|0xff|]).r)
 
-let test_u16_ser () = (check bytes) "same bytes" (vec [|2; 1|]) (Ser.uint16 (Uint16.of_int 258))
-let test_u16_de () = (check int) "same int" 65535 (Uint16.to_int @@ De.uint16 @@ mk @@ vec [|0xff; 0xff|])
+let test_u16_ser () = (check bytes) "same bytes" (vec [|2; 1|]) (Ser.uint16 (Uint16.of_int 258)).r
+let test_u16_de () = (check int) "same int" 65535 (Uint16.to_int (De.uint16 @@ mk @@ vec [|0xff; 0xff|]).r)
 
-let test_u32_ser () = (check bytes) "same bytes" (vec [|4; 3; 2; 1|]) (Ser.uint32 (Uint32.of_int 16909060))
-let test_u32_de () = (check int) "same int" 4294967295 (Uint32.to_int @@ De.uint32 @@ mk @@ vec [|0xff; 0xff; 0xff; 0xff|])
+let test_u32_ser () = (check bytes) "same bytes" (vec [|4; 3; 2; 1|]) (Ser.uint32 (Uint32.of_int 16909060)).r
+let test_u32_de () = (check int) "same int" 4294967295 (Uint32.to_int (De.uint32 @@ mk @@ vec [|0xff; 0xff; 0xff; 0xff|]).r)
 
-let test_u64_ser () = (check bytes) "same bytes" (vec [|8; 7; 6; 5; 4; 3; 2; 1|]) (Ser.uint64 (Uint64.of_int 72623859790382856))
-let test_u64_de () = (check bool) "same int" true Uint128.(((shift_left (of_int 1) 64) - (of_int 1)) = Uint128.of_uint64 @@ De.uint64 @@ mk @@ vec @@ Array.make 8 0xff)
+let test_u64_ser () = (check bytes) "same bytes" (vec [|8; 7; 6; 5; 4; 3; 2; 1|]) (Ser.uint64 (Uint64.of_int 72623859790382856)).r
+let test_u64_de () = (check bool) "same int" true Uint128.(((shift_left (of_int 1) 64) - (of_int 1)) = Uint128.of_uint64 (De.uint64 @@ mk @@ vec @@ Array.make 8 0xff).r)
 
-let test_u128_ser () = (check bytes) "same bytes" (vec [|16; 15; 14; 13; 12; 11; 10; 9; 8; 7; 6; 5; 4; 3; 2; 1|]) (Ser.uint128 (Uint128.of_string "0x0102030405060708090A0B0C0D0E0F10" ))
-let test_u128_de () = (check bool) "same int" true Uint128.(of_string "0xffffffffffffffffffffffffffffffff" = De.uint128 @@ mk @@ vec @@ Array.make 16 0xff)
+let test_u128_ser () = (check bytes) "same bytes" (vec [|16; 15; 14; 13; 12; 11; 10; 9; 8; 7; 6; 5; 4; 3; 2; 1|]) (Ser.uint128 (Uint128.of_string "0x0102030405060708090A0B0C0D0E0F10" )).r
+let test_u128_de () = (check bool) "same int" true Uint128.(of_string "0xffffffffffffffffffffffffffffffff" = (De.uint128 @@ mk @@ vec @@ Array.make 16 0xff).r)
 
-let test_i8_ser_pos () = (check bytes) "same bytes" (vec [|4|]) (Ser.int8 (Int8.of_int 4))
-let test_i8_ser_neg () = (check bytes) "same bytes" (vec [|0xfe|]) (Ser.int8 (Int8.of_int (-2)))
-let test_i8_de () = (check int) "same int" (-1) (Int8.to_int @@ De.int8 @@ mk @@ vec [|0xff|])
+let test_i8_ser_pos () = (check bytes) "same bytes" (vec [|4|]) (Ser.int8 (Int8.of_int 4)).r
+let test_i8_ser_neg () = (check bytes) "same bytes" (vec [|0xfe|]) (Ser.int8 (Int8.of_int (-2))).r
+let test_i8_de () = (check int) "same int" (-1) (Int8.to_int (De.int8 @@ mk @@ vec [|0xff|]).r)
 
-let test_i16_ser () = (check bytes) "same bytes" (vec [|2; 1|]) (Ser.int16 (Int16.of_int 258))
-let test_i16_de () = (check int) "same int" (-1) (Int16.to_int @@ De.int16 @@ mk @@ vec [|0xff; 0xff|])
+let test_i16_ser () = (check bytes) "same bytes" (vec [|2; 1|]) (Ser.int16 (Int16.of_int 258)).r
+let test_i16_de () = (check int) "same int" (-1) (Int16.to_int (De.int16 @@ mk @@ vec [|0xff; 0xff|]).r)
 
-let test_i32_ser () = (check bytes) "same bytes" (vec [|4; 3; 2; 1|]) (Ser.int32 (Int32.of_int 16909060))
-let test_i32_de () = (check int) "same int" (-1) (Int32.to_int @@ De.int32 @@ mk @@ vec [|0xff; 0xff; 0xff; 0xff|])
+let test_i32_ser () = (check bytes) "same bytes" (vec [|4; 3; 2; 1|]) (Ser.int32 (Int32.of_int 16909060)).r
+let test_i32_de () = (check int) "same int" (-1) (Int32.to_int (De.int32 @@ mk @@ vec [|0xff; 0xff; 0xff; 0xff|]).r)
 
-let test_i64_ser () = (check bytes) "same bytes" (vec [|8; 7; 6; 5; 4; 3; 2; 1|]) (Ser.int64 (Int64.of_int 72623859790382856))
-let test_i64_de () = (check bool) "same int" true (Stdlib.Int64.minus_one = De.int64 @@ mk @@ vec @@ Array.make 8 0xff)
+let test_i64_ser () = (check bytes) "same bytes" (vec [|8; 7; 6; 5; 4; 3; 2; 1|]) (Ser.int64 (Int64.of_int 72623859790382856)).r
+let test_i64_de () = (check bool) "same int" true (Stdlib.Int64.minus_one = (De.int64 @@ mk @@ vec @@ Array.make 8 0xff).r)
 
-let test_i128_ser () = (check bytes) "same bytes" (vec [|16; 15; 14; 13; 12; 11; 10; 9; 8; 7; 6; 5; 4; 3; 2; 1|]) (Ser.uint128 (Uint128.of_string "0x0102030405060708090A0B0C0D0E0F10" ))
-let test_i128_de () = (check bool) "same int" true Uint128.(of_int (-1) = De.uint128 @@ mk @@ vec @@ Array.make 16 0xff)
+let test_i128_ser () = (check bytes) "same bytes" (vec [|16; 15; 14; 13; 12; 11; 10; 9; 8; 7; 6; 5; 4; 3; 2; 1|]) (Ser.uint128 (Uint128.of_string "0x0102030405060708090A0B0C0D0E0F10" )).r
+let test_i128_de () = (check bool) "same int" true Uint128.(of_int (-1) = (De.uint128 @@ mk @@ vec @@ Array.make 16 0xff).r)
 
 let test_length_ser_0 () = (check bytes) "same bytes" (vec [|0|]) (Ser.length 0)
 let test_length_ser_3 () = (check bytes) "same bytes" (vec [|3|]) (Ser.length 3)
@@ -65,31 +65,31 @@ let test_length_de_4000 () = (check int) "same int" 0x4000 (De.length @@ mk @@ v
 let test_length_de_8001 () = (check int) "same int" 0x8001 (De.length @@ mk @@ vec [|0x81; 0x80; 0x02|])
 let test_length_de_fail () = check_fail (fun () -> De.length @@ mk @@ vec [|0xff; 0xff; 0xff; 0xff; 0x08|])
 
-let test_bytes_ser_empty () = (check bytes) "same bytes" (vec [|0|]) (Ser.bytes Bytes.empty)
-let test_bytes_ser () = (check bytes) "same bytes" (vec [|2; 0; 0|]) (Ser.bytes (Bytes.make 2 '\000'))
-let test_bytes_de () = (check bytes) "same bytes" (vec (Array.concat [[|0x80; 0x01|]; Array.make 128 0])) (Ser.bytes (Bytes.make 128 '\000'))
+let test_bytes_ser_empty () = (check bytes) "same bytes" (vec [|0|]) (Ser.bytes Bytes.empty).r
+let test_bytes_ser () = (check bytes) "same bytes" (vec [|2; 0; 0|]) (Ser.bytes (Bytes.make 2 '\000')).r
+let test_bytes_de () = (check bytes) "same bytes" (vec (Array.concat [[|0x80; 0x01|]; Array.make 128 0])) (Ser.bytes (Bytes.make 128 '\000')).r
 
 type tuple = (uint8 * uint16) [@@deriving serde]
-let test_tuple_ser () = (check bytes) "same bytes" (vec [|0; 1; 0|]) (tuple_ser ((Uint8.of_int 0), Uint16.of_int 1))
-let test_tuple_de () = (check bool) "same tuple" true ((Uint8.of_int 2, Uint16.of_int 1) = tuple_de @@ mk @@ vec [|2; 1; 0|])
+let test_tuple_ser () = (check bytes) "same bytes" (vec [|0; 1; 0|]) (tuple_ser ((Uint8.of_int 0), Uint16.of_int 1)).r
+let test_tuple_de () = (check bool) "same tuple" true ((Uint8.of_int 2, Uint16.of_int 1) = (tuple_de @@ mk @@ vec [|2; 1; 0|]).r)
 
-let test_option_ser_none () = (check bytes) "same bytes" (vec [|0|]) (Ser.option Ser.uint16 None)
-let test_option_ser_some () = (check bytes) "same bytes" (vec [|1; 6; 0|]) (Ser.option Ser.uint16 (Some (Uint16.of_int 6)))
-let test_option_de_none () = (check bool) "same" true (None = De.option De.uint16 (mk @@ vec [|0|]))
-let test_option_de_some () = (check bool) "same" true (Some (Uint16.of_int 2) = De.option De.uint16 (mk @@ vec [|1; 2; 0|]))
+let test_option_ser_none () = (check bytes) "same bytes" (vec [|0|]) (Ser.option Ser.uint16 None).r
+let test_option_ser_some () = (check bytes) "same bytes" (vec [|1; 6; 0|]) (Ser.option Ser.uint16 (Some (Uint16.of_int 6))).r
+let test_option_de_none () = (check bool) "same" true (None = (De.option De.uint16 (mk @@ vec [|0|])).r)
+let test_option_de_some () = (check bool) "same" true (Some (Uint16.of_int 2) = (De.option De.uint16 (mk @@ vec [|1; 2; 0|])).r)
 let test_option_de_fail () = check_fail (fun () -> De.option De.uint16 (mk @@ vec [|2; 6; 0|]))
 
-let test_seq_ser_empty () = (check bytes) "same bytes" (vec [|0|]) (Ser.variable Ser.uint16 [])
-let test_seq_ser_small () = (check bytes) "same bytes" (vec [|2; 0; 0; 1; 0|]) (Ser.variable Ser.uint16 [Uint16.of_int 0; Uint16.of_int 1])
+let test_seq_ser_empty () = (check bytes) "same bytes" (vec [|0|]) (Ser.variable Ser.uint16 []).r
+let test_seq_ser_small () = (check bytes) "same bytes" (vec [|2; 0; 0; 1; 0|]) (Ser.variable Ser.uint16 [Uint16.of_int 0; Uint16.of_int 1]).r
 let test_seq_ser_big () = (check bytes) "same bytes"
     (vec (Array.concat ([|0x80; 0x01|] :: List.init 128 (fun _ -> [|0; 1|]))))
-    (Ser.variable Ser.uint16 @@ List.init 128 (fun _ -> Uint16.of_int 256))
-let test_seq_de () = (check bool) "same" true ([Uint16.of_int 3] = De.variable De.uint16 @@ mk @@ vec [|1; 3; 0|])
+    (Ser.variable Ser.uint16 @@ List.init 128 (fun _ -> Uint16.of_int 256)).r
+let test_seq_de () = (check bool) "same" true ([Uint16.of_int 3] = (De.variable De.uint16 @@ mk @@ vec [|1; 3; 0|]).r)
 
 let test_string_ser () =
-  (check bytes) "same bytes" (vec [|5; 65; 66; 67; 0xce; 0x94|]) (Ser.string "ABC\u{0394}")
+  (check bytes) "same bytes" (vec [|5; 65; 66; 67; 0xce; 0x94|]) (Ser.string "ABC\u{0394}").r
 let test_string_de () =
-  (check string) "same" "ABC\u{0394}" (De.string @@ mk @@ vec [|5; 65; 66; 67; 0xce; 0x94|])
+  (check string) "same" "ABC\u{0394}" (De.string @@ mk @@ vec [|5; 65; 66; 67; 0xce; 0x94|]).r
 let test_string_fail_length () =
   check_fail (fun () -> De.string @@ mk @@ vec [|3; 65; 66|])
 let test_string_fail_utf8 () =
@@ -99,21 +99,21 @@ let test_long_seq () =
   let i = Uint16.of_int 5 in
   let l = List.init 1000000 (fun _ -> i) in
   let b = Ser.(variable uint16) l in
-  (check bool) "same" true (l = De.(variable uint16) @@ mk b)
+  (check bool) "same" true (l = (De.(variable uint16) @@ mk b.r).r)
 
 let test_map () =
-  let compare k1 k2 = Bytes.compare (Ser.uint16 k1) (Ser.uint16 k2) in
+  let compare k1 k2 = Bytes.compare (Ser.uint16 k1).r (Ser.uint16 k2).r in
   let m = Map.empty in
   let m = Map.add ~compare (Uint16.of_int 1) (Uint8.of_int 5) m in
   let m = Map.add ~compare (Uint16.of_int 256) (Uint8.of_int 3) m in
   let b = Ser.(map uint16 uint8) m in
-  (check bytes) "same bytes" (vec [|2; 0; 1; 3; 1; 0; 5|]) b;
-  (check bool) "same" true ((Map.bindings @@ De.map Ser.uint16 De.uint16 De.uint8 @@ mk b) = Map.bindings m);
+  (check bytes) "same bytes" (vec [|2; 0; 1; 3; 1; 0; 5|]) b.r;
+  (check bool) "same" true ((Map.bindings (De.map Ser.uint16 De.uint16 De.uint8 @@ mk b.r).r) = Map.bindings m);
   let m2 = Map.empty in
   let m2 = Map.add ~compare (Uint16.of_int 256) (Uint8.of_int 3) m2 in
   let m2 = Map.add ~compare (Uint16.of_int 1) (Uint8.of_int 5) m2 in
   let b2 = Ser.(map uint16 uint8) m2 in
-  (check bytes) "same bytes" b b2;
+  (check bytes) "same bytes" b.r b2.r;
   check_fail (fun () -> De.map Ser.uint16 De.uint16 De.uint8 @@ mk @@ vec [|2; 1; 0; 5; 0; 1; 3|])
 
 type foo = {
@@ -122,10 +122,10 @@ type foo = {
 } [@@deriving serde]
 
 let test_struct_ser () =
-  (check bytes) "same bytes" (vec [|0; 1; 0|]) @@ foo_ser {x = Uint8.zero; y = Uint16.one}
+  (check bytes) "same bytes" (vec [|0; 1; 0|]) (foo_ser {x = Uint8.zero; y = Uint16.one}).r
 
 let test_struct_de () =
-  (check bool) "same" true ({x = Uint8.of_int 2; y = Uint16.one} = foo_de @@ mk @@ vec [|2; 1; 0|])
+  (check bool) "same" true ({x = Uint8.of_int 2; y = Uint16.one} = (foo_de @@ mk @@ vec [|2; 1; 0|]).r)
 
 type bar =
   | A
@@ -134,10 +134,10 @@ type bar =
 [@@deriving serde]
 
 let test_variant_ser () =
-  (check bytes) "same bytes" (vec [|1; 0; 1; 0|]) @@ bar_ser (B {x = Uint8.zero; y = Uint16.one})
+  (check bytes) "same bytes" (vec [|1; 0; 1; 0|]) (bar_ser (B {x = Uint8.zero; y = Uint16.one})).r
 
 let test_variant_de () =
-  (check bool) "same" true (B {x = Uint8.of_int 2; y = Uint16.one} = bar_de @@ mk @@ vec [|1; 2; 1; 0|])
+  (check bool) "same" true (B {x = Uint8.of_int 2; y = Uint16.one} = (bar_de @@ mk @@ vec [|1; 2; 1; 0|]).r)
 
 let () =
   run "bcs" [

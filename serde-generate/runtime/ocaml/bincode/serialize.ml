@@ -1,12 +1,13 @@
+open Common.Misc
 include Common.Serialize
 
 let max_depth : int option = None
 let max_length = 1 lsl 31 - 1
 
-let char (c : char) = Bytes.make 1 c
+let char (c : char) = {Common.Misc.r=Bytes.make 1 c; depth=0}
 let length i =
   if i > max_length then failwith "integer above max length"
-  else uint64 @@ Stdint.Uint64.of_int i
+  else (uint64 @@ Stdint.Uint64.of_int i).r
 let variant_index i = uint32 @@ Stdint.Uint32.of_int i
 let float32 f =
   let i = Stdlib.Int32.bits_of_float f in

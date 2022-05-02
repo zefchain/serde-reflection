@@ -1,6 +1,6 @@
 (library
  (name common)
- (modules map serialize deserialize)
+ (modules misc map serialize deserialize)
  (libraries stdint uutf))
 
 (library
