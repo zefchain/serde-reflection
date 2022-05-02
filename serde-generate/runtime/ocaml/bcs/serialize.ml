@@ -1,3 +1,4 @@
+open Common.Misc
 include Common.Serialize
 
 let max_depth : int option = Some 500
@@ -11,10 +12,10 @@ let uleb128_32 (i : int) =
   if i < 0 || i > max_u32 then failwith "integer not in u32 range"
   else
     let rec f x =
-      if x < 0x80 then uint8 (Stdint.Uint8.of_int x)
+      if x < 0x80 then (uint8 (Stdint.Uint8.of_int x)).r
       else
         Bytes.concat Bytes.empty [
-          uint8 @@ Stdint.Uint8.of_int ((x land 0x7f) lor 0x80);
+          (uint8 @@ Stdint.Uint8.of_int ((x land 0x7f) lor 0x80)).r;
           f (x lsr 7)
         ] in
     f i
@@ -23,7 +24,7 @@ let length i =
   if i > max_length then failwith "integer above max length"
   else uleb128_32 i
 
-let variant_index i = uleb128_32 i
+let variant_index i = {Common.Misc.r=uleb128_32 i; depth=0}
 
 let variable f l = variable length f l
 let string s = string length s

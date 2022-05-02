@@ -1,9 +1,6 @@
 open Ppxlib
 open Ast_builder.Default
 
-let depth_table : (string, int) Hashtbl.t = Hashtbl.create 509
-let current_name = ref ""
-
 type expr = {
   ser: expression;
   de: expression;
@@ -11,49 +8,82 @@ type expr = {
 
 type ret = {
   is_recursive: bool;
-  depth: int;
   exprs: expr;
 }
+
+let lid ~loc s = Located.lident ~loc s
+let efun ~loc p e = pexp_fun ~loc Nolabel None p e
+let elet ~loc p expr = pexp_let ~loc Nonrecursive [ value_binding ~loc ~pat:(pvar ~loc p) ~expr ]
 
 let ser_name s = "Serde.Serialize." ^ s
 let de_name s = "Serde.Deserialize." ^ s
 let ret ~loc s =
-  { is_recursive = false; depth = 0;
+  { is_recursive = false;
     exprs = { ser = evar ~loc (ser_name s); de = evar ~loc (de_name s) } }
+
+let check_depth ~loc r = eapply ~loc (evar ~loc "Serde.check_depth") [ r ]
 
 let tuple ~loc l =
   let is_recursive = List.exists (fun r -> r.is_recursive) l in
-  let depth = List.fold_left (fun acc r -> max acc r.depth) 0 l in
   let ptuple = ppat_tuple ~loc (List.mapi (fun i _ -> pvar ~loc ("t" ^ string_of_int i)) l) in
   let ser =
-    pexp_fun ~loc Nolabel None ptuple @@
+    efun ~loc ptuple @@
     eapply ~loc (evar ~loc (ser_name"concat")) [
       elist ~loc @@ List.mapi (fun i r -> eapply ~loc r.exprs.ser [ evar ~loc ("t" ^ string_of_int i) ]) l
     ] in
-  let n = List.length l in
-  let ptuple_rev = ppat_tuple ~loc (List.mapi (fun i _ -> pvar ~loc ("t" ^ string_of_int (n-i-1))) l) in
-  (* tuples are evaluated from the last to the first *)
+  let r_de =
+    pexp_let ~loc Nonrecursive (List.mapi (fun i r ->
+        value_binding ~loc ~pat:(pvar ~loc ("t" ^ string_of_int i)) ~expr:(
+          elet ~loc "x" (eapply ~loc r.exprs.de [ evar ~loc "b" ]) @@
+          pexp_sequence ~loc (eapply ~loc (evar ~loc ":=") [
+              evar ~loc "depth";
+              eapply ~loc (evar ~loc "max") [
+                eapply ~loc (evar ~loc "!") [ evar ~loc "depth"];
+                pexp_field ~loc (evar ~loc "x") (lid ~loc "Serde.depth") ] ])
+            (pexp_field ~loc (evar ~loc "x") (lid ~loc "Serde.r")))) l) @@
+    pexp_tuple ~loc (List.mapi (fun i _ -> evar ~loc ("t" ^ string_of_int i)) l) in
   let de =
-    pexp_fun ~loc Nolabel None (pvar ~loc "b") @@
-    pexp_let ~loc Nonrecursive [
-      value_binding ~loc ~pat:ptuple_rev ~expr:(pexp_tuple ~loc @@ List.map (fun r ->
-          eapply ~loc r.exprs.de [ evar ~loc "b" ]) @@ List.rev l)
-    ] @@ pexp_tuple ~loc (List.mapi (fun i _ -> evar ~loc ("t" ^ string_of_int i)) l) in
-  { is_recursive; exprs = { ser; de }; depth }
+    efun ~loc (pvar ~loc "b") @@
+    elet ~loc "depth" (eapply ~loc (evar ~loc "ref") [ eint ~loc 0 ]) @@
+    elet ~loc "r" r_de @@
+    pexp_record ~loc [
+      lid ~loc "Serde.depth", eapply ~loc (evar ~loc "!") [ evar ~loc "depth" ];
+      lid ~loc "Serde.r", evar ~loc "r" ] None in
+  { is_recursive; exprs = { ser; de } }
+
+let is_struct l =
+  List.exists (fun a -> a.attr_name.txt = "struct") l
+
+let incr_depth ~loc e =
+  elet ~loc "r" e @@
+  check_depth ~loc @@
+  pexp_record ~loc [
+    lid ~loc "Serde.depth", eapply ~loc (evar ~loc "+") [
+      pexp_field ~loc (evar ~loc "r") (lid ~loc "Serde.depth");
+      eint ~loc 1
+    ]
+  ] (Some (evar ~loc "r"))
 
 let rec core ~names c =
   let loc = c.ptyp_loc in
-  match c.ptyp_desc with
-  | Ptyp_var v ->
-    { is_recursive = false; depth = 0;
-      exprs = { ser = evar ~loc ("_" ^ v ^ "_ser"); de = evar ~loc ("_" ^ v ^ "_de") } }
-  | Ptyp_constr ({txt; _}, args) ->
-    let id = Longident.name txt in
-    base ~attrs:(List.map (fun a -> a.attr_name.txt) c.ptyp_attributes) ~loc ~names ~id args
-  | Ptyp_tuple l ->
-    let l = List.map (core ~names) l in
-    tuple ~loc l
-  | _ -> assert false
+  let r = match c.ptyp_desc with
+    | Ptyp_var v ->
+      { is_recursive = false;
+        exprs = { ser = evar ~loc ("_" ^ v ^ "_ser"); de = evar ~loc ("_" ^ v ^ "_de") } }
+    | Ptyp_constr ({txt; _}, args) ->
+      let id = Longident.name txt in
+      base ~attrs:(List.map (fun a -> a.attr_name.txt) c.ptyp_attributes) ~loc ~names ~id args
+    | Ptyp_tuple l ->
+      let l = List.map (core ~names) l in
+      tuple ~loc l
+    | _ -> assert false in
+  if is_struct c.ptyp_attributes then
+    let ser = efun ~loc (pvar ~loc "x") @@
+      incr_depth ~loc (eapply ~loc r.exprs.ser [ evar ~loc "x" ]) in
+    let de = efun ~loc (pvar ~loc "b") @@
+      incr_depth ~loc (eapply ~loc r.exprs.de [ evar ~loc "b" ]) in
+    { r with exprs = {ser; de} }
+  else r
 
 and base ?(attrs=[]) ~loc ~names ~id args = match id, args with
   | "bool", [] | "Bool.t", [] -> ret ~loc "bool"
@@ -88,7 +118,7 @@ and base ?(attrs=[]) ~loc ~names ~id args = match id, args with
     let rk = core ~names k in
     let rv = core ~names v in
     let is_recursive = rk.is_recursive || rv.is_recursive in
-    { is_recursive; depth = max rk.depth rv.depth; exprs = {
+    { is_recursive; exprs = {
           ser = eapply ~loc (evar ~loc (ser_name "map")) [ rk.exprs.ser; rv.exprs.ser ];
           de = eapply ~loc (evar ~loc (de_name "map")) [ rk.exprs.ser; rk.exprs.de; rv.exprs.de ];
         } }
@@ -97,31 +127,49 @@ and base ?(attrs=[]) ~loc ~names ~id args = match id, args with
     let is_recursive = List.mem id names || List.exists (fun r -> r.is_recursive) l in
     let ser = eapply ~loc (evar ~loc (id ^ "_ser")) (List.map (fun r -> r.exprs.ser) l) in
     let de = eapply ~loc (evar ~loc (id ^ "_de")) (List.map (fun r -> r.exprs.de) l) in
-    let depth = Option.value ~default:0 @@ Hashtbl.find_opt depth_table id in
-    { is_recursive; exprs = { ser; de }; depth }
+    { is_recursive; exprs = { ser; de } }
 
 let record ~names ~loc ?constructor l =
   let lr = List.map (fun pld -> core ~names pld.pld_type) l in
   let is_recursive = List.exists (fun r -> r.is_recursive) lr in
-  let depth = 1 + List.fold_left (fun acc r -> max acc r.depth) 0 lr in
   let p = ppat_record ~loc (List.map (fun pld -> Located.lident ~loc pld.pld_name.txt, pvar ~loc pld.pld_name.txt) l) Closed in
   let fields = List.map (fun pld -> evar ~loc pld.pld_name.txt) l in
-  let ser =
-    eapply ~loc (evar ~loc (ser_name "concat")) [
+  let r_ser = eapply ~loc (evar ~loc (ser_name "concat")) [
       elist ~loc @@ List.map2 (fun (pld, f) r ->
-          eapply ~loc:pld.pld_loc r.exprs.ser [ f ]) (List.combine l fields) lr
-    ] in
-  let ser = if Option.is_some constructor then ser else pexp_fun ~loc Nolabel None p ser in
-  let prev = ppat_tuple ~loc (List.map (fun pld -> pvar ~loc pld.pld_name.txt) @@ List.rev l) in
-  (* tuples/records are evaluated from the last to the first *)
-  let re = pexp_record ~loc (List.map (fun pld -> Located.lident ~loc pld.pld_name.txt, evar ~loc pld.pld_name.txt) l) None in
-  let de =
-    pexp_let ~loc Nonrecursive [
-      value_binding ~loc ~pat:prev ~expr:(pexp_tuple ~loc @@ List.map (fun r ->
-          eapply ~loc r.exprs.de [ evar ~loc "b" ]) @@ List.rev lr)
-    ] @@ Option.fold ~none:re ~some:(fun id -> pexp_construct ~loc (Located.lident ~loc id) (Some re)) constructor in
-  let de = if Option.is_some constructor then de else pexp_fun ~loc Nolabel None (pvar ~loc "b") de in
-  { is_recursive; exprs = { ser; de }; depth },
+      eapply ~loc:pld.pld_loc r.exprs.ser [ f ]) (List.combine l fields) lr ] in
+  let ser = match constructor with
+    | None -> efun ~loc p @@ incr_depth ~loc r_ser
+    | Some _ -> r_ser in
+  let r_de =
+    let re =
+      pexp_record ~loc (List.map (fun pld ->
+          lid ~loc pld.pld_name.txt, evar ~loc pld.pld_name.txt) l) None in
+    pexp_let ~loc Nonrecursive (List.map2 (fun pld r ->
+        value_binding ~loc ~pat:(pvar ~loc pld.pld_name.txt) ~expr:(
+          elet ~loc "r" (eapply ~loc r.exprs.de [ evar ~loc "b" ]) @@
+          pexp_sequence ~loc (eapply ~loc (evar ~loc ":=") [
+              evar ~loc "depth";
+              eapply ~loc (evar ~loc "max") [
+                eapply ~loc (evar ~loc "!") [ evar ~loc "depth"];
+                pexp_field ~loc (evar ~loc "r") (lid ~loc "Serde.depth") ] ])
+            (pexp_field ~loc (evar ~loc "r") (lid ~loc "Serde.r")))) l lr) @@
+    Option.fold ~none:re ~some:(fun id -> pexp_construct ~loc (Located.lident ~loc id) (Some re)) constructor in
+  let de e =
+    elet ~loc "depth" (eapply ~loc (evar ~loc "ref") [ eint ~loc 0 ]) @@
+    elet ~loc "r" r_de e in
+  let de_end =
+    pexp_record ~loc [
+      Located.lident ~loc "Serde.depth",
+      eapply ~loc (evar ~loc "+") [
+        eapply ~loc (evar ~loc "!") [ evar ~loc "depth" ]; eint ~loc 1 ];
+      Located.lident ~loc "Serde.r", evar ~loc "r" ] None in
+  let de = match constructor with
+    | None ->
+      efun ~loc (pvar ~loc "b") @@
+      de @@ check_depth ~loc @@ de_end
+    | Some _ ->
+      de de_end in
+  { is_recursive; exprs = { ser; de } },
   (if Option.is_some constructor then Some p else None)
 
 let constructor ~loc ~names ~id = function
@@ -142,56 +190,73 @@ let variant ~names ~loc l =
   match is_cyclic l with
   | Some (name, c) ->
     let r = core ~names c in
-    let lid = Located.lident ~loc name in
-    let ser = pexp_fun ~loc Nolabel None (pvar ~loc "x") @@
+    let nlid = lid ~loc name in
+    let ser = efun ~loc (pvar ~loc "x") @@
       pexp_let ~loc Nonrecursive [
-        value_binding ~loc ~pat:(ppat_construct ~loc lid (Some (pvar ~loc "x"))) ~expr:(evar ~loc "x")
-      ] @@ eapply ~loc r.exprs.ser [ evar ~loc "x" ] in
-    let de = pexp_fun ~loc Nolabel None (pvar ~loc "b") @@
-      pexp_construct ~loc lid (Some (eapply ~loc r.exprs.de [ evar ~loc "b" ])) in
+        value_binding ~loc ~pat:(ppat_construct ~loc nlid (Some (pvar ~loc "x"))) ~expr:(evar ~loc "x") ] @@
+      incr_depth ~loc (eapply ~loc r.exprs.ser [ evar ~loc "x" ]) in
+    let de = efun ~loc (pvar ~loc "b") @@
+      elet ~loc "r" (eapply ~loc r.exprs.de [ evar ~loc "b" ]) @@
+      check_depth ~loc @@
+      pexp_record ~loc [
+        lid ~loc "Serde.r",
+        pexp_construct ~loc nlid (Some (pexp_field ~loc (evar ~loc "r") (lid ~loc "Serde.r")));
+        lid ~loc "Serde.depth",
+        eapply ~loc (evar ~loc "+") [
+          pexp_field ~loc (evar ~loc "r") (lid ~loc "Serde.depth");
+          eint ~loc 1 ]
+      ] None in
     {r with exprs = {ser; de}}
   | None ->
     let lr = List.mapi (fun i pcd ->
         i, constructor ~names ~loc:pcd.pcd_loc ~id:pcd.pcd_name.txt pcd.pcd_args ) l in
     let is_recursive = List.exists (fun (_, r) -> Option.fold ~none:false ~some:(fun (r, _) -> r.is_recursive) r) lr in
-    let depth = 1 + List.fold_left (fun acc (_, r) -> match r with
-        | None -> acc
-        | Some (r, _) -> max acc r.depth) 0 lr in
-    let ser = pexp_function ~loc @@ List.map2 (fun pcd (i, r) ->
-        let loc = pcd.pcd_loc in
-        let c = Located.lident ~loc pcd.pcd_name.txt in
-        let p = Option.map (fun (_, p) -> Option.value ~default:(pvar ~loc "x") p) r in
-        case ~guard:None ~lhs:(ppat_construct ~loc c p)
-          ~rhs:(eapply ~loc (evar ~loc (ser_name "concat")) [
-              elist ~loc @@
-              eapply ~loc (evar ~loc @@ ser_name "variant_index") [ eint ~loc i] ::
-              Option.fold ~none:[] ~some:(fun (r, o) ->
-                  Option.fold ~none:[ eapply ~loc r.exprs.ser [evar ~loc "x"] ]
-                    ~some:(fun _ -> [ r.exprs.ser ]) o
-                ) r ])) l lr in
+    let ser =
+      efun ~loc (pvar ~loc "x") @@
+      incr_depth ~loc (
+        pexp_match ~loc (evar ~loc "x") @@ List.map2 (fun pcd (i, r) ->
+            let loc = pcd.pcd_loc in
+            let c = lid ~loc pcd.pcd_name.txt in
+            let p = Option.map (fun (_, p) -> Option.value ~default:(pvar ~loc "x") p) r in
+            case ~guard:None ~lhs:(ppat_construct ~loc c p)
+              ~rhs:(eapply ~loc (evar ~loc (ser_name "concat")) [
+                  elist ~loc @@
+                  eapply ~loc (evar ~loc @@ ser_name "variant_index") [ eint ~loc i] ::
+                  Option.fold ~none:[] ~some:(fun (r, o) ->
+                      Option.fold ~none:[ eapply ~loc r.exprs.ser [evar ~loc "x"] ]
+                        ~some:(fun _ -> [ r.exprs.ser ]) o
+                    ) r ])) l lr) in
     let l_expr = elist ~loc @@ List.map2 (fun pcd (_, r) ->
         let loc = pcd.pcd_loc in
         let p = Option.fold ~none:(ppat_any ~loc) ~some:(fun _ -> pvar ~loc "b") r in
         let e = match r with
-          | None -> pexp_construct ~loc (Located.lident ~loc pcd.pcd_name.txt) None
+          | None ->
+            pexp_record ~loc [
+              lid ~loc "Serde.r",
+              pexp_construct ~loc (lid ~loc pcd.pcd_name.txt) None;
+              lid ~loc "Serde.depth", eint ~loc 1 ] None
           | Some (r, None) ->
-            pexp_construct ~loc (Located.lident ~loc pcd.pcd_name.txt) @@
-            Some (eapply ~loc r.exprs.de [ evar ~loc "b" ])
+            elet ~loc "r" (eapply ~loc r.exprs.de [ evar ~loc "b" ]) @@
+            pexp_record ~loc [
+              Located.lident ~loc "Serde.r", pexp_construct ~loc (Located.lident ~loc pcd.pcd_name.txt)
+                (Some (pexp_field ~loc (evar ~loc "r") (Located.lident ~loc "Serde.r")));
+              Located.lident ~loc "Serde.depth",
+              eapply ~loc (evar ~loc "+") [
+                pexp_field ~loc (evar ~loc "r") (Located.lident ~loc "Serde.depth");
+                eint ~loc 1 ]
+            ] None
           | Some (r, Some _) -> r.exprs.de in
-        pexp_fun ~loc Nolabel None p e) l lr in
-    let de = pexp_fun ~loc Nolabel None (pvar ~loc "b") @@
-      pexp_let ~loc Nonrecursive [
-        value_binding ~loc ~pat:(pvar ~loc "tag")
-          ~expr:(eapply ~loc (evar ~loc @@ de_name "variant_index") [ evar ~loc "b" ]) ] @@
-      pexp_let ~loc Nonrecursive [
-        value_binding ~loc ~pat:(pvar ~loc "l") ~expr:l_expr ] @@
+        efun ~loc p e) l lr in
+    let de = efun ~loc (pvar ~loc "b") @@
+      elet ~loc "tag" (eapply ~loc (evar ~loc @@ de_name "variant_index") [ evar ~loc "b" ]) @@
+      elet ~loc "l" l_expr @@
       pexp_match ~loc (eapply ~loc (evar ~loc "List.nth_opt") [ evar ~loc "l"; evar ~loc "tag" ]) [
-        case ~guard:None ~lhs:(ppat_construct ~loc (Located.lident ~loc "None") None)
+        case ~guard:None ~lhs:(ppat_construct ~loc (lid ~loc "None") None)
           ~rhs:(eapply ~loc (evar ~loc "failwith") [estring ~loc "no case matched"]);
-        case ~guard:None ~lhs:(ppat_construct ~loc (Located.lident ~loc "Some") (Some (pvar ~loc "de")))
-          ~rhs:(eapply ~loc (evar ~loc "de") [ evar ~loc "b" ]);
+        case ~guard:None ~lhs:(ppat_construct ~loc (lid ~loc "Some") (Some (pvar ~loc "de")))
+          ~rhs:(check_depth ~loc (eapply ~loc (evar ~loc "de") [ evar ~loc "b" ]));
       ] in
-    {is_recursive; exprs = { ser; de }; depth }
+    {is_recursive; exprs = { ser; de } }
 
 let ptype ~names t =
   let loc = t.ptype_loc in
@@ -201,34 +266,17 @@ let ptype ~names t =
   | Ptype_record l, _ -> fst @@ record ~names ~loc l
   | _ -> Location.raise_errorf ~loc "type not handled"
 
-let add_depth ~loc r =
-  let f e =
-    pexp_fun ~loc Nolabel None (pvar ~loc "b") @@
-    pexp_let ~loc Nonrecursive [ value_binding ~loc ~pat:(pvar ~loc "f") ~expr:e ] @@
-    pexp_match ~loc (evar ~loc "Serde.max_depth") [
-      case ~guard:None ~lhs:(ppat_construct ~loc (Located.lident ~loc "Some") (Some (pvar ~loc "i")))
-        ~rhs:(pexp_ifthenelse ~loc (eapply ~loc (evar ~loc "<") [ evar ~loc "i"; eint ~loc r.depth ])
-                (eapply ~loc (evar ~loc "failwith") [ estring ~loc "max container depth reached" ])
-                (Some (eapply ~loc (evar ~loc "f") [ evar ~loc "b" ])));
-      case ~guard:None ~lhs:(ppat_any ~loc) ~rhs:(eapply ~loc (evar ~loc "f") [ evar ~loc "b" ])
-    ] in
-  f r.exprs.ser, f r.exprs.de
-
-let rec add_params ~loc r = function
-  | [] -> add_depth ~loc r
+let rec add_params ~loc:_ r = function
+  | [] -> r.exprs.ser, r.exprs.de
   | ({ptyp_desc=Ptyp_var v; ptyp_loc=loc; _}, _) :: t ->
     let (e_ser, e_de) = add_params ~loc r t in
-    pexp_fun ~loc Nolabel None (pvar ~loc ("_" ^ v ^ "_ser")) e_ser,
-    pexp_fun ~loc Nolabel None (pvar ~loc ("_" ^ v ^ "_de")) e_de
+    efun ~loc (pvar ~loc ("_" ^ v ^ "_ser")) e_ser,
+    efun ~loc (pvar ~loc ("_" ^ v ^ "_de")) e_de
   | ({ptyp_loc=loc; _}, _) :: _ -> Location.raise_errorf ~loc "param not handled"
 
 let str_gen ~loc ~path:_ (_rec_flag, l) debug =
   let names = List.map (fun t -> t.ptype_name.txt) l in
-  let lr = List.map (fun t ->
-      current_name := t.ptype_name.txt;
-      let r = ptype ~names t in
-      Hashtbl.add depth_table t.ptype_name.txt r.depth;
-      r) l in
+  let lr = List.map (ptype ~names) l in
   let rec_flag =
     if List.exists (fun r -> r.is_recursive) lr then Recursive
     else Nonrecursive in
