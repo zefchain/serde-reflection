@@ -371,7 +371,7 @@ impl crate::SourceInstaller for Installer {
         if config.encodings.len() == 1 {
             for enc in config.encodings.iter() {
                 match enc {
-                    Encoding::Bcs => runtime_str = "n(libraries bcs_runtime)",
+                    Encoding::Bcs => runtime_str = "\n(libraries bcs_runtime)",
                     Encoding::Bincode => runtime_str = "\n(libraries bincode_runtime)",
                 }
             }
