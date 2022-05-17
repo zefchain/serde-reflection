@@ -73,7 +73,7 @@ Foo:
 enums) with "reasonable" implementations of the Serde traits `Serialize` and
 `Deserialize`.
 
-Supported implementations include:
+### Supported features
 
 * Plain derived implementations obtained with `#[derive(Serialize, Deserialize)]` for
 Rust containers in the Serde [data model](https://serde.rs/data-model.html)
@@ -89,7 +89,7 @@ values for all such constrained types (see the detailed example below).
 recursion-free. (For instance, `enum List { None, Some(Box<List>)}`.) Note that each
 enum must be traced separately with `trace_type` to discover all the variants.
 
-Unsupported idioms include:
+### Unsupported idioms
 
 * Containers sharing the same base name (e.g. `Foo`) but from different modules. (Work
 around: use `#[serde(rename = ..)]`)
@@ -104,6 +104,17 @@ use the crate [`serde-name`](https://crates.io/crates/serde-name) and its adapte
 * Mutually recursive types for which picking the first variant of each enum does not
 terminate. (Work around: re-order the variants. For instance `enum List {
 Some(Box<List>), None}` must be rewritten `enum List { None, Some(Box<List>)}`.)
+
+### Security CAVEAT
+
+At this time, `HashSet<T>` and `BTreeSet<T>` are treated as sequences (i.e. vectors)
+by Serde.
+
+Cryptographic applications using [BCS](https:/github.com/diem/bcs) **must** use
+`HashMap<T, ()>` and `BTreeMap<T, ()>` instead. Using `HashSet<T>` or `BTreeSet<T>`
+will compile but BCS-deserialization will not enforce canonicity (meaning unique,
+well-ordered serialized elements in this case). In the case of `HashSet<T>`,
+serialization will additionally be non-deterministic.
 
 ## Troubleshooting
 
