@@ -292,12 +292,15 @@ where
         self.output_comment(name)?;
         write!(
             self.out,
-            "{} {} = ",
-            if first { "type" } else { "and" },
+            "{} {} =",
+            if first { "type" } else { "\nand" },
             self.type_name(name)
         )?;
         match format {
-            UnitStruct => write!(self.out, "unit"),
+            UnitStruct => {
+                write!(self.out, " unit")?;
+                writeln!(self.out)?;
+            }
             NewTypeStruct(format) if self.is_cyclic(name, format.as_ref()) => {
                 let mut map = BTreeMap::new();
                 map.insert(
@@ -307,23 +310,32 @@ where
                         value: VariantFormat::NewType(format.clone()),
                     },
                 );
-                self.output_enum(&map, true)
+                self.output_enum(&map, true)?;
             }
-            NewTypeStruct(format) => self.output_format(format.as_ref(), true),
-            TupleStruct(formats) => self.output_tuple(formats, true),
-            Struct(fields) => self.output_record(fields),
-            Enum(variants) => self.output_enum(variants, false),
-        }?;
+            NewTypeStruct(format) => {
+                write!(self.out, " ")?;
+                self.output_format(format.as_ref(), true)?;
+                writeln!(self.out)?;
+            }
+            TupleStruct(formats) => {
+                write!(self.out, " ")?;
+                self.output_tuple(formats, true)?;
+                writeln!(self.out)?;
+            }
+            Struct(fields) => {
+                write!(self.out, " ")?;
+                self.output_record(fields)?;
+                writeln!(self.out)?;
+            }
+            Enum(variants) => {
+                self.output_enum(variants, false)?;
+            }
+        }
 
-        writeln!(
-            self.out,
-            "{}",
-            if last && self.generator.config.serialization {
-                "[@@deriving serde]"
-            } else {
-                ""
-            }
-        )
+        if last && self.generator.config.serialization {
+            writeln!(self.out, "[@@deriving serde]")?;
+        }
+        Ok(())
     }
 }
 
