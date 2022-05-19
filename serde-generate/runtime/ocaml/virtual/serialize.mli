@@ -16,7 +16,7 @@ val int64 : int64 -> bytes Common.Misc.r
 val int128 : int128 -> bytes Common.Misc.r
 val option : ('a -> bytes Common.Misc.r) -> 'a option -> bytes Common.Misc.r
 val unit : unit -> bytes Common.Misc.r
-val fixed : ('a -> bytes Common.Misc.r) -> 'a list -> bytes Common.Misc.r
+val fixed : ('a -> bytes Common.Misc.r) -> 'a array -> bytes Common.Misc.r
 
 val char : char -> bytes Common.Misc.r
 val length : int -> bytes

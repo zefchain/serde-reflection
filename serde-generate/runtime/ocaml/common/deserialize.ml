@@ -75,7 +75,7 @@ let unit (_ : b) = {r=(); depth=0}
 
 let fixed f n b =
   let rec aux b acc i =
-    if i = 0 then {acc with r = List.rev acc.r}
+    if i = 0 then {acc with r = Array.of_list @@ List.rev acc.r}
     else
       let x = f b in
       let depth = max acc.depth x.depth in

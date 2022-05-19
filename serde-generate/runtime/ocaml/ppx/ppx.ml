@@ -72,7 +72,7 @@ let rec core ~names c =
         exprs = { ser = evar ~loc ("_" ^ v ^ "_ser"); de = evar ~loc ("_" ^ v ^ "_de") } }
     | Ptyp_constr ({txt; _}, args) ->
       let id = Longident.name txt in
-      base ~attrs:(List.map (fun a -> a.attr_name.txt) c.ptyp_attributes) ~loc ~names ~id args
+      base ~attrs:c.ptyp_attributes ~loc ~names ~id args
     | Ptyp_tuple l ->
       let l = List.map (core ~names) l in
       tuple ~loc l
@@ -90,7 +90,7 @@ and base ?(attrs=[]) ~loc ~names ~id args = match id, args with
   | "string", [] | "String.t", [] -> ret ~loc "string"
   | "bytes", [] | "Bytes.t", [] -> ret ~loc "bytes"
   | "float", [] | "Float.t", [] ->
-    if List.exists (fun a -> a = "float32") attrs then ret ~loc "float32"
+    if List.exists (fun a -> a.attr_name.txt = "float32") attrs then ret ~loc "float32"
     else ret ~loc "float64"
   | "char", [] | "Char.t", [] -> ret ~loc "char"
   | "unit", [] -> ret ~loc "unit"
@@ -114,6 +114,22 @@ and base ?(attrs=[]) ~loc ~names ~id args = match id, args with
     { r with exprs = {
           ser = eapply ~loc (evar ~loc (ser_name "variable")) [ r.exprs.ser ];
           de = eapply ~loc (evar ~loc (de_name "variable")) [ r.exprs.de ] } }
+  | "array", [ c ] | "Array.t", [ c ] ->
+    let r = core ~names c in
+    let length = List.find_map (fun a -> match a.attr_name.txt, a.attr_payload with
+        | "length", PStr [{pstr_desc=Pstr_eval ({pexp_desc=Pexp_constant (Pconst_integer (s, _)); _}, _); _}] ->
+          Some (int_of_string s)
+        | _ -> None) attrs in
+    begin match length with
+      | None ->
+        { r with exprs = {
+          ser = eapply ~loc (evar ~loc (ser_name "variable")) [ r.exprs.ser ];
+          de = eapply ~loc (evar ~loc (de_name "variable")) [ r.exprs.de ] } }
+      | Some length ->
+        { r with exprs = {
+          ser = eapply ~loc (evar ~loc (ser_name "fixed")) [ r.exprs.ser ];
+          de = eapply ~loc (evar ~loc (de_name "fixed")) [ r.exprs.de; eint ~loc length ] } }
+    end
   | "map", [k; v] | "Map.t", [ k; v ] | "Serde.map", [k; v] | "Serde.Map.t", [k; v] ->
     let rk = core ~names k in
     let rv = core ~names v in
