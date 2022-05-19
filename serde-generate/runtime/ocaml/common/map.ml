@@ -1,3 +1,6 @@
+(* Copyright (c) Zefchain Labs, Inc.
+ * SPDX-License-Identifier: MIT OR Apache-2.0 *)
+
 type ('k, 'v) t =
   | Empty
   | Node of { l : ('k, 'v) t; v : 'k; d : 'v; r: ('k, 'v) t; h : int }

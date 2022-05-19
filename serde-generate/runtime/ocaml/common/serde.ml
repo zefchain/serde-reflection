@@ -1,3 +1,6 @@
+(* Copyright (c) Zefchain Labs, Inc.
+ * SPDX-License-Identifier: MIT OR Apache-2.0 *)
+
 module Map = Common.Map
 type ('k, 'v) map = ('k, 'v) Map.t
 

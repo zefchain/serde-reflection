@@ -1,4 +1,5 @@
 // Copyright (c) Facebook, Inc. and its affiliates
+// Copyright (c) Zefchain Labs, Inc.
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! This crate aims to compile the data formats extracted from Rust by [`serde-reflection`](https://crates.io/crates/serde-reflection)

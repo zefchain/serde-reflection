@@ -1,3 +1,6 @@
+(* Copyright (c) Zefchain Labs, Inc.
+ * SPDX-License-Identifier: MIT OR Apache-2.0 *)
+
 open Alcotest
 open Stdint
 open Serde
