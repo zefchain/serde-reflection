@@ -1,6 +1,6 @@
-This repository is based on the Facebook project [serde-reflection](https://github.com/novifinancial/serde-reflection).
+The repository [`zefchain/serde-reflection`](https://github.com/zefchain/serde-reflection) is based on Facebook's repository [`novifinancial/serde-reflection`](https://github.com/novifinancial/serde-reflection).
 
-The main contributor (@ma2bd) is now using [this repository](https://github.com/zefchain/serde-reflection) to maintain the project and will continue to push packages to [crates.io](crates.io) under the same names.
+We are now maintaining the project [here](https://github.com/zefchain/serde-reflection) and will continue releasing updates to [crates.io](crates.io) under the same package names.
 
 # serde-reflection: Format Description and Code Generation for Serde
 
