@@ -1,3 +1,6 @@
+(* Copyright (c) Zefchain Labs, Inc.
+ * SPDX-License-Identifier: MIT OR Apache-2.0 *)
+
 include Common.Serialize
 
 let max_depth : int option = None

@@ -1,4 +1,5 @@
 // Copyright (c) Facebook, Inc. and its affiliates
+// Copyright (c) Zefchain Labs, Inc.
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! # Serde code generator
