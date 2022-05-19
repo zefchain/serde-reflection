@@ -1,10 +1,10 @@
 [package]
 name = "serde-generate"
-version = "0.20.6"
+version = "0.20.7"
 description = "Generate (de)serialization code in multiple languages"
 documentation = "https://docs.rs/serde-generate"
-repository = "https://github.com/novifinancial/serde-reflection"
-authors = ["Mathieu Baudet <mathieubaudet@fb.com>", "Brandon Williams <bmwill@fb.com>"]
+repository = "https://github.com/zefchain/serde-reflection"
+authors = ["Mathieu Baudet <mathieu.baudet@zefchain.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["data-structures", "serialization", "serde"]
@@ -26,7 +26,7 @@ structopt = "0.3.21"
 textwrap = "0.13.4"
 phf = { version = "0.10", features = ["macros"] }
 
-serde-reflection = { path = "../serde-reflection", version = "0.3.5" }
+serde-reflection = { path = "../serde-reflection", version = "0.3.6" }
 bincode = "1.3.3"
 bcs = "0.1.3"
 

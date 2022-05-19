@@ -1,3 +1,7 @@
+This repository is based on the Facebook project [serde-reflection](https://github.com/novifinancial/serde-reflection).
+
+The main contributor (@ma2bd) is now using [this repository](https://github.com/zefchain/serde-reflection) to maintain the project and will continue to push packages to [crates.io](crates.io) under the same names.
+
 # serde-reflection: Format Description and Code Generation for Serde
 
 [![Build Status](https://github.com/zefchain/serde-reflection/actions/workflows/main.yml/badge.svg)](https://github.com/zefchain/serde-reflection/actions/workflows/main.yml)
@@ -32,7 +36,7 @@ The [Serde](https://serde.rs/) library is an essential component of the Rust eco
 #[derive(Serialize, Deserialize)]
 enum Foo { A(u64), B, C }
 ```
-entails a registry containing one [data format](https://novifinancial.github.io/serde-reflection/serde_reflection/enum.ContainerFormat.html) and represented as follows in YAML syntax:
+entails a registry containing one [data format](https://docs.rs/serde-reflection/latest/serde_reflection/enum.ContainerFormat.html) and represented as follows in YAML syntax:
 ```
 ---
 Foo:
