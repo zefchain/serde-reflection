@@ -167,7 +167,9 @@ where
             Map { key, value } => self.output_map(key, value)?,
             Tuple(fs) => self.output_tuple(fs, false)?,
             TupleArray { content, size } => {
-                self.output_tuple(&vec![content.as_ref().clone(); *size], false)?
+                write!(self.out, "(")?;
+                self.output_format(content, false)?;
+                write!(self.out, " array [@length {}])", size)?
             }
         }
         if is_struct {

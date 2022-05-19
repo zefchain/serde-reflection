@@ -15,7 +15,7 @@ val int64 : b -> int64 Common.Misc.r
 val int128 : b -> int128 Common.Misc.r
 val option : (b -> 'a Common.Misc.r) -> b -> 'a option Common.Misc.r
 val unit : b -> unit Common.Misc.r
-val fixed : (b -> 'a Common.Misc.r) -> int -> b -> 'a list Common.Misc.r
+val fixed : (b -> 'a Common.Misc.r) -> int -> b -> 'a array Common.Misc.r
 
 val char : b -> char Common.Misc.r
 val length : b -> int

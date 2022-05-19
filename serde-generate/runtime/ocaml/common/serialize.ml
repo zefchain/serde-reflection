@@ -71,7 +71,7 @@ let concat l =
   {depth; r = Bytes.concat Bytes.empty @@ list_result l}
 
 let fixed f a =
-  concat @@ List.rev @@ List.rev_map f a
+  concat @@ Array.to_list @@ Array.map f a
 
 let variable length f l =
   concat @@ {r=length (List.length l); depth=0} :: (List.rev @@ List.rev_map f l)
