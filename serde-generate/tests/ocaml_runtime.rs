@@ -98,26 +98,26 @@ fn test_ocaml_runtime_on_simple_data(runtime: Runtime) {
     writeln!(
         exe,
         r#"
-open Serde 
+open Serde
 open Stdint
 
 exception Unexpected_success
 
-let () = 
+let () =
   let input = Bytes.of_string {0} in
   let value = Deserialize.apply Testing.test_de input in
   let a = List.map Uint32.of_int [4; 6] in
   let b = -3L, Uint64.of_int 5 in
-  let c = Testing.C {{ x = Uint8.of_int 7 }} in
+  let c = Testing.Choice_C {{ x = Uint8.of_int 7 }} in
   let value2 = {{Testing.a; b; c}} in
   assert (value = value2);
   let output = Serialize.apply Testing.test_ser value2 in
   assert (input = output);
   let input2 = Bytes.of_string ({0} ^ "\001") in
-  try 
+  try
     let _ = Deserialize.apply Testing.test_de input2 in
     raise Unexpected_success
-  with 
+  with
   | Unexpected_success -> assert false
   | _ -> ()
 "#,

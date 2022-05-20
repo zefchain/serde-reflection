@@ -125,7 +125,7 @@ where
         Ok(())
     }
 
-    fn type_name(&self, s: &str) -> String {
+    fn safe_snake_case(&self, s: &str) -> String {
         let s = s.to_snake_case();
         if KEYWORDS.contains(&*s) {
             s + "_"
@@ -141,7 +141,7 @@ where
         }
         match format {
             Variable(_) => panic!("incorrect value"),
-            TypeName(s) => write!(self.out, "{}", self.type_name(s))?,
+            TypeName(s) => write!(self.out, "{}", self.safe_snake_case(s))?,
             Unit => write!(self.out, "unit")?,
             Bool => write!(self.out, "bool")?,
             I8 => write!(self.out, "Stdint.int8")?,
@@ -221,7 +221,7 @@ where
             .iter()
             .map(|f| {
                 self.output_comment(&f.name)?;
-                write!(self.out, "{}: ", f.name)?;
+                write!(self.out, "{}: ", self.safe_snake_case(&f.name))?;
                 self.output_format(&f.value, false)?;
                 writeln!(self.out, ";")
             })
@@ -254,6 +254,7 @@ where
 
     fn output_enum(
         &mut self,
+        name: &str,
         formats: &BTreeMap<u32, Named<VariantFormat>>,
         cyclic: bool,
     ) -> Result<()> {
@@ -264,7 +265,7 @@ where
             .iter()
             .map(|(_, f)| {
                 self.output_comment(&f.name)?;
-                write!(self.out, "| {}", f.name)?;
+                write!(self.out, "| {}_{}", name, f.name)?;
                 self.output_variant(&f.value)?;
                 writeln!(self.out, "{}", c)
             })
@@ -299,7 +300,7 @@ where
             self.out,
             "{} {} =",
             if first { "type" } else { "\nand" },
-            self.type_name(name)
+            self.safe_snake_case(name)
         )?;
         match format {
             UnitStruct => {
@@ -311,11 +312,11 @@ where
                 map.insert(
                     0,
                     Named {
-                        name: format!("{}_", name.to_camel_case()),
+                        name: String::new(),
                         value: VariantFormat::NewType(format.clone()),
                     },
                 );
-                self.output_enum(&map, true)?;
+                self.output_enum(&name.to_camel_case(), &map, true)?;
             }
             NewTypeStruct(format) => {
                 write!(self.out, " ")?;
@@ -333,7 +334,7 @@ where
                 writeln!(self.out)?;
             }
             Enum(variants) => {
-                self.output_enum(variants, false)?;
+                self.output_enum(&name.to_camel_case(), variants, false)?;
             }
         }
 

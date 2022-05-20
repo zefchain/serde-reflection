@@ -143,10 +143,10 @@ fn test_that_ocaml_code_compiles_with_custom_code() {
     let custom_code = vec![(
         vec!["testing".to_string(), "SerdeData".to_string()],
         r#"let serde_data_to_string = function
-  | PrimitiveTypes _ -> "primitive types"
-  | OtherTypes _ -> "other types"
-  | UnitVariant -> "unit variant"
-  | NewTypeVariant _ -> "new type variant"
+  | SerdeData_PrimitiveTypes _ -> "primitive types"
+  | SerdeData_OtherTypes _ -> "other types"
+  | SerdeData_UnitVariant -> "unit variant"
+  | SerdeData_NewTypeVariant _ -> "new type variant"
   | _ -> "etc""#
             .to_string(),
     )]
