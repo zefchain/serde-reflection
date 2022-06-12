@@ -73,7 +73,7 @@ let value = try Test.{1}Deserialize(input: input)
 let value2 = Test.init(
     a: [4, 6],
     b: Tuple2.init(-3, 5),
-    c: Choice.C(x: 7)
+    c: Choice.c(x: 7)
 )
 assert(value == value2, "value != value2")
 
