@@ -469,6 +469,7 @@ return obj
     fn output_variant(&mut self, name: &str, variant: &VariantFormat) -> Result<()> {
         use VariantFormat::*;
         self.output_comment(name)?;
+        let name = common::lowercase_first_letter(name);
         match variant {
             Unit => {
                 writeln!(self.out, "case {}", name)?;
@@ -683,13 +684,14 @@ public static func {1}Deserialize(input: [UInt8]) throws -> {0} {{
             writeln!(self.out, "switch self {{")?;
             for (index, variant) in variants {
                 let fields = Self::variant_fields(&variant.value);
+                let formatted_variant_name = common::lowercase_first_letter(&variant.name);
                 if fields.is_empty() {
-                    writeln!(self.out, "case .{}:", variant.name)?;
+                    writeln!(self.out, "case .{}:", formatted_variant_name)?;
                 } else {
                     writeln!(
                         self.out,
                         "case .{}({}):",
-                        variant.name,
+                        formatted_variant_name,
                         fields
                             .iter()
                             .map(|f| format!("let {}", f.name))
@@ -739,10 +741,11 @@ switch index {{"#,
             for (index, variant) in variants {
                 writeln!(self.out, "case {}:", index)?;
                 self.out.indent();
+                let formatted_variant_name = common::lowercase_first_letter(&variant.name);
                 let fields = Self::variant_fields(&variant.value);
                 if fields.is_empty() {
                     writeln!(self.out, "try deserializer.decrease_container_depth()")?;
-                    writeln!(self.out, "return .{}", variant.name)?;
+                    writeln!(self.out, "return .{}", formatted_variant_name)?;
                     self.out.unindent();
                     continue;
                 }
@@ -767,7 +770,11 @@ switch index {{"#,
                         .collect::<Vec<_>>()
                         .join(", "),
                 };
-                writeln!(self.out, "return .{}({})", variant.name, init_values)?;
+                writeln!(
+                    self.out,
+                    "return .{}({})",
+                    formatted_variant_name, init_values
+                )?;
                 self.out.unindent();
             }
             writeln!(

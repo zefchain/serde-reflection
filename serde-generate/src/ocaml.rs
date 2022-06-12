@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::{
-    common::capitalize,
+    common::uppercase_first_letter,
     indent::{IndentConfig, IndentedWriter},
     CodeGeneratorConfig, Encoding,
 };
@@ -119,7 +119,7 @@ where
     fn output_preamble(&mut self) -> Result<()> {
         for namespace in self.generator.libraries.iter() {
             if !namespace.is_empty() {
-                writeln!(self.out, "open {}", capitalize(namespace))?
+                writeln!(self.out, "open {}", uppercase_first_letter(namespace))?
             }
         }
         Ok(())
