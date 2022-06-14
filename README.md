@@ -97,6 +97,16 @@ In addition to ensuring an optimal developer experience in Rust, the modular app
 This project was initially motivated by the need for canonical serialization and cryptographic hashing in the [Diem](https://github.com/diem/diem) project (formerly known as "Libra"). In this context, [`serde-name`](serde-name) has been used to provide predictable cryptographic seeds for Rust containers.
 
 
+## Related projects
+
+### Schemars
+
+[Schemars](https://graham.cool/schemars/) is the equivalent of `serde-reflection` for JSON Schemas.
+
+### Borsh
+
+[Borsh](https://borsh.io) is a canonical encoding format similar to [BCS](https://github.com/diem/bcs). The Rust implementation uses its own derive macros (not Serde). Implementations for other languages use reflection (or templates) rather than code generation.
+
 ## Contributing
 
 See the [CONTRIBUTING](CONTRIBUTING.md) file for how to help out.
