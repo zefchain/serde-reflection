@@ -45,7 +45,7 @@ pub fn get_dependency_map_with_external_dependencies<'a>(
 /// Classic topological sorting algorithm except that it doesn't abort in case of cycles.
 pub fn best_effort_topological_sort<T>(children: &BTreeMap<T, BTreeSet<T>>) -> Vec<T>
 where
-    T: Clone + std::cmp::Ord + std::cmp::Eq + std::hash::Hash,
+    T: Clone + std::cmp::Eq + std::cmp::Ord + std::fmt::Debug + std::hash::Hash,
 {
     // Build the initial queue so that we pick up nodes with less children first (and otherwise
     // those with smaller key first).
@@ -81,7 +81,12 @@ where
         // 2. Schedule all the (yet unseen) children then this node for a second visit.
         // (If possible, visit children by increasing key.)
         queue.push(node.clone());
-        for child in children[&node].iter().rev() {
+        for child in children
+            .get(&node)
+            .unwrap_or_else(|| panic!("Unable to find node: {:?}", node))
+            .iter()
+            .rev()
+        {
             if !seen.contains(child) {
                 queue.push(child.clone());
             }
