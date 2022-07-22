@@ -8,7 +8,7 @@ import (
 	"errors"
 	"sort"
 
-	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/serde"
+	"github.com/aptos-labs/serde-reflection/serde-generate/runtime/golang/serde"
 )
 
 // `serializer` extends `serde.BinarySerializer` to implement `serde.Serializer`.

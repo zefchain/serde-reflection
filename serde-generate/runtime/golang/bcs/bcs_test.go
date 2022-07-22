@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/bcs"
-	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/serde"
+	"github.com/zefchain/serde-reflection/serde-generate/runtime/golang/bcs"
+	"github.com/zefchain/serde-reflection/serde-generate/runtime/golang/serde"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
