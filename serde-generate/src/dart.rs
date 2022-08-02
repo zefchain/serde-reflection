@@ -214,7 +214,13 @@ where
         if self.generator.config.c_style_enums {
             use ContainerFormat::Enum;
             match self.get_field_container_type(name) {
-                Some(Enum(_)) => format!("{}Extension", name),
+                // if we have an enum AND all of that enum's members are Unit
+                // then we will generate an extension class name
+                Some(Enum(variants))
+                    if variants.values().all(|f| f.value == VariantFormat::Unit) =>
+                {
+                    format!("{}Extension", name)
+                }
                 _ => name.to_string(),
             }
         } else {
@@ -595,7 +601,10 @@ return obj;
                 .collect::<Vec<_>>(),
             Struct(fields) => fields.clone(),
             Enum(variants) => {
-                if self.generator.config.c_style_enums {
+                // When we find an enum with all Unit variants, we ser/de as a regular Dart enum.
+                if self.generator.config.c_style_enums
+                    && variants.values().all(|f| f.value == VariantFormat::Unit)
+                {
                     self.output_enum_container(name, variants)?;
                 } else {
                     self.output_enum_class_container(name, variants)?;
