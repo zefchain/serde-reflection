@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use serde_generate::{dart, test_utils, CodeGeneratorConfig, Encoding, SourceInstaller};
+use std::fs::read_to_string;
 use std::{
     io::Result,
     path::{Path, PathBuf},
@@ -100,4 +101,24 @@ fn test_dart_code_compiles_with_class_enums() {
         .with_c_style_enums(false);
 
     generate_with_config(source_path, &config);
+}
+
+#[test]
+fn test_dart_code_compiles_class_enums_for_complex_enums() {
+    let source_path = tempdir().unwrap().path().join("dart_class_enum_project");
+
+    let config = CodeGeneratorConfig::new("example".to_string())
+        .with_encodings(vec![Encoding::Bcs, Encoding::Bincode])
+        // we enable native Dart enums to test that complex Rust enums will still produce Dart classes
+        .with_c_style_enums(true);
+
+    generate_with_config(source_path.clone(), &config);
+
+    let generated_c_style =
+        read_to_string(&source_path.join("lib/src/example/c_style_enum.dart")).unwrap();
+    let generated_class_style =
+        read_to_string(&source_path.join("lib/src/example/list.dart")).unwrap();
+
+    assert!(generated_c_style.contains("enum CStyleEnum {"));
+    assert!(generated_class_style.contains("abstract class List_ {"));
 }
