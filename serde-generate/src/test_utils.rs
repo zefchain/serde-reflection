@@ -673,6 +673,26 @@ CStyleEnum:
       D: UNIT
     4:
       E: UNIT
+ComplexEnum:
+  ENUM:
+    0:
+      A:
+        STRUCT:
+          - id: STR
+          - value: STR
+          - a: STR
+    1:
+      B:
+        STRUCT:
+          - id: STR
+          - value: I32
+          - b: STR
+    2:
+      C:
+        STRUCT:
+          - id: STR
+          - value: BOOL
+          - c: STR
 List:
   ENUM:
     0:

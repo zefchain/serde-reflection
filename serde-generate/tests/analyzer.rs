@@ -91,7 +91,8 @@ fn test_on_larger_registry() {
             "Tree",
             "TupleStruct",
             "UnitStruct",
-            "SerdeData"
+            "SerdeData",
+            "ComplexEnum",
         ]
     );
 }
