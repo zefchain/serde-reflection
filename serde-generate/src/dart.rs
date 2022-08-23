@@ -739,6 +739,41 @@ return obj;
         }
         if !fields.is_empty() {
             writeln!(self.out)?;
+
+            let cls_name = self.quote_qualified_name(name);
+            writeln!(self.out, "{} copyWith({{", cls_name)?;
+            self.out.indent();
+            for field in fields {
+                let field_name = self.quote_field(&field.name.to_mixed_case());
+                let field_type = self.quote_type(&field.value);
+
+                match field.value {
+                    Format::Option(_) => {
+                        writeln!(self.out, "{} Function()? {},", field_type, field_name)?
+                    }
+                    _ => writeln!(self.out, "{}? {},", field_type, field_name)?,
+                }
+            }
+            self.out.unindent();
+            writeln!(self.out, "}}) {{")?;
+            self.out.indent();
+            writeln!(self.out, "return {}(", cls_name)?;
+            self.out.indent();
+
+            for field in fields {
+                let field_name = self.quote_field(&field.name.to_mixed_case());
+
+                match field.value {
+                    Format::Option(_) => {
+                        writeln!(self.out, "{0}: {0} == null ? this.{0} : {0}(),", field_name)?
+                    }
+                    _ => writeln!(self.out, "{0}: {0} ?? this.{0},", field_name)?,
+                }
+            }
+            self.out.unindent();
+            writeln!(self.out, ");")?;
+            self.out.unindent();
+            writeln!(self.out, "}}")?;
         }
 
         // Serialize
