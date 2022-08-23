@@ -813,13 +813,14 @@ return obj;
             self.out,
             "if (other.runtimeType != runtimeType) return false;"
         )?;
-        writeln!(self.out, "\nreturn other is {}", name)?;
+        write!(self.out, "\nreturn other is {}", name)?;
 
+        self.out.indent();
         for field in fields.iter() {
             let stmt = match &field.value {
                 Format::Seq(_) => {
                     format!(
-                        " listEquals({0}, other.{0})",
+                        "listEquals({0}, other.{0})",
                         self.quote_field(&field.name.to_mixed_case())
                     )
                 }
@@ -827,25 +828,25 @@ return obj;
                     content: _,
                     size: _,
                 } => format!(
-                    " listEquals({0}, other.{0})",
+                    "listEquals({0}, other.{0})",
                     self.quote_field(&field.name.to_mixed_case())
                 ),
                 Format::Map { .. } => {
                     format!(
-                        " mapEquals({0}, other.{0})",
+                        "mapEquals({0}, other.{0})",
                         self.quote_field(&field.name.to_mixed_case())
                     )
                 }
                 _ => format!(
-                    " {0} == other.{0}",
+                    "{0} == other.{0}",
                     self.quote_field(&field.name.to_mixed_case())
                 ),
             };
 
-            writeln!(self.out, "&& {}", stmt)?;
+            write!(self.out, "\n&& {}", stmt)?;
         }
-
-        write!(self.out, ";")?;
+        writeln!(self.out, ";")?;
+        self.out.unindent();
 
         self.out.unindent();
         writeln!(self.out, "}}")?;
