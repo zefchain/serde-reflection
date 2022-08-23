@@ -129,7 +129,6 @@ fn test_dart_code_includes_getters_for_shared_properties_of_complex_enums() {
         .unwrap()
         .path()
         .join("dart_class_enum_shared_properties_project");
-    print!("{:?}", source_path);
 
     let config = CodeGeneratorConfig::new("example".to_string())
         .with_encodings(vec![Encoding::Bcs, Encoding::Bincode])
