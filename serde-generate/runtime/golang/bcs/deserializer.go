@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/aptos-labs/serde-reflection/serde-generate/runtime/golang/serde"
+	"github.com/zefchain/serde-reflection/serde-generate/runtime/golang/serde"
 )
 
 // Maximum length allowed for sequences (vectors, bytes, strings) and maps.
