@@ -16,7 +16,7 @@ class Uint128 {
   factory Uint128.fromBigInt(BigInt num) {
     final input = num.toUnsigned(128);
     final high = (input >> 64).toUnsigned(64);
-    final low = (input & BigInt.from(0xFFFFFFFFFFFFFFFF)).toUnsigned(64);
+    final low = (input & BigInt.parse('0xFFFFFFFFFFFFFFFF')).toUnsigned(64);
     return Uint128(high, low);
   }
 

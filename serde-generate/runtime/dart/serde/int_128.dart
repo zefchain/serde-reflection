@@ -14,7 +14,7 @@ class Int128 {
   factory Int128.fromBigInt(BigInt num) {
     final input = num.toSigned(128);
     final high = (input >> 64).toSigned(64);
-    final low = (input & BigInt.from(0xFFFFFFFFFFFFFFFF)).toSigned(64);
+    final low = (input & BigInt.parse('0xFFFFFFFFFFFFFFFF')).toSigned(64);
     return Int128(high, low);
   }
 
