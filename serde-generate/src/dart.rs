@@ -1101,7 +1101,7 @@ switch (index) {{"#,
             for (index, variant) in variants {
                 writeln!(
                     self.out,
-                    "case {}: return {}{}Item.load(deserializer);",
+                    "case {}: return {}{}.load(deserializer);",
                     index,
                     self.quote_qualified_name(name).to_camel_case(),
                     self.quote_field(&variant.name),
@@ -1141,7 +1141,7 @@ switch (index) {{"#,
             self.output_variant(
                 base,
                 *index,
-                &format!("{}{}Item", base, &variant.name),
+                &format!("{}{}", base, &variant.name),
                 &variant.value,
             )?;
         }
