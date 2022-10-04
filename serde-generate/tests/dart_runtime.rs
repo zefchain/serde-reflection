@@ -96,7 +96,7 @@ void main() {{"#
         Test expectedInstance = Test(
             a: [4, 6],
             b: Tuple2(-3, Uint64.parse('5')),
-            c: ChoiceCItem(x: 7),
+            c: ChoiceC(x: 7),
         );
 
         expect(deserializedInstance, equals(expectedInstance));
