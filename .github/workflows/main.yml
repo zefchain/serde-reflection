@@ -14,7 +14,7 @@ env:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     container: circleci/rust:bullseye
 
     steps:
@@ -50,7 +50,7 @@ jobs:
           cargo clippy --all-features --all-targets
 
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     container: circleci/rust:bullseye
 
     steps:
