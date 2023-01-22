@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <limits>
 
 #include "binary.hpp"
 #include "serde.hpp"
