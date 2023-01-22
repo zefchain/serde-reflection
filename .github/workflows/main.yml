@@ -11,27 +11,23 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUST_BACKTRACE: short
+  RUSTFLAGS: "-D warnings"
+  RUSTUP_MAX_RETRIES: 10
 
 jobs:
   lint:
     runs-on: ubuntu-latest
-    container: circleci/rust:bullseye
 
     steps:
-      # The Docker file changes sets USER to circleci instead of using the default user, so we need to update file permissions for this image to work on GH Actions.
-      # See https://docs.github.com/actions/reference/virtual-environments-for-github-hosted-runners#docker-container-filesystem
-      - name: Setup file system permissions
-        run: sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
-
       - uses: actions/checkout@v3
 
-      - name: Install Rust
+      # will install toolchain specified in rust-toolchain
+      - name: Install Rust toolchain
         run: |
-          rustup toolchain install 1.60.0-x86_64-unknown-linux-gnu
-          rustup component add rustfmt --toolchain 1.60.0-x86_64-unknown-linux-gnu
-          rustup component add clippy --toolchain 1.60.0-x86_64-unknown-linux-gnu
-          sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
-          echo 'RUSTFLAGS=-D warnings' >> $GITHUB_ENV
+          rustup show
 
       - name: Version Information
         run: |
@@ -41,35 +37,30 @@ jobs:
           cargo fmt -- --version
           cargo clippy -- --version
 
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
       - name: Lint (rustfmt)
         run: |
           cargo fmt -- --check
 
       - name: Lint (clippy)
         run: |
-          cargo clippy --all-features --all-targets
+          cargo clippy --locked --workspace --all-features --all-targets
 
   tests:
     runs-on: ubuntu-latest
-    container: circleci/rust:bullseye
 
     steps:
-      # The Docker file changes sets USER to circleci instead of using the default user, so we need to update file permissions for this image to work on GH Actions.
-      # See https://docs.github.com/actions/reference/virtual-environments-for-github-hosted-runners#docker-container-filesystem
-      - name: Setup file system permissions
-        run: sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
-
       - uses: actions/checkout@v3
 
-      - name: Install Rust
+      # will install toolchain specified in rust-toolchain
+      - name: Install Rust toolchain
         run: |
-          rustup toolchain install 1.60.0-x86_64-unknown-linux-gnu
-          sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
-          echo 'RUSTFLAGS=-D warnings' >> $GITHUB_ENV
+          rustup show
 
       - name: Setup Additional Languages
         run: |
-          sudo chmod -R 777 $GITHUB_WORKSPACE /github /__w/_temp
           sudo apt-get update
           sudo apt-get install -y apt-transport-https python3-all-dev python3-pip default-jdk golang-1.15-go
           echo '/usr/lib/go-1.15/bin' >> $GITHUB_PATH
@@ -114,10 +105,26 @@ jobs:
           swift --version
           ocaml --version
 
-      - name: Build and Test
+      - name: Compile (dev tests)
+        run: cargo test --no-run --locked
+
+      # It's faster to `test` before `build` according to
+      # https://github.com/rust-lang/rust-analyzer/blob/97b357e41b99ee3d5dd72a1640f6c74e4f4d6b64/.github/workflows/ci.yaml#L55
+      - name: Compile (dev serde-reflection)
+        run: cargo build --locked --all-targets
+
+      - name: Test (dev)
         run: |
           eval $(opam env)
-          cargo build --all-targets
           cargo test
-          cargo build --release --all-targets --all-features
-          cargo test --release --all-features
+
+      - name: Compile (release tests)
+        run: cargo test --no-run --locked --release --all-features
+
+      - name: Compile (release serde-reflection)
+        run: cargo build --locked --release --all-targets --all-features
+
+      - name: Test (release)
+        run: |
+          eval $(opam env)
+          cargo test --locked --release --all-features
