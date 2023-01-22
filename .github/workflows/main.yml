@@ -59,33 +59,53 @@ jobs:
         run: |
           rustup show
 
-      - name: Setup Additional Languages
+      - name: Setup Additional Languages (python3)
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Setup Additional Languages (python3 packages)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y apt-transport-https python3-all-dev python3-pip default-jdk golang-1.15-go
-          echo '/usr/lib/go-1.15/bin' >> $GITHUB_PATH
           python3 -m pip install pyre-check==0.0.59
           python3 -m pip install numpy==1.20.1
           echo '/github/home/.local/bin' >> $GITHUB_PATH
-          wget https://packages.microsoft.com/config/debian/10/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y dotnet-sdk-2.1 dotnet-sdk-3.1
-          curl -fsSL https://deno.land/x/install/install.sh | sh
-          echo 'DENO_INSTALL=/github/home/.deno' >> $GITHUB_ENV
-          echo '/github/home/.deno/bin' >> $GITHUB_PATH
-          sudo sh -c 'wget -qO- https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -'
-          sudo sh -c 'wget -qO- https://storage.googleapis.com/download.dartlang.org/linux/debian/dart_stable.list > /etc/apt/sources.list.d/dart_stable.list'
-          sudo apt-get update
-          sudo apt-get install dart
-          sudo apt-get install binutils git gnupg2 libc6-dev libcurl4 libedit2 libgcc-9-dev libpython2.7 libsqlite3-0 libstdc++-9-dev libxml2 libz3-dev pkg-config tzdata zlib1g-dev -y
-          wget https://swift.org/builds/swift-5.3.3-release/ubuntu2004/swift-5.3.3-RELEASE/swift-5.3.3-RELEASE-ubuntu20.04.tar.gz
-          tar xzf swift-5.3.3-RELEASE-ubuntu20.04.tar.gz
-          sudo mkdir -p /opt
-          sudo mv swift-5.3.3-RELEASE-ubuntu20.04 /opt/swift
-          echo '/opt/swift/usr/bin' >> $GITHUB_PATH
-          sudo apt-get install opam
-          opam init --disable-sandboxing -y
+
+      - name: Setup Additional Languages (.Net)
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: | 
+            2.1.x
+            3.1.x
+
+      - name: Setup Additional Languages (golang)
+        uses: actions/setup-go@v3
+        with:
+          go-version: '~1.15.0'
+
+      - name: Setup Additional Languages (deno)
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+      
+      - name: Setup Additional Languages (dart)
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 2.14.0
+      
+      - name: Setup Additional Languages (swift)
+        uses: swift-actions/setup-swift@v1
+        with:
+          # older swift versions are having gpg issues https://github.com/swift-actions/setup-swift/issues/520
+          swift-version: "5.7"
+
+      - name: Setup Additional Languages (ocaml)
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.14.x
+          opam-disable-sandboxing: true
+
+      - name: Setup Additional Languages (ocaml packages)
+        run: |
           eval $(opam env)
           opam install -y stdint uutf ppxlib
 
@@ -103,6 +123,7 @@ jobs:
           deno --version
           dart --version
           swift --version
+          eval $(opam env)
           ocaml --version
 
       - name: Compile (dev tests)
