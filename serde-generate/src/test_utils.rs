@@ -120,6 +120,25 @@ pub struct Tree<T> {
 pub struct SimpleList(Option<Box<SimpleList>>);
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub enum ComplexEnum {
+    A {
+        id: String,
+        value: String,
+        a: String,
+    },
+    B {
+        id: String,
+        value: i32,
+        b: String,
+    },
+    C {
+        id: String,
+        value: bool,
+        c: String,
+    },
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum CStyleEnum {
     A,
     B,
@@ -135,6 +154,7 @@ pub fn get_registry() -> Result<Registry> {
     tracer.trace_type::<SerdeData>(&samples)?;
     tracer.trace_type::<List<SerdeData>>(&samples)?;
     tracer.trace_type::<CStyleEnum>(&samples)?;
+    tracer.trace_type::<ComplexEnum>(&samples)?;
     tracer.registry()
 }
 
@@ -653,6 +673,26 @@ CStyleEnum:
       D: UNIT
     4:
       E: UNIT
+ComplexEnum:
+  ENUM:
+    0:
+      A:
+        STRUCT:
+          - id: STR
+          - value: STR
+          - a: STR
+    1:
+      B:
+        STRUCT:
+          - id: STR
+          - value: I32
+          - b: STR
+    2:
+      C:
+        STRUCT:
+          - id: STR
+          - value: BOOL
+          - c: STR
 List:
   ENUM:
     0:

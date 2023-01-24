@@ -122,3 +122,29 @@ fn test_dart_code_compiles_class_enums_for_complex_enums() {
     assert!(generated_c_style.contains("enum CStyleEnum {"));
     assert!(generated_class_style.contains("abstract class List_ {"));
 }
+
+#[test]
+fn test_dart_code_includes_getters_for_shared_properties_of_complex_enums() {
+    let source_path = tempdir()
+        .unwrap()
+        .path()
+        .join("dart_class_enum_shared_properties_project");
+
+    let config = CodeGeneratorConfig::new("example".to_string())
+        .with_encodings(vec![Encoding::Bcs, Encoding::Bincode])
+        // we enable native Dart enums to test that complex Rust enums will still produce Dart classes
+        .with_c_style_enums(true);
+
+    generate_with_config(source_path.clone(), &config);
+
+    let generated_class_style =
+        read_to_string(&source_path.join("lib/src/example/complex_enum.dart")).unwrap();
+
+    assert!(generated_class_style.contains("String get id;\n"));
+    assert!(!generated_class_style.contains("String get value;\n"));
+    assert!(!generated_class_style.contains("int get value;\n"));
+    assert!(!generated_class_style.contains("bool get value;\n"));
+    assert!(!generated_class_style.contains("String get a;\n"));
+    assert!(!generated_class_style.contains("String get b;\n"));
+    assert!(!generated_class_style.contains("String get c;\n"));
+}

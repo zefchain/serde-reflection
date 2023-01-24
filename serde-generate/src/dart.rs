@@ -1083,6 +1083,42 @@ switch (this) {{"#,
         self.enter_class(name);
         writeln!(self.out, "const {}();", self.quote_qualified_name(name))?;
 
+        // if all variants are structs, output base class getters for properties that
+        // have the same name and type across every variant
+        let shared_fields =
+            variants
+                .values()
+                .enumerate()
+                .fold(vec![], |shared_fields, enumerated_variant| {
+                    if let VariantFormat::Struct(fields) = &enumerated_variant.1.value {
+                        if enumerated_variant.0 == 0 {
+                            let mut cp = fields.to_vec();
+                            cp.sort_by_key(|field| field.name.to_owned());
+                            cp
+                        } else {
+                            shared_fields
+                                .into_iter()
+                                .filter(|field| fields.contains(field))
+                                .collect()
+                        }
+                    } else {
+                        vec![]
+                    }
+                });
+
+        if !shared_fields.is_empty() {
+            writeln!(self.out)?;
+        }
+
+        for field in &shared_fields {
+            writeln!(
+                self.out,
+                "{} get {};",
+                self.quote_type(&field.value),
+                self.quote_field(&field.name.to_mixed_case()),
+            )?;
+        }
+
         if self.generator.config.serialization {
             writeln!(self.out, "\nvoid serialize(BinarySerializer serializer);")?;
             write!(
