@@ -407,10 +407,22 @@ dependencies = [
  "serde-reflection",
  "serde_bytes",
  "serde_yaml",
- "structopt",
  "tempfile",
  "textwrap 0.13.4",
  "which",
+]
+
+[[package]]
+name = "serde-generate-bin"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde-generate",
+ "serde-reflection",
+ "serde_bytes",
+ "serde_yaml",
+ "structopt",
+ "tempfile",
 ]
 
 [[package]]

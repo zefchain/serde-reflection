@@ -1,8 +1,9 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use crate::test_utils;
 use regex::Regex;
-use serde_generate::{test_utils, typescript, CodeGeneratorConfig, Encoding, SourceInstaller};
+use serde_generate::{typescript, CodeGeneratorConfig, Encoding, SourceInstaller};
 use std::{collections::BTreeMap, fs::File, path::Path, process::Command};
 use tempfile::tempdir;
 

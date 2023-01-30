@@ -1,8 +1,9 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use crate::test_utils;
 use maplit::{btreemap, btreeset};
-use serde_generate::{analyzer, test_utils};
+use serde_generate::analyzer;
 
 #[test]
 fn test_topological_sort() {

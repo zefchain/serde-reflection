@@ -1,7 +1,8 @@
 // Copyright (c) Zefchain Labs, Inc.
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use serde_generate::{ocaml, test_utils, CodeGeneratorConfig, Encoding, SourceInstaller};
+use crate::test_utils;
+use serde_generate::{ocaml, CodeGeneratorConfig, Encoding, SourceInstaller};
 use std::{fs::File, io::Write, process::Command};
 use tempfile::{tempdir, TempDir};
 

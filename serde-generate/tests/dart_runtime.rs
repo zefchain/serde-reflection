@@ -1,7 +1,9 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use serde_generate::{dart, test_utils, CodeGeneratorConfig, SourceInstaller};
+use crate::test_utils;
+use crate::test_utils::{Choice, Runtime, Test};
+use serde_generate::{dart, CodeGeneratorConfig, SourceInstaller};
 use std::{
     fs::{create_dir_all, File},
     io::{Result, Write},
@@ -9,7 +11,6 @@ use std::{
     process::Command,
 };
 use tempfile::tempdir;
-use test_utils::{Choice, Runtime, Test};
 
 fn install_test_dependency(path: &Path) -> Result<()> {
     Command::new("dart")

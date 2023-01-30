@@ -3,6 +3,7 @@ members = [
     "serde-name",
     "serde-reflection",
     "serde-generate",
+    "serde-generate-bin",
 ]
 
 [profile.release]

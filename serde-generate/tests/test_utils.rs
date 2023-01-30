@@ -1,10 +1,10 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::Encoding;
 use maplit::btreemap;
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
+use serde_generate::Encoding;
 use serde_reflection::{Registry, Result, Samples, Tracer, TracerConfig};
 use std::collections::BTreeMap;
 

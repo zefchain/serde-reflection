@@ -1,7 +1,8 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use serde_generate::{csharp, test_utils, CodeGeneratorConfig, Encoding};
+use crate::test_utils;
+use serde_generate::{csharp, CodeGeneratorConfig, Encoding};
 use std::{collections::BTreeMap, process::Command, sync::Mutex};
 use tempfile::{tempdir, TempDir};
 

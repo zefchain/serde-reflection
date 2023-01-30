@@ -1,8 +1,9 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use crate::test_utils;
 use serde::{Deserialize, Serialize};
-use serde_generate::{swift, test_utils, CodeGeneratorConfig, Encoding};
+use serde_generate::{swift, CodeGeneratorConfig, Encoding};
 use serde_reflection::{Registry, Result, Samples, Tracer, TracerConfig};
 use std::{collections::BTreeMap, fs::File, io::Write, process::Command, sync::Mutex};
 use tempfile::{tempdir, TempDir};
