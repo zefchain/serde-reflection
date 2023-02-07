@@ -1,0 +1,23 @@
+[package]
+name = "serde-generate-bin"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde-generate = { path = "../serde-generate" }
+structopt = "0.3.21"
+serde-reflection = { path = "../serde-reflection" }
+serde_yaml = "0.8.17"
+
+[dev-dependencies]
+tempfile = "3.2"
+serde-reflection = { path = "../serde-reflection", version = "0.3.6" }
+serde = { version = "1.0.126", features = ["derive"] }
+serde_bytes = "0.11.5"
+
+[[bin]]
+name = "serdegen"
+path = "src/main.rs"
+test = false
