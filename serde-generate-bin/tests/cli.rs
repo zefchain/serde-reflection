@@ -1,9 +1,122 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use serde_generate::test_utils;
 use std::process::Command;
 use tempfile::tempdir;
+
+mod test_utils {
+    use serde::{Deserialize, Serialize};
+    use serde_bytes::ByteBuf;
+    use serde_reflection::{Registry, Samples, Tracer, TracerConfig};
+    use std::collections::BTreeMap;
+
+    // More complex data format used to test re-serialization and basic fuzzing.
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub enum SerdeData {
+        PrimitiveTypes(PrimitiveTypes),
+        OtherTypes(OtherTypes),
+        UnitVariant,
+        NewTypeVariant(String),
+        TupleVariant(u32, u64),
+        StructVariant {
+            f0: UnitStruct,
+            f1: NewTypeStruct,
+            f2: TupleStruct,
+            f3: Struct,
+        },
+        ListWithMutualRecursion(List<Box<SerdeData>>),
+        TreeWithMutualRecursion(Tree<Box<SerdeData>>),
+        TupleArray([u32; 3]),
+        UnitVector(Vec<()>),
+        SimpleList(SimpleList),
+        CStyleEnum(CStyleEnum),
+        ComplexMap(BTreeMap<([u32; 2], [u8; 4]), ()>),
+        EmptyTupleVariant(),
+        EmptyStructVariant {},
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub struct PrimitiveTypes {
+        f_bool: bool,
+        f_u8: u8,
+        f_u16: u16,
+        f_u32: u32,
+        f_u64: u64,
+        f_u128: u128,
+        f_i8: i8,
+        f_i16: i16,
+        f_i32: i32,
+        f_i64: i64,
+        f_i128: i128,
+        // The following types are not supported by our bincode and BCS runtimes, therefore
+        // we don't populate them for testing.
+        f_f32: Option<f32>,
+        f_f64: Option<f64>,
+        f_char: Option<char>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub struct OtherTypes {
+        f_string: String,
+        f_bytes: ByteBuf,
+        f_option: Option<Struct>,
+        f_unit: (),
+        f_seq: Vec<Struct>,
+        f_tuple: (u8, u16),
+        f_stringmap: BTreeMap<String, u32>,
+        f_intset: BTreeMap<u64, ()>, // Avoiding BTreeSet because Serde treats them as sequences.
+        f_nested_seq: Vec<Vec<Struct>>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub struct UnitStruct;
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub struct NewTypeStruct(u64);
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub struct TupleStruct(u32, u64);
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub struct Struct {
+        x: u32,
+        y: u64,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub enum List<T> {
+        Empty,
+        Node(T, Box<List<T>>),
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub struct Tree<T> {
+        value: T,
+        children: Vec<Tree<T>>,
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub struct SimpleList(Option<Box<SimpleList>>);
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    pub enum CStyleEnum {
+        A,
+        B,
+        C,
+        D,
+        E = 10,
+    }
+
+    /// The registry corresponding to the test data structures above.
+    pub fn get_registry() -> serde_reflection::Result<Registry> {
+        let mut tracer = Tracer::new(TracerConfig::default());
+        let samples = Samples::new();
+        tracer.trace_type::<SerdeData>(&samples)?;
+        tracer.trace_type::<List<SerdeData>>(&samples)?;
+        tracer.trace_type::<CStyleEnum>(&samples)?;
+        tracer.registry()
+    }
+}
 
 #[test]
 fn test_that_installed_python_code_parses() {
@@ -15,7 +128,7 @@ fn test_that_installed_python_code_parses() {
     let status = Command::new("cargo")
         .arg("run")
         .arg("-p")
-        .arg("serde-generate")
+        .arg("serde-generate-bin")
         .arg("--")
         .arg("--language")
         .arg("python3")
@@ -57,7 +170,7 @@ fn test_that_installed_python_code_with_package_parses() {
     let status = Command::new("cargo")
         .arg("run")
         .arg("-p")
-        .arg("serde-generate")
+        .arg("serde-generate-bin")
         .arg("--")
         .arg("--language")
         .arg("python3")
@@ -109,7 +222,7 @@ fn test_that_installed_rust_code_compiles() {
     let status = Command::new("cargo")
         .arg("run")
         .arg("-p")
-        .arg("serde-generate")
+        .arg("serde-generate-bin")
         .arg("--")
         .arg("--language")
         .arg("rust")
@@ -144,7 +257,7 @@ fn test_that_installed_cpp_code_compiles() {
     let status = Command::new("cargo")
         .arg("run")
         .arg("-p")
-        .arg("serde-generate")
+        .arg("serde-generate-bin")
         .arg("--")
         .arg("--language")
         .arg("cpp")
@@ -183,7 +296,7 @@ fn test_that_installed_java_code_compiles() {
     let status = Command::new("cargo")
         .arg("run")
         .arg("-p")
-        .arg("serde-generate")
+        .arg("serde-generate-bin")
         .arg("--")
         .arg("--language")
         .arg("java")
@@ -236,7 +349,7 @@ fn test_that_installed_ocaml_code_compiles() {
     let status = Command::new("cargo")
         .arg("run")
         .arg("-p")
-        .arg("serde-generate")
+        .arg("serde-generate-bin")
         .arg("--")
         .arg("--language")
         .arg("ocaml")

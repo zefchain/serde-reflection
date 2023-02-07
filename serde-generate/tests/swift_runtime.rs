@@ -1,11 +1,9 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use serde_generate::{
-    swift, test_utils,
-    test_utils::{Choice, Runtime, Test},
-    CodeGeneratorConfig, SourceInstaller,
-};
+use crate::test_utils;
+use crate::test_utils::{Choice, Runtime, Test};
+use serde_generate::{swift, CodeGeneratorConfig, SourceInstaller};
 use std::{fs::File, io::Write, process::Command, sync::Mutex};
 
 lazy_static::lazy_static! {

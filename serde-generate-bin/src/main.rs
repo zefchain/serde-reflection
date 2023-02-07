@@ -5,7 +5,7 @@
 //! # Serde code generator
 //!
 //! '''bash
-//! cargo run --bin serdegen -- --help
+//! cargo run -- --help
 //! '''
 
 use serde_generate::{

@@ -13,7 +13,9 @@ This project aims to bring the features of a traditional IDL to Rust and Serde.
 
 * [`serde-reflection`](serde-reflection) is a library to extract Serde data formats [![serde-reflection on crates.io](https://img.shields.io/crates/v/serde-reflection)](https://crates.io/crates/serde-reflection) [![Documentation (latest release)](https://docs.rs/serde-reflection/badge.svg)](https://docs.rs/serde-reflection/)
 
-* [`serde-generate`](serde-generate) is a library and a tool to generate type definitions and provide (de)serialization in other programming languages [![serde-generate on crates.io](https://img.shields.io/crates/v/serde-generate)](https://crates.io/crates/serde-generate) [![Documentation (latest release)](https://docs.rs/serde-generate/badge.svg)](https://docs.rs/serde-generate/)
+* [`serde-generate`](serde-generate) is a library to generate type definitions and provide (de)serialization in other programming languages [![serde-generate on crates.io](https://img.shields.io/crates/v/serde-generate)](https://crates.io/crates/serde-generate) [![Documentation (latest release)](https://docs.rs/serde-generate/badge.svg)](https://docs.rs/serde-generate/)
+
+* [`serde-generate-bin`](serde-generate-bin) is the corresponding binary tool.
 
 * [`serde-name`](serde-name) is a minimal library to compute Serde names at runtime [![serde-name on crates.io](https://img.shields.io/crates/v/serde-name)](https://crates.io/crates/serde-name) [![Documentation (latest release)](https://docs.rs/serde-name/badge.svg)](https://docs.rs/serde-name/)
 

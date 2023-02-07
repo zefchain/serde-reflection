@@ -1,7 +1,9 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use serde_generate::{rust, test_utils, test_utils::Runtime, CodeGeneratorConfig};
+use crate::test_utils;
+use crate::test_utils::Runtime;
+use serde_generate::{rust, CodeGeneratorConfig};
 use std::{fs::File, io::Write, process::Command};
 use tempfile::tempdir;
 

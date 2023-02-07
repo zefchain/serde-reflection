@@ -123,17 +123,17 @@
 //!
 //! Then, the following command will generate Python class definitions and write them into `test.py`:
 //! ```bash
-//! cargo run -p serde-generate -- --language python3 test.yaml > test.py
+//! cargo run -p serde-generate-bin -- --language python3 test.yaml > test.py
 //! ```
 //!
 //! To create a python module `test` and install the bincode runtime in a directory `$DEST`, you may run:
 //! ```bash
-//! cargo run -p serde-generate -- --language python3 --with-runtimes serde bincode --module-name test --target-source-dir "$DEST" test.yaml
+//! cargo run -p serde-generate-bin -- --language python3 --with-runtimes serde bincode --module-name test --target-source-dir "$DEST" test.yaml
 //! ```
 //!
 //! See the help message of the tool with `--help` for more options.
 //!
-//! Note: Outside of this repository, you may install the tool with `cargo install serde-generate` then use `$HOME/.cargo/bin/serdegen`.
+//! Note: Outside of this repository, you may install the tool with `cargo install serde-generate-bin` then use `$HOME/.cargo/bin/serdegen`.
 
 /// Dependency analysis and topological sort for Serde formats.
 pub mod analyzer;
@@ -141,29 +141,35 @@ pub mod analyzer;
 pub mod indent;
 
 /// Support for code-generation in C++
+#[cfg(feature = "cpp")]
 pub mod cpp;
 /// Support for code-generation in C#
+#[cfg(feature = "csharp")]
 pub mod csharp;
 /// Support for code-generation in Dart
+#[cfg(feature = "dart")]
 pub mod dart;
 /// Support for code-generation in Go
+#[cfg(feature = "golang")]
 pub mod golang;
 /// Support for code-generation in Java
+#[cfg(feature = "java")]
 pub mod java;
 /// Support for code-generation in OCaml
+#[cfg(feature = "ocaml")]
 pub mod ocaml;
 /// Support for code-generation in Python 3
+#[cfg(feature = "python3")]
 pub mod python3;
 /// Support for code-generation in Rust
+#[cfg(feature = "rust")]
 pub mod rust;
 /// Support for code-generation in Swift
+#[cfg(feature = "swift")]
 pub mod swift;
 /// Support for code-generation in TypeScript/JavaScript
+#[cfg(feature = "typescript")]
 pub mod typescript;
-
-#[doc(hidden)]
-/// Utility functions to help testing code generators.
-pub mod test_utils;
 
 /// Common logic for codegen.
 mod common;
