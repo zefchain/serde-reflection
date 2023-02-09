@@ -123,17 +123,17 @@ EOF
 
 Then, the following command will generate Python class definitions and write them into `test.py`:
 ```bash
-cargo run -p serde-generate -- --language python3 test.yaml > test.py
+cargo run -p serde-generate-bin -- --language python3 test.yaml > test.py
 ```
 
 To create a python module `test` and install the bincode runtime in a directory `$DEST`, you may run:
 ```bash
-cargo run -p serde-generate -- --language python3 --with-runtimes serde bincode --module-name test --target-source-dir "$DEST" test.yaml
+cargo run -p serde-generate-bin -- --language python3 --with-runtimes serde bincode --module-name test --target-source-dir "$DEST" test.yaml
 ```
 
 See the help message of the tool with `--help` for more options.
 
-Note: Outside of this repository, you may install the tool with `cargo install serde-generate` then use `$HOME/.cargo/bin/serdegen`.
+Note: Outside of this repository, you may install the tool with `cargo install serde-generate-bin` then use `$HOME/.cargo/bin/serdegen`.
 
 ## Contributing
 

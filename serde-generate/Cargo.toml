@@ -1,7 +1,7 @@
 [package]
 name = "serde-generate"
-version = "0.24.0"
-description = "Generate (de)serialization code in multiple languages"
+version = "0.25.0"
+description = "Library to generate (de)serialization code in multiple languages"
 documentation = "https://docs.rs/serde-generate"
 repository = "https://github.com/zefchain/serde-reflection"
 authors = ["Mathieu Baudet <mathieu.baudet@zefchain.com>"]
