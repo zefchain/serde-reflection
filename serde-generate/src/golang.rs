@@ -59,9 +59,8 @@ impl<'a> CodeGenerator<'a> {
         }
         Self {
             config,
-            serde_module_path:
-                "github.com/zefchain/serde-reflection/serde-generate/runtime/golang"
-                    .to_string(),
+            serde_module_path: "github.com/zefchain/serde-reflection/serde-generate/runtime/golang"
+                .to_string(),
             external_qualified_names,
         }
     }
