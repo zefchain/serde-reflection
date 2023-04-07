@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/bcs"
-	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/serde"
+	"github.com/zefchain/serde-reflection/serde-generate/runtime/golang/bcs"
+	"github.com/zefchain/serde-reflection/serde-generate/runtime/golang/serde"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,6 +46,47 @@ func TestSerializeDeserializeBytes(t *testing.T) {
 	t.Run("deserialize error: EOF", func(t *testing.T) {
 		d := bcs.NewDeserializer([]byte{})
 		_, err := d.DeserializeBytes()
+		require.EqualError(t, err, "EOF")
+	})
+}
+
+func TestSerializeDeserializeVecBytes(t *testing.T) {
+	cases := []struct {
+		target   [][]byte
+		expected []byte
+	}{
+		{
+			target:   [][]byte{{1, 2, 38}, {0, 1}, {0}},
+			expected: []byte{3, 3, 1, 2, 38, 2, 0, 1, 1, 0},
+		},
+		{
+			target:   [][]byte{{1, 2, 38}, {0, 1}, {}},
+			expected: []byte{3, 3, 1, 2, 38, 2, 0, 1, 0},
+		},
+		{
+			target:   [][]byte{},
+			expected: []byte{0},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(fmt.Sprintf("%#v", tc.target), func(t *testing.T) {
+			s := bcs.NewSerializer()
+			d := bcs.NewDeserializer(tc.expected)
+
+			err := s.SerializeVecBytes(tc.target)
+			require.NoError(t, err)
+
+			deserialized, err := d.DeserializeVecBytes()
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.expected, s.GetBytes())
+			assert.Equal(t, tc.target, deserialized)
+		})
+	}
+	t.Run("deserialize error: EOF", func(t *testing.T) {
+		d := bcs.NewDeserializer([]byte{})
+		_, err := d.DeserializeVecBytes()
 		require.EqualError(t, err, "EOF")
 	})
 }

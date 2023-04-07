@@ -4,9 +4,12 @@
 package com.novi.serde;
 
 import java.math.BigInteger;
+import java.util.List;
 
 public interface Deserializer {
     String deserialize_str() throws DeserializationError;
+
+    List<Bytes> deserialize_vec_bytes() throws DeserializationError;
 
     Bytes deserialize_bytes() throws DeserializationError;
 

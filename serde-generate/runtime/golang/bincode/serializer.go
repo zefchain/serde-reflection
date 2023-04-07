@@ -6,7 +6,7 @@ package bincode
 import (
 	"math"
 
-	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/serde"
+	"github.com/zefchain/serde-reflection/serde-generate/runtime/golang/serde"
 )
 
 // `serializer` extends `serde.BinarySerializer` to implement `serde.Serializer`.
@@ -28,6 +28,10 @@ func (s *serializer) SerializeF64(value float64) error {
 
 func (s *serializer) SerializeStr(value string) error {
 	return s.BinarySerializer.SerializeStr(value, s.SerializeLen)
+}
+
+func (s *serializer) SerializeVecBytes(value [][]byte) error {
+	return s.BinarySerializer.SerializeVecBytes(value, s.SerializeLen)
 }
 
 func (s *serializer) SerializeBytes(value []byte) error {
