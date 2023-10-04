@@ -679,6 +679,9 @@ OtherTypes:
     - f_seq:
         SEQ:
           TYPENAME: Struct
+    - f_opt_seq:
+        OPTION:
+          SEQ: I32
     - f_tuple:
         TUPLE:
           - U8
