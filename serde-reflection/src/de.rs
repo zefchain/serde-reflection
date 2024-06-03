@@ -58,7 +58,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I8)?;
-        visitor.visit_i8(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroI8>() {
+            visitor.visit_i8(1)
+        } else {
+            visitor.visit_i8(0)
+        }
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
@@ -66,7 +71,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I16)?;
-        visitor.visit_i16(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroI16>() {
+            visitor.visit_i16(1)
+        } else {
+            visitor.visit_i16(0)
+        }
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
@@ -74,7 +84,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I32)?;
-        visitor.visit_i32(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroI32>() {
+            visitor.visit_i32(1)
+        } else {
+            visitor.visit_i32(0)
+        }
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
@@ -82,7 +97,14 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I64)?;
-        visitor.visit_i64(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroI64>()
+            || std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroIsize>()
+        {
+            visitor.visit_i64(1)
+        } else {
+            visitor.visit_i64(0)
+        }
     }
 
     fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
@@ -90,7 +112,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I128)?;
-        visitor.visit_i128(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroI128>() {
+            visitor.visit_i128(1)
+        } else {
+            visitor.visit_i128(0)
+        }
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
@@ -98,7 +125,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U8)?;
-        visitor.visit_u8(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroU8>() {
+            visitor.visit_u8(1)
+        } else {
+            visitor.visit_u8(0)
+        }
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
@@ -106,7 +138,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U16)?;
-        visitor.visit_u16(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroU16>() {
+            visitor.visit_u16(1)
+        } else {
+            visitor.visit_u16(0)
+        }
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
@@ -114,7 +151,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U32)?;
-        visitor.visit_u32(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroU32>() {
+            visitor.visit_u32(1)
+        } else {
+            visitor.visit_u32(0)
+        }
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
@@ -122,7 +164,14 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U64)?;
-        visitor.visit_u64(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroU64>()
+            || std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroUsize>()
+        {
+            visitor.visit_u64(1)
+        } else {
+            visitor.visit_u64(0)
+        }
     }
 
     fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value>
@@ -130,7 +179,12 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U128)?;
-        visitor.visit_u128(0)
+
+        if std::any::type_name::<V::Value>() == std::any::type_name::<std::num::NonZeroU128>() {
+            visitor.visit_u128(1)
+        } else {
+            visitor.visit_u128(0)
+        }
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
