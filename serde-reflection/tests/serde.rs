@@ -457,3 +457,42 @@ fn test_repeated_tracing() {
         ))))))
     );
 }
+
+#[test]
+fn test_default_value_for_primitive_types() {
+    let config = TracerConfig::default()
+        .default_u8_value(1)
+        .default_u16_value(2)
+        .default_u32_value(3)
+        .default_u64_value(4)
+        .default_u128_value(5)
+        .default_i8_value(6)
+        .default_i16_value(7)
+        .default_i32_value(8)
+        .default_i64_value(9)
+        .default_i128_value(10)
+        .default_string_value("A string".into())
+        .default_borrowed_str_value("A borrowed str");
+    let mut tracer = Tracer::new(config);
+    let samples = Samples::new();
+
+    let (format, value) = tracer.trace_type_once::<u8>(&samples).unwrap();
+    assert_eq!(format, Format::U8);
+    assert_eq!(value, 1);
+
+    let (format, value) = tracer.trace_type_once::<u16>(&samples).unwrap();
+    assert_eq!(format, Format::U16);
+    assert_eq!(value, 2);
+
+    let (format, value) = tracer.trace_type_once::<i128>(&samples).unwrap();
+    assert_eq!(format, Format::I128);
+    assert_eq!(value, 10);
+
+    let (format, value) = tracer.trace_type_once::<String>(&samples).unwrap();
+    assert_eq!(format, Format::Str);
+    assert_eq!(value.as_str(), "A string");
+
+    let (format, value) = tracer.trace_type_once::<&str>(&samples).unwrap();
+    assert_eq!(format, Format::Str);
+    assert_eq!(value, "A borrowed str");
+}
