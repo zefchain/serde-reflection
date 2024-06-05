@@ -101,7 +101,7 @@ jobs:
       - name: Setup Additional Languages (ocaml)
         uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-compiler: 4.14.x
+          ocaml-compiler: 5.0
           opam-disable-sandboxing: true
 
       - name: Setup Additional Languages (ocaml packages)
