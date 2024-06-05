@@ -817,7 +817,15 @@ return obj;
 
         self.out.indent();
         for field in fields.iter() {
-            let stmt = match &field.value {
+            // because the Dart functions of listEquals and mapEquals accept nullable
+            // we only care about the data type and can discard the enclosing Format::Option
+            let value = if let Format::Option(value) = &field.value {
+                value
+            } else {
+                &field.value
+            };
+
+            let stmt = match value {
                 Format::Seq(_) => {
                     format!(
                         "listEquals({0}, other.{0})",

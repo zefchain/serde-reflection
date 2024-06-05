@@ -55,7 +55,12 @@ fn test_dart_code_compiles() {
         .with_encodings(vec![Encoding::Bcs, Encoding::Bincode])
         .with_c_style_enums(true);
 
-    generate_with_config(source_path, &config);
+    generate_with_config(source_path.clone(), &config);
+
+    let other_types =
+        read_to_string(&source_path.join("lib/src/example/other_types.dart")).unwrap();
+
+    assert!(other_types.contains("listEquals(fOptSeq, other.fOptSeq)"));
 }
 
 #[test]
