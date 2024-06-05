@@ -4,7 +4,12 @@
 use crate::test_utils;
 use regex::Regex;
 use serde_generate::{typescript, CodeGeneratorConfig, Encoding, SourceInstaller};
-use std::{collections::BTreeMap, fs::File, path::Path, process::Command};
+use std::{
+    collections::BTreeMap,
+    fs::File,
+    path::Path,
+    process::{Command, Stdio},
+};
 use tempfile::tempdir;
 
 fn test_typescript_code_compiles_with_config(
@@ -16,10 +21,10 @@ fn test_typescript_code_compiles_with_config(
 
     let installer = typescript::Installer::new(dir_path.to_path_buf());
     installer.install_serde_runtime().unwrap();
-    assert_deno_info(dir_path.join("bcs/mod.ts").as_path());
+    assert_deno_info(dir_path.join("serde/mod.ts").as_path());
 
     installer.install_bcs_runtime().unwrap();
-    assert_deno_info(dir_path.join("serde/mod.ts").as_path());
+    assert_deno_info(dir_path.join("bcs/mod.ts").as_path());
 
     let source_path = dir_path.join("testing").join("test.ts");
     let mut source = File::create(&source_path).unwrap();
@@ -35,10 +40,10 @@ fn assert_deno_info(ts_path: &Path) {
     let output = Command::new("deno")
         .arg("info")
         .arg(ts_path)
+        .stderr(Stdio::inherit())
         .output()
         .expect("deno info failed, is deno installed? brew install deno");
     assert!(output.status.success());
-
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         !is_error_output(stdout.as_str()),
