@@ -196,7 +196,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         let mut format = Format::unknown();
         self.format
             .unify(Format::Option(Box::new(format.clone())))?;
-        if format.is_unknown() {
+        if format.is_unknown() || !self.tracer.config.cut_option_exploration {
             let inner = Deserializer::new(self.tracer, self.samples, &mut format);
             visitor.visit_some(inner)
         } else {
@@ -262,7 +262,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
     {
         let mut format = Format::unknown();
         self.format.unify(Format::Seq(Box::new(format.clone())))?;
-        if format.is_unknown() {
+        if format.is_unknown() || !self.tracer.config.cut_seq_exploration {
             // Simulate vector of size 1.
             let inner =
                 SeqDeserializer::new(self.tracer, self.samples, std::iter::once(&mut format));
@@ -329,7 +329,10 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             key: Box::new(key_format.clone()),
             value: Box::new(value_format.clone()),
         })?;
-        if key_format.is_unknown() || value_format.is_unknown() {
+        if key_format.is_unknown()
+            || value_format.is_unknown()
+            || !self.tracer.config.cut_map_exploration
+        {
             // Simulate a map with one entry.
             let inner = SeqDeserializer::new(
                 self.tracer,
@@ -413,7 +416,8 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         // If we have found all the variants OR if the enum is marked as
         // incomplete already, pick the first index.
         let index = if known_variants.len() == variants.len()
-            || self.tracer.incomplete_enums.contains(name)
+            || (self.tracer.incomplete_enums.contains(name)
+                && self.tracer.config.cut_enum_exploration)
         {
             0
         } else {
@@ -436,6 +440,8 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         // Mark the enum as incomplete if this was not the last variant to explore.
         if known_variants.len() != variants.len() {
             self.tracer.incomplete_enums.insert(name.into());
+        } else {
+            self.tracer.incomplete_enums.remove(name);
         }
         // Compute the format for this variant.
         let inner = EnumDeserializer::new(self.tracer, self.samples, index, &mut value);

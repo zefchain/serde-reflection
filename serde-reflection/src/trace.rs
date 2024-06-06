@@ -75,6 +75,10 @@ pub struct TracerConfig {
     pub(crate) default_string_value: String,
     pub(crate) default_borrowed_bytes_value: &'static [u8],
     pub(crate) default_byte_buf_value: Vec<u8>,
+    pub(crate) cut_option_exploration: bool,
+    pub(crate) cut_seq_exploration: bool,
+    pub(crate) cut_map_exploration: bool,
+    pub(crate) cut_enum_exploration: bool,
 }
 
 impl Default for TracerConfig {
@@ -103,6 +107,10 @@ impl Default for TracerConfig {
             default_string_value: String::new(),
             default_borrowed_bytes_value: b"",
             default_byte_buf_value: Vec::new(),
+            cut_option_exploration: true,
+            cut_seq_exploration: true,
+            cut_map_exploration: true,
+            cut_enum_exploration: true,
         }
     }
 }
@@ -161,6 +169,38 @@ impl TracerConfig {
     define_default_value_setter!(default_string_value, String);
     define_default_value_setter!(default_borrowed_bytes_value, &'static [u8]);
     define_default_value_setter!(default_byte_buf_value, Vec<u8>);
+
+    /// Whether an optional value is *not* explored again after encountering it once.
+    ///
+    /// Warning: Disabling this option may lead to the tracing not terminating.
+    pub fn cut_option_exploration(mut self, value: bool) -> Self {
+        self.cut_option_exploration = value;
+        self
+    }
+
+    /// Whether a sequence is left empty after encountering it once.
+    ///
+    /// Warning: Disabling this option may lead to the tracing not terminating.
+    pub fn cut_seq_exploration(mut self, value: bool) -> Self {
+        self.cut_seq_exploration = value;
+        self
+    }
+
+    /// Whether a map is left empty after encountering it once.
+    ///
+    /// Warning: Disabling this option may lead to the tracing not terminating.
+    pub fn cut_map_exploration(mut self, value: bool) -> Self {
+        self.cut_map_exploration = value;
+        self
+    }
+
+    /// Whether an enum falls back to the first variant after encountering it once.
+    ///
+    /// Warning: Disabling this option may lead to the tracing not terminating.
+    pub fn cut_enum_exploration(mut self, value: bool) -> Self {
+        self.cut_enum_exploration = value;
+        self
+    }
 }
 
 impl Tracer {
@@ -242,6 +282,26 @@ impl Tracer {
                 }
             }
             return Ok((format, values));
+        }
+    }
+
+    /// Same as `trace_type_once` but if any uncovered variants remain in the
+    /// recursive format, we repeat the process.
+    /// We accumulate and return all the sampled values at the end.
+    pub fn trace_type_all_variants<'de, T>(
+        &mut self,
+        samples: &'de Samples,
+    ) -> Result<(Format, Vec<T>)>
+    where
+        T: Deserialize<'de>,
+    {
+        let mut values = Vec::new();
+        loop {
+            let (format, value) = self.trace_type_once::<T>(samples)?;
+            values.push(value);
+            if self.incomplete_enums.is_empty() {
+                return Ok((format, values));
+            }
         }
     }
 
