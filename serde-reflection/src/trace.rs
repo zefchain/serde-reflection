@@ -57,6 +57,24 @@ pub struct TracerConfig {
     pub(crate) record_samples_for_newtype_structs: bool,
     pub(crate) record_samples_for_tuple_structs: bool,
     pub(crate) record_samples_for_structs: bool,
+    pub(crate) default_bool_value: bool,
+    pub(crate) default_u8_value: u8,
+    pub(crate) default_u16_value: u16,
+    pub(crate) default_u32_value: u32,
+    pub(crate) default_u64_value: u64,
+    pub(crate) default_u128_value: u128,
+    pub(crate) default_i8_value: i8,
+    pub(crate) default_i16_value: i16,
+    pub(crate) default_i32_value: i32,
+    pub(crate) default_i64_value: i64,
+    pub(crate) default_i128_value: i128,
+    pub(crate) default_f32_value: f32,
+    pub(crate) default_f64_value: f64,
+    pub(crate) default_char_value: char,
+    pub(crate) default_borrowed_str_value: &'static str,
+    pub(crate) default_string_value: String,
+    pub(crate) default_borrowed_bytes_value: &'static [u8],
+    pub(crate) default_byte_buf_value: Vec<u8>,
 }
 
 impl Default for TracerConfig {
@@ -67,8 +85,36 @@ impl Default for TracerConfig {
             record_samples_for_newtype_structs: true,
             record_samples_for_tuple_structs: false,
             record_samples_for_structs: false,
+            default_bool_value: false,
+            default_u8_value: 0,
+            default_u16_value: 0,
+            default_u32_value: 0,
+            default_u64_value: 0,
+            default_u128_value: 0,
+            default_i8_value: 0,
+            default_i16_value: 0,
+            default_i32_value: 0,
+            default_i64_value: 0,
+            default_i128_value: 0,
+            default_f32_value: 0.0,
+            default_f64_value: 0.0,
+            default_char_value: 'A',
+            default_borrowed_str_value: "",
+            default_string_value: String::new(),
+            default_borrowed_bytes_value: b"",
+            default_byte_buf_value: Vec::new(),
         }
     }
+}
+
+macro_rules! define_default_value_setter {
+    ($method:ident, $ty:ty) => {
+        /// The default serialized value for this primitive type.
+        pub fn $method(mut self, value: $ty) -> Self {
+            self.$method = value;
+            self
+        }
+    };
 }
 
 impl TracerConfig {
@@ -96,6 +142,25 @@ impl TracerConfig {
         self.record_samples_for_structs = value;
         self
     }
+
+    define_default_value_setter!(default_bool_value, bool);
+    define_default_value_setter!(default_u8_value, u8);
+    define_default_value_setter!(default_u16_value, u16);
+    define_default_value_setter!(default_u32_value, u32);
+    define_default_value_setter!(default_u64_value, u64);
+    define_default_value_setter!(default_u128_value, u128);
+    define_default_value_setter!(default_i8_value, i8);
+    define_default_value_setter!(default_i16_value, i16);
+    define_default_value_setter!(default_i32_value, i32);
+    define_default_value_setter!(default_i64_value, i64);
+    define_default_value_setter!(default_i128_value, i128);
+    define_default_value_setter!(default_f32_value, f32);
+    define_default_value_setter!(default_f64_value, f64);
+    define_default_value_setter!(default_char_value, char);
+    define_default_value_setter!(default_borrowed_str_value, &'static str);
+    define_default_value_setter!(default_string_value, String);
+    define_default_value_setter!(default_borrowed_bytes_value, &'static [u8]);
+    define_default_value_setter!(default_byte_buf_value, Vec<u8>);
 }
 
 impl Tracer {

@@ -50,7 +50,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::Bool)?;
-        visitor.visit_bool(false)
+        visitor.visit_bool(self.tracer.config.default_bool_value)
     }
 
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>
@@ -58,7 +58,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I8)?;
-        visitor.visit_i8(0)
+        visitor.visit_i8(self.tracer.config.default_i8_value)
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
@@ -66,7 +66,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I16)?;
-        visitor.visit_i16(0)
+        visitor.visit_i16(self.tracer.config.default_i16_value)
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
@@ -74,7 +74,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I32)?;
-        visitor.visit_i32(0)
+        visitor.visit_i32(self.tracer.config.default_i32_value)
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
@@ -82,7 +82,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I64)?;
-        visitor.visit_i64(0)
+        visitor.visit_i64(self.tracer.config.default_i64_value)
     }
 
     fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
@@ -90,7 +90,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::I128)?;
-        visitor.visit_i128(0)
+        visitor.visit_i128(self.tracer.config.default_i128_value)
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
@@ -98,7 +98,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U8)?;
-        visitor.visit_u8(0)
+        visitor.visit_u8(self.tracer.config.default_u8_value)
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
@@ -106,7 +106,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U16)?;
-        visitor.visit_u16(0)
+        visitor.visit_u16(self.tracer.config.default_u16_value)
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
@@ -114,7 +114,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U32)?;
-        visitor.visit_u32(0)
+        visitor.visit_u32(self.tracer.config.default_u32_value)
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
@@ -122,7 +122,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U64)?;
-        visitor.visit_u64(0)
+        visitor.visit_u64(self.tracer.config.default_u64_value)
     }
 
     fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value>
@@ -130,7 +130,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::U128)?;
-        visitor.visit_u128(0)
+        visitor.visit_u128(self.tracer.config.default_u128_value)
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
@@ -138,7 +138,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::F32)?;
-        visitor.visit_f32(0.0)
+        visitor.visit_f32(self.tracer.config.default_f32_value)
     }
 
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value>
@@ -146,7 +146,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::F64)?;
-        visitor.visit_f64(0.0)
+        visitor.visit_f64(self.tracer.config.default_f64_value)
     }
 
     fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
@@ -154,7 +154,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::Char)?;
-        visitor.visit_char('A')
+        visitor.visit_char(self.tracer.config.default_char_value)
     }
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
@@ -162,7 +162,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::Str)?;
-        visitor.visit_borrowed_str("")
+        visitor.visit_borrowed_str(self.tracer.config.default_borrowed_str_value)
     }
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
@@ -170,7 +170,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::Str)?;
-        visitor.visit_string(String::new())
+        visitor.visit_string(self.tracer.config.default_string_value.clone())
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
@@ -178,7 +178,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::Bytes)?;
-        visitor.visit_borrowed_bytes(b"")
+        visitor.visit_borrowed_bytes(self.tracer.config.default_borrowed_bytes_value)
     }
 
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
@@ -186,7 +186,7 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         V: Visitor<'de>,
     {
         self.format.unify(Format::Bytes)?;
-        visitor.visit_byte_buf(Vec::new())
+        visitor.visit_byte_buf(self.tracer.config.default_byte_buf_value.clone())
     }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
