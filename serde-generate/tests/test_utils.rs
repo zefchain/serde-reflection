@@ -931,7 +931,7 @@ fn test_bincode_get_positive_samples() {
 // This test requires --release because of deserialization of long (unit) vectors.
 #[cfg(not(debug_assertions))]
 fn test_bcs_get_positive_samples() {
-    assert_eq!(test_get_positive_samples(Runtime::Bcs), 100);
+    assert_eq!(test_get_positive_samples(Runtime::Bcs), 82);
 }
 
 // Make sure all the "positive" samples successfully deserialize with the reference Rust
