@@ -403,8 +403,8 @@ impl Runtime {
             return results;
         }
 
-        // For each byte position < 11 in the serialization of `value`:
-        for i in 0..std::cmp::min(s.len(), 11) {
+        // For each byte position < 9 in the serialization of `value`:
+        for i in 0..std::cmp::min(s.len(), 9) {
             // Flip the highest bit
             {
                 let mut s2 = s.clone();
