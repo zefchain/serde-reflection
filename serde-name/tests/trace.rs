@@ -13,9 +13,11 @@ enum E {
 struct Unit;
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct NewType(u64);
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct Tuple(u64, u32);
 
 #[derive(Deserialize)]

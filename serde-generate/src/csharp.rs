@@ -11,6 +11,7 @@ use include_dir::include_dir as include_directory;
 use serde_reflection::{ContainerFormat, Format, FormatHolder, Named, Registry, VariantFormat};
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Write as _,
     io::{Result, Write},
     path::PathBuf,
 };
@@ -1187,15 +1188,14 @@ impl crate::SourceInstaller for Installer {
         for encoding in &config.encodings {
             deps.push(encoding.name().to_camel_case());
         }
-        let deps: String = deps
-            .iter()
-            .map(|d| {
-                format!(
-                    "      <ProjectReference Include=\"{1}{0}\\{0}.csproj\" />\n",
-                    d, back_path
-                )
-            })
-            .collect();
+        let mut dependencies = String::new();
+        for dep in deps {
+            writeln!(
+                &mut dependencies,
+                "      <ProjectReference Include=\"{1}{0}\\{0}.csproj\" />",
+                dep, back_path
+            )?;
+        }
 
         let mut proj = std::fs::File::create(dir_path.join(name + ".csproj"))?;
         write!(
@@ -1214,7 +1214,7 @@ impl crate::SourceInstaller for Installer {
 {}    </ItemGroup>
 </Project>
 "#,
-            deps
+            dependencies
         )?;
 
         Ok(())

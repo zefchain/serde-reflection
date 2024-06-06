@@ -84,7 +84,7 @@ impl<'a> CodeGenerator<'a> {
         for name in entries {
             for dependency in &dependencies[name] {
                 if !emitter.known_names.contains(dependency) {
-                    emitter.output_container_forward_definition(*dependency)?;
+                    emitter.output_container_forward_definition(dependency)?;
                     emitter.known_names.insert(*dependency);
                 }
             }

@@ -5,6 +5,7 @@ members = [
     "serde-generate",
     "serde-generate-bin",
 ]
+resolver = "2"
 
 [profile.release]
 debug = true

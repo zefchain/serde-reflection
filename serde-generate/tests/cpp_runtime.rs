@@ -21,7 +21,7 @@ fn test_cpp_runtime_on_simple_date(runtime: Runtime) {
     let registry = test_utils::get_simple_registry().unwrap();
     let dir = tempdir().unwrap();
     let header_path = dir.path().join("test.hpp");
-    let mut header = File::create(&header_path).unwrap();
+    let mut header = File::create(header_path).unwrap();
 
     let config =
         CodeGeneratorConfig::new("testing".to_string()).with_encodings(vec![runtime.into()]);
@@ -117,7 +117,7 @@ fn test_cpp_runtime_on_supported_types(runtime: Runtime) {
     let registry = test_utils::get_registry().unwrap();
     let dir = tempdir().unwrap();
     let header_path = dir.path().join("test.hpp");
-    let mut header = File::create(&header_path).unwrap();
+    let mut header = File::create(header_path).unwrap();
 
     let config =
         CodeGeneratorConfig::new("testing".to_string()).with_encodings(vec![runtime.into()]);

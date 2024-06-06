@@ -47,7 +47,7 @@ fn test_ocaml_runtime_on_simple_data(runtime: Runtime) {
     let config =
         CodeGeneratorConfig::new("testing".to_string()).with_encodings(vec![runtime.into()]);
 
-    let dir_path = dir.join(&config.module_name());
+    let dir_path = dir.join(config.module_name());
     std::fs::create_dir_all(&dir_path).unwrap();
 
     let dune_project_source_path = dir.join("dune-project");
@@ -65,7 +65,7 @@ fn test_ocaml_runtime_on_simple_data(runtime: Runtime) {
 (library
  (name testing)
  (modules testing)
- (preprocess (pps ppx)) 
+ (preprocess (pps ppx))
  (libraries {}_runtime))
 
 (executable
@@ -78,12 +78,12 @@ fn test_ocaml_runtime_on_simple_data(runtime: Runtime) {
     .unwrap();
 
     let lib_path = dir_path.join("testing.ml");
-    let mut lib = File::create(&lib_path).unwrap();
+    let mut lib = File::create(lib_path).unwrap();
     let generator = ocaml::CodeGenerator::new(&config);
     generator.output(&mut lib, &registry).unwrap();
 
     let exe_path = dir_path.join("main.ml");
-    let mut exe = File::create(&exe_path).unwrap();
+    let mut exe = File::create(exe_path).unwrap();
 
     let reference = runtime.serialize(&Test {
         a: vec![4, 6],
@@ -162,7 +162,7 @@ fn test_ocaml_runtime_on_supported_types(runtime: Runtime) {
     let config =
         CodeGeneratorConfig::new("testing".to_string()).with_encodings(vec![runtime.into()]);
 
-    let dir_path = dir.join(&config.module_name());
+    let dir_path = dir.join(config.module_name());
     std::fs::create_dir_all(&dir_path).unwrap();
 
     let dune_project_source_path = dir.join("dune-project");

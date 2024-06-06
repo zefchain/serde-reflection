@@ -15,7 +15,7 @@ fn test_that_ocaml_code_compiles_with_config(
     let registry = test_utils::get_registry().unwrap();
     let dir0 = tempdir().unwrap();
     let dir = dir0.path();
-    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::create_dir_all(dir).unwrap();
 
     let source_path = dir.join("test.ml");
     let mut source = File::create(&source_path).unwrap();
@@ -110,7 +110,7 @@ fn test_that_ocaml_code_compiles_with_comments() {
         .with_serialization(false)
         .with_comments(comments);
     let (_dir, source_path) = test_that_ocaml_code_compiles_with_config(&config, false, None, None);
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains("(*\n  Some\n  comments\n*)\n"));
 }
 
@@ -157,6 +157,6 @@ fn test_that_ocaml_code_compiles_with_custom_code() {
         .with_serialization(false)
         .with_custom_code(custom_code);
     let (_dir, source_path) = test_that_ocaml_code_compiles_with_config(&config, false, None, None);
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains("serde_data_to_string"));
 }

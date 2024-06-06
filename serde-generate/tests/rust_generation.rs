@@ -50,7 +50,7 @@ fn test_that_rust_code_compiles_with_comments() {
         .with_serialization(false)
         .with_comments(comments);
     let (_dir, source_path) = test_that_rust_code_compiles_with_config(&config);
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains("/// Some\n/// comments\n"));
 }
 
@@ -137,7 +137,7 @@ serde_bytes = "0.11"
     let generator = rust::CodeGenerator::new(&config);
 
     let source_path = dir.path().join("src/lib.rs");
-    let mut source = File::create(&source_path).unwrap();
+    let mut source = File::create(source_path).unwrap();
     generator.output(&mut source, &registry).unwrap();
 
     // Use a stable `target` dir to avoid downloading and recompiling crates everytime.
@@ -164,6 +164,6 @@ fn test_that_rust_code_compiles_with_custom_code() {
         .with_serialization(false)
         .with_custom_code(custom_code);
     let (_dir, source_path) = test_that_rust_code_compiles_with_config(&config);
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains("// custom code\n"));
 }

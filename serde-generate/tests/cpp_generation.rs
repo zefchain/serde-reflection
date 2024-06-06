@@ -92,7 +92,7 @@ fn test_that_cpp_code_compiles_with_comments() {
     let (_dir, header_path) = test_that_cpp_code_compiles_with_config(&config);
 
     // Comments were correctly generated.
-    let content = std::fs::read_to_string(&header_path).unwrap();
+    let content = std::fs::read_to_string(header_path).unwrap();
     assert!(content.contains(
         r#"
     /// Some
@@ -149,7 +149,7 @@ fn test_that_cpp_code_compiles_with_custom_code() {
     let (_dir, header_path) = test_that_cpp_code_compiles_with_config(&config);
 
     // Comments were correctly generated.
-    let content = std::fs::read_to_string(&header_path).unwrap();
+    let content = std::fs::read_to_string(header_path).unwrap();
     assert!(content.contains("~SerdeData"));
     assert!(content.contains("~Node"));
 }
@@ -159,7 +159,7 @@ fn test_that_cpp_code_links() {
     let registry = test_utils::get_registry().unwrap();
     let dir = tempdir().unwrap();
     let header_path = dir.path().join("test.hpp");
-    let mut header = File::create(&header_path).unwrap();
+    let mut header = File::create(header_path).unwrap();
 
     let config =
         CodeGeneratorConfig::new("testing".to_string()).with_encodings(vec![Encoding::Bcs]);
@@ -167,7 +167,7 @@ fn test_that_cpp_code_links() {
     generator.output(&mut header, &registry).unwrap();
 
     let source_path = dir.path().join("lib.cpp");
-    let mut source = File::create(&source_path).unwrap();
+    let mut source = File::create(source_path).unwrap();
     writeln!(
         source,
         r#"
@@ -192,7 +192,7 @@ SerdeData deserialize_data(const std::vector<uint8_t> &input) {{
     .unwrap();
 
     let source_path = dir.path().join("main.cpp");
-    let mut source = File::create(&source_path).unwrap();
+    let mut source = File::create(source_path).unwrap();
     writeln!(
         source,
         r#"

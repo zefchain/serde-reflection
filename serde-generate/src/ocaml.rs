@@ -274,15 +274,15 @@ where
         Ok(())
     }
 
-    fn is_cyclic(&self, name: &str, format: &Format) -> bool {
+    fn is_cyclic(name: &str, format: &Format) -> bool {
         use Format::*;
         match format {
             TypeName(s) => name == s,
-            Option(f) => self.is_cyclic(name, f),
-            Seq(f) => self.is_cyclic(name, f),
-            Map { key, value } => self.is_cyclic(name, key) || self.is_cyclic(name, value),
-            Tuple(fs) => fs.iter().any(|f| self.is_cyclic(name, f)),
-            TupleArray { content, size: _ } => self.is_cyclic(name, content),
+            Option(f) => Self::is_cyclic(name, f),
+            Seq(f) => Self::is_cyclic(name, f),
+            Map { key, value } => Self::is_cyclic(name, key) || Self::is_cyclic(name, value),
+            Tuple(fs) => fs.iter().any(|f| Self::is_cyclic(name, f)),
+            TupleArray { content, size: _ } => Self::is_cyclic(name, content),
             _ => false,
         }
     }
@@ -307,7 +307,7 @@ where
                 write!(self.out, " unit")?;
                 writeln!(self.out)?;
             }
-            NewTypeStruct(format) if self.is_cyclic(name, format.as_ref()) => {
+            NewTypeStruct(format) if Self::is_cyclic(name, format.as_ref()) => {
                 let mut map = BTreeMap::new();
                 map.insert(
                     0,

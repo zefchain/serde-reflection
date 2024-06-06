@@ -63,7 +63,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      
+
       - name: Setup Additional Languages (python3 packages)
         run: |
           python3 -m pip install pyre-check==0.0.59
@@ -73,7 +73,7 @@ jobs:
       - name: Setup Additional Languages (.Net)
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: | 
+          dotnet-version: |
             2.1.x
             3.1.x
 
@@ -86,12 +86,12 @@ jobs:
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
-      
+
       - name: Setup Additional Languages (dart)
         uses: dart-lang/setup-dart@v1
         with:
           sdk: 2.14.0
-      
+
       - name: Setup Additional Languages (swift)
         uses: swift-actions/setup-swift@v1
         with:
