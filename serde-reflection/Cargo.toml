@@ -1,6 +1,6 @@
 [package]
 name = "serde-reflection"
-version = "0.3.6"
+version = "0.4.0"
 description = "Extract representations of Serde data formats"
 documentation = "https://docs.rs/serde-reflection"
 repository = "https://github.com/zefchain/serde-reflection"

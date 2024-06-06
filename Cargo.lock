@@ -436,7 +436,7 @@ dependencies = [
 
 [[package]]
 name = "serde-reflection"
-version = "0.3.6"
+version = "0.4.0"
 dependencies = [
  "bincode",
  "once_cell",

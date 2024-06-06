@@ -15,12 +15,12 @@ rust-version = "1.60"
 [dependencies]
 serde-generate = { path = "../serde-generate", version = "0.25.0" }
 structopt = "0.3.21"
-serde-reflection = { path = "../serde-reflection", version = "0.3.6" }
+serde-reflection = { path = "../serde-reflection", version = "0.4.0" }
 serde_yaml = "0.8.17"
 
 [dev-dependencies]
 tempfile = "3.2"
-serde-reflection = { path = "../serde-reflection", version = "0.3.6" }
+serde-reflection = { path = "../serde-reflection", version = "0.4.0" }
 serde = { version = "1.0.126", features = ["derive"] }
 serde_bytes = "0.11.5"
 
