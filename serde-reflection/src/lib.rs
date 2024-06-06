@@ -108,6 +108,13 @@
 //! terminate. (Work around: re-order the variants. For instance `enum List {
 //! Some(Box<List>), None}` must be rewritten `enum List { None, Some(Box<List>)}`.)
 //!
+//! * Certain standard types such as `std::num::NonZeroU8` may not be tracked as a
+//! container and appear simply as their underlying primitive type (e.g. `u8`) in the
+//! formats. This loss of information makes it difficult to use `trace_value` to work
+//! around deserialization invariants (see example below). As a work around, you may
+//! override the default for the primitive type using `TracerConfig` (e.g. `let config =
+//! TracerConfig::default().default_u8_value(1);`).
+//!
 //! ## Security CAVEAT
 //!
 //! At this time, `HashSet<T>` and `BTreeSet<T>` are treated as sequences (i.e. vectors)

@@ -476,6 +476,12 @@ fn test_default_value_for_primitive_types() {
     let mut tracer = Tracer::new(config);
     let samples = Samples::new();
 
+    let (format, value) = tracer
+        .trace_type_once::<std::num::NonZeroU8>(&samples)
+        .unwrap();
+    assert_eq!(format, Format::U8); // Not a container
+    assert_eq!(value.get(), 1);
+
     let (format, value) = tracer.trace_type_once::<u8>(&samples).unwrap();
     assert_eq!(format, Format::U8);
     assert_eq!(value, 1);
