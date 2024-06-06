@@ -57,8 +57,7 @@ fn test_dart_code_compiles() {
 
     generate_with_config(source_path.clone(), &config);
 
-    let other_types =
-        read_to_string(&source_path.join("lib/src/example/other_types.dart")).unwrap();
+    let other_types = read_to_string(source_path.join("lib/src/example/other_types.dart")).unwrap();
 
     assert!(other_types.contains("listEquals(fOptSeq, other.fOptSeq)"));
 }
@@ -121,9 +120,9 @@ fn test_dart_code_compiles_class_enums_for_complex_enums() {
     generate_with_config(source_path.clone(), &config);
 
     let generated_c_style =
-        read_to_string(&source_path.join("lib/src/example/c_style_enum.dart")).unwrap();
+        read_to_string(source_path.join("lib/src/example/c_style_enum.dart")).unwrap();
     let generated_class_style =
-        read_to_string(&source_path.join("lib/src/example/list.dart")).unwrap();
+        read_to_string(source_path.join("lib/src/example/list.dart")).unwrap();
 
     assert!(generated_c_style.contains("enum CStyleEnum {"));
     assert!(generated_class_style.contains("abstract class List_ {"));

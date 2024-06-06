@@ -139,7 +139,7 @@ fn test_that_swift_code_compiles_with_comments() {
 
     let (_dir, source_path) = test_that_swift_code_compiles_with_config(&config);
     // Comments were correctly generated.
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains(
         r#"
 // Some
@@ -185,6 +185,6 @@ fn test_that_swift_code_compiles_with_custom_code() {
 
     let (_dir, source_path) = test_that_swift_code_compiles_with_config(&config);
     // Comments were correctly generated.
-    let content = std::fs::read_to_string(&source_path).unwrap();
+    let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains("// custom1"));
 }

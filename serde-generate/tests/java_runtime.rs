@@ -33,7 +33,7 @@ fn test_java_runtime_on_simple_data(runtime: Runtime) {
         c: Choice::C { x: 7 },
     });
 
-    let mut source = File::create(&dir.path().join("Main.java")).unwrap();
+    let mut source = File::create(dir.path().join("Main.java")).unwrap();
     writeln!(
         source,
         r#"
@@ -160,7 +160,7 @@ fn test_java_runtime_on_supported_types(runtime: Runtime) {
         .map(|bytes| quote_bytes(bytes))
         .collect();
 
-    let mut source = File::create(&dir.path().join("Main.java")).unwrap();
+    let mut source = File::create(dir.path().join("Main.java")).unwrap();
     writeln!(
         source,
         r#"

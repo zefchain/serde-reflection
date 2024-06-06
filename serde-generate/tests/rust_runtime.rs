@@ -45,7 +45,7 @@ serde_bytes = "0.11"
     let generator = rust::CodeGenerator::new(&config);
 
     let source_path = dir.path().join("src/main.rs");
-    let mut source = File::create(&source_path).unwrap();
+    let mut source = File::create(source_path).unwrap();
     generator.output(&mut source, &registry).unwrap();
 
     let encodings: Vec<_> = runtime

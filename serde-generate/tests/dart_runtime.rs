@@ -27,7 +27,7 @@ fn test_dart_runtime_autotest() {
     // Not setting PUB_CACHE here because this is the only test run with the default
     // config anyway.
     let dart_test = Command::new("dart")
-        .current_dir(&"runtime/dart")
+        .current_dir("runtime/dart")
         .args(["test", "-r", "expanded"])
         .status()
         .unwrap();

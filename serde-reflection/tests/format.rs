@@ -228,7 +228,7 @@ fn test_container_format_unification() {
         ))
         .is_ok());
 
-    for x in vec![
+    for x in [
         UnitStruct,
         NewTypeStruct(Box::new(Unit)),
         TupleStruct(vec![Format::unknown()]),

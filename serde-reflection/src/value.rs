@@ -233,7 +233,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
     {
         match self.value {
             Value::Variant(index, variant) => {
-                let inner = EnumDeserializer::new(*index, &*variant);
+                let inner = EnumDeserializer::new(*index, variant);
                 visitor.visit_enum(inner)
             }
             _ => Err(Error::DeserializationError("enum")),
