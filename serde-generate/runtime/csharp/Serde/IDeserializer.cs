@@ -9,6 +9,8 @@ namespace Serde
     {
         string deserialize_str();
 
+        ValueArray<ValueArray<byte>> deserialize_vec_bytes();
+
         ValueArray<byte> deserialize_bytes();
 
         bool deserialize_bool();
