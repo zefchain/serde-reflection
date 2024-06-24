@@ -305,6 +305,27 @@ impl Tracer {
         }
     }
 
+    /// Same as `trace_type_once` but if any uncovered variants remain in the
+    /// recursive format, we repeat the process.
+    /// We accumulate and return all the sampled values at the end.
+    pub fn trace_type_all_variants_with_seed<'de, S>(
+        &mut self,
+        samples: &'de Samples,
+        seed: S,
+    ) -> Result<(Format, Vec<S::Value>)>
+    where
+        S: DeserializeSeed<'de> + Clone,
+    {
+        let mut values = Vec::new();
+        loop {
+            let (format, value) = self.trace_type_once_with_seed::<S>(samples, seed.clone())?;
+            values.push(value);
+            if self.incomplete_enums.is_empty() {
+                return Ok((format, values));
+            }
+        }
+    }
+
     /// Trace a type `T` that is simple enough that no samples of values are needed.
     /// * If `T` is an enum, the tracing iterates until all variants of `T` are covered.
     /// * Accumulate and return all the sampled values at the end.
