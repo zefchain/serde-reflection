@@ -5,6 +5,7 @@ members = [
     "serde-generate",
     "serde-generate-bin",
 ]
+exclude = ["js-benchmarks"]
 resolver = "2"
 
 [profile.release]
