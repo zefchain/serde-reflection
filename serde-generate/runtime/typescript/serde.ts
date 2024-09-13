@@ -252,29 +252,27 @@ export abstract class BinaryWriter implements Writer {
 }
 
 export abstract class BinaryReader implements Reader {
-	private static readonly BIG_32: bigint = BigInt(32)
-	private static readonly BIG_64: bigint = BigInt(64)
+	private static readonly BIG_32: bigint = 32n
+	private static readonly BIG_64: bigint = 64n
 	private static readonly textDecoder = new TextDecoder()
+
 	public buffer: ArrayBuffer
-	public offset: number
+	public offset = 0
 
 	constructor(data: Uint8Array) {
 		// copies data to prevent outside mutation of buffer.
 		this.buffer = new ArrayBuffer(data.length)
 		new Uint8Array(this.buffer).set(data, 0)
-		this.offset = 0
 	}
 
-	private read(length): ArrayBuffer {
+	private read(length: number) {
 		const bytes = this.buffer.slice(this.offset, this.offset + length)
 		this.offset += length
 		return bytes
 	}
 
 	abstract readLength(): number
-
 	abstract readVariantIndex(): number
-
 	abstract checkThatKeySlicesAreIncreasing(key1: [number, number], key2: [number, number]): void
 
 	public readString() {
