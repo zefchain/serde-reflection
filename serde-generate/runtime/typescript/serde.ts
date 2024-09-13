@@ -78,10 +78,10 @@ export interface Writer {
 
 
 export abstract class BinaryWriter implements Writer {
-	public static readonly BIG_32: bigint = BigInt(32)
-	public static readonly BIG_64: bigint = BigInt(64)
-	public static readonly BIG_32Fs: bigint = BigInt("429967295")
-	public static readonly BIG_64Fs: bigint = BigInt("18446744073709551615")
+	public static readonly BIG_32: bigint = 32n
+	public static readonly BIG_64: bigint = 64n
+	public static readonly BIG_32Fs: bigint = 429967295n
+	public static readonly BIG_64Fs: bigint = 18446744073709551615n
 	public static readonly textEncoder = new TextEncoder()
 
 	public buffer: ArrayBuffer

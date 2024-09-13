@@ -13,6 +13,7 @@ const ComplexStruct_pb_obj: ProtobufRegistry.ComplexStruct = {
 	unit: {},
 	newtype: 99,
 	tuple: { first: 123, second: 45.67, third: "Test" },
+	// @ts-ignore
 	map: { 3: 7n }
 }
 
