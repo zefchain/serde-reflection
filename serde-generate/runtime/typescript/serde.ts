@@ -84,13 +84,9 @@ export abstract class BinaryWriter implements Writer {
 	public static readonly BIG_64Fs: bigint = 18446744073709551615n
 	public static readonly textEncoder = new TextEncoder()
 
-	public buffer: ArrayBuffer
-	public offset: number
+	public buffer = new ArrayBuffer(64)
+	public offset = 0
 
-	constructor() {
-		this.buffer = new ArrayBuffer(64)
-		this.offset = 0
-	}
 
 	private ensureBufferWillHandleSize(bytes: number) {
 		const wishSize = this.offset + bytes
@@ -99,6 +95,7 @@ export abstract class BinaryWriter implements Writer {
 			while (newBufferLength < wishSize) newBufferLength *= 2
 			newBufferLength = Math.max(wishSize, newBufferLength)
 
+			// TODO: there is new API for resizing buffer, but in Node it seems to be slower then allocating new
 			// this.buffer.resize(newBufferLength)
 			const newBuffer = new ArrayBuffer(newBufferLength)
 			new Uint8Array(newBuffer).set(new Uint8Array(this.buffer))
@@ -119,6 +116,7 @@ export abstract class BinaryWriter implements Writer {
 	public writeString(value: string) {
 		const bytes = value.length * 3 + 8
 		this.ensureBufferWillHandleSize(bytes)
+		// TODO: check this for correctness
 		const { written } = BinaryWriter.textEncoder.encodeInto(value, new Uint8Array(this.buffer, this.offset + 8))
 		this.writeU64(written)
 		this.offset += written
