@@ -348,7 +348,7 @@ export abstract class BinaryReader implements Reader {
 		const high = this.readI64()
 
 		// combine the two 64-bit values and return (little endian)
-		return (BigInt(high) << BinaryReader.BIG_64) | BigInt(low)
+		return (high << BinaryReader.BIG_64) | low
 	}
 
 	public readOptionTag() {
