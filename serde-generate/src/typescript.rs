@@ -272,7 +272,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				self.out.indent();
 				for field in fields {
 					match field.value {
-						Format::Unit => {
+						Format::Unit | Format::Option {..} => {
 							writeln!(self.out, "{}?: {},", field.name, self.quote_type(&field.value))?;
 						}
 						_ => { writeln!(self.out, "{}: {},", field.name, self.quote_type(&field.value))?; }
