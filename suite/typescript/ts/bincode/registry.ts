@@ -15,7 +15,7 @@ export type MultiEnum =
 	| { $: "VariantA", VariantA: $t.i32 }
 	| { $: "VariantB", VariantB: $t.str }
 	| { $: "VariantC", VariantC: { x: $t.u8, y: $t.f64 } }
-	| { $: "UnitVariant", UnitVariant: $t.unit }
+	| { $: "UnitVariant", UnitVariant?: $t.unit }
 
 export type NewtypeStruct = $t.i32
 

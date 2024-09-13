@@ -271,7 +271,12 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				writeln!(self.out, "export type {name} = {{")?;
 				self.out.indent();
 				for field in fields {
-					writeln!(self.out, "{}: {},", field.name, self.quote_type(&field.value))?;
+					match field.value {
+						Format::Unit => {
+							writeln!(self.out, "{}?: {},", field.name, self.quote_type(&field.value))?;
+						}
+						_ => { writeln!(self.out, "{}: {},", field.name, self.quote_type(&field.value))?; }
+					}
 				}
 				self.out.unindent();
 				writeln!(self.out, "}}")?;
@@ -286,7 +291,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				for (_index, variant) in variants {
 					match &variant.value {
 						VariantFormat::Unit => {
-							writeln!(self.out, r#"| {{ $: "{0}", {0}: {1} }}"#, variant.name, self.quote_type(&Format::Unit))?;
+							writeln!(self.out, r#"| {{ $: "{0}", {0}?: {1} }}"#, variant.name, self.quote_type(&Format::Unit))?;
 						}
 						VariantFormat::Struct(fields) => {
 							let fields_str = fields.iter().map(|f| format!("{}: {}", f.name, self.quote_type(&f.value))).collect::<Vec<_>>().join(", ");
