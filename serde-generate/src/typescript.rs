@@ -1,736 +1,497 @@
-// Copyright (c) Facebook, Inc. and its affiliates
-// SPDX-License-Identifier: MIT OR Apache-2.0
-
+#![allow(unused)]
 use crate::{
-    common,
-    indent::{IndentConfig, IndentedWriter},
-    CodeGeneratorConfig,
+	common,
+	indent::{IndentConfig, IndentedWriter},
+	CodeGeneratorConfig,
 };
 use heck::CamelCase;
 use include_dir::include_dir as include_directory;
+use indoc::{formatdoc, indoc, writedoc};
 use serde_reflection::{ContainerFormat, Format, FormatHolder, Named, Registry, VariantFormat};
 use std::{
-    collections::{BTreeMap, HashMap},
-    io::{Result, Write},
-    path::PathBuf,
+	collections::{BTreeMap, HashMap},
+	io::{Result, Write},
+	path::PathBuf,
 };
 
 /// Main configuration object for code-generation in TypeScript, powered by
 /// the Deno runtime.
 pub struct CodeGenerator<'a> {
-    /// Language-independent configuration.
-    config: &'a CodeGeneratorConfig,
-    /// Mapping from external type names to fully-qualified class names (e.g. "MyClass" -> "com.my_org.my_package.MyClass").
-    /// Derived from `config.external_definitions`.
-    external_qualified_names: HashMap<String, String>,
-    /// vector of namespaces to import
-    namespaces_to_import: Vec<String>,
+	/// Language-independent configuration.
+	config: &'a CodeGeneratorConfig,
+	/// Mapping from external type names to fully-qualified class names (e.g. "MyClass" -> "com.my_org.my_package.MyClass").
+	/// Derived from `config.external_definitions`.
+	external_qualified_names: HashMap<String, String>,
+	/// vector of namespaces to import
+	namespaces_to_import: Vec<String>,
 }
 
 /// Shared state for the code generation of a TypeScript source file.
 struct TypeScriptEmitter<'a, T> {
-    /// Writer.
-    out: IndentedWriter<T>,
-    /// Generator.
-    generator: &'a CodeGenerator<'a>,
+	/// Writer.
+	out: IndentedWriter<T>,
+	/// Generator.
+	generator: &'a CodeGenerator<'a>,
 }
 
 impl<'a> CodeGenerator<'a> {
-    /// Create a TypeScript code generator for the given config.
-    pub fn new(config: &'a CodeGeneratorConfig) -> Self {
-        if config.c_style_enums {
-            panic!("TypeScript does not support generating c-style enums");
-        }
-        let mut external_qualified_names = HashMap::new();
-        for (namespace, names) in &config.external_definitions {
-            for name in names {
-                external_qualified_names.insert(
-                    name.to_string(),
-                    format!("{}.{}", namespace.to_camel_case(), name),
-                );
-            }
-        }
-        Self {
-            config,
-            external_qualified_names,
-            namespaces_to_import: config
-                .external_definitions
-                .keys()
-                .map(|k| k.to_string())
-                .collect::<Vec<_>>(),
-        }
-    }
-
-    /// Output class definitions for `registry` in a single source file.
-    pub fn output(&self, out: &mut dyn Write, registry: &Registry) -> Result<()> {
-        let mut emitter = TypeScriptEmitter {
-            out: IndentedWriter::new(out, IndentConfig::Space(2)),
-            generator: self,
-        };
-
-        emitter.output_preamble()?;
-
-        for (name, format) in registry {
-            emitter.output_container(name, format)?;
-        }
-
-        if self.config.serialization {
-            emitter.output_helpers(registry)?;
-        }
-
-        Ok(())
-    }
+	/// Create a TypeScript code generator for the given config.
+	pub fn new(config: &'a CodeGeneratorConfig) -> Self {
+		if config.c_style_enums {
+			panic!("TypeScript does not support generating c-style enums");
+		}
+		let mut external_qualified_names = HashMap::new();
+		for (namespace, names) in &config.external_definitions {
+			for name in names {
+				external_qualified_names.insert(
+					name.to_string(),
+					format!("{}.{}", namespace.to_camel_case(), name),
+				);
+			}
+		}
+		Self {
+			config,
+			external_qualified_names,
+			namespaces_to_import: config.external_definitions.keys().map(|k| k.to_string()).collect::<Vec<_>>(),
+		}
+	}
+	
+	/// Output class definitions for `registry` in a single source file.
+	pub fn output(&self, out: &mut dyn Write, registry: &Registry) -> Result<()> {
+		let mut emitter = TypeScriptEmitter {
+			out: IndentedWriter::new(out, IndentConfig::Tab),
+			generator: self,
+		};
+		
+		emitter.output_preamble()?;
+		
+		for (name, format) in registry {
+			writeln!(emitter.out)?;
+			emitter.output_container_typedef(name, format)?;
+		}
+		for (name, format) in registry {
+			writeln!(emitter.out)?;
+			emitter.generate_container(name, format)?;
+		}
+		
+		Ok(())
+	}
 }
 
-impl<'a, T> TypeScriptEmitter<'a, T>
-where
-    T: Write,
-{
-    fn output_preamble(&mut self) -> Result<()> {
-        writeln!(
-            self.out,
-            r#"
-import {{ Serializer, Deserializer }} from '../serde/mod.ts';
-import {{ BcsSerializer, BcsDeserializer }} from '../bcs/mod.ts';
-import {{ Optional, Seq, Tuple, ListTuple, unit, bool, int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, char, str, bytes }} from '../serde/mod.ts';
-"#,
-        )?;
-        for namespace in self.generator.namespaces_to_import.iter() {
-            writeln!(
-                self.out,
-                "import * as {} from '../{}/mod.ts';\n",
-                namespace.to_camel_case(),
-                namespace
-            )?;
-        }
+impl<'a, T: Write> TypeScriptEmitter<'a, T> {
+	fn output_preamble(&mut self) -> Result<()> {
+		writeln!(self.out, r#"import type * as $t from "./serde.ts""#)?;
+		writeln!(self.out, r#"import {{ BincodeReader, BincodeWriter }} from "./bincode.ts""#)?;
+		for namespace in self.generator.namespaces_to_import.iter() {
+			writeln!(self.out, "import * as {} from '../{}/mod.ts';\n", namespace.to_camel_case(), namespace)?;
+		}
+		Ok(())
+	}
+	
+	fn generate_container(&mut self, name: &str, container: &ContainerFormat) -> Result<()> {
+		// ENCODE
+		writeln!(self.out, "export const {name} = {{")?;
+		self.out.indent();
+		
+		writeln!(self.out, "encode(value: {name}, writer = new BincodeWriter()) {{")?;
+		self.out.indent();
+		
+		match container {
+			ContainerFormat::UnitStruct => {
+				writeln!(self.out, "{}", self.quote_write_value("null", &Format::Unit))?;
+			}
+			ContainerFormat::Struct(fields) => {
+				for field in fields.iter() {
+					writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}", field.name), &field.value))?;
+				}
+			}
+			ContainerFormat::NewTypeStruct(inner_type) => {
+				writeln!(self.out, "{}", self.quote_write_value(&format!("value"), inner_type))?;	
+			}
+			ContainerFormat::TupleStruct(inner_types) => {
+				for (i, inner) in inner_types.iter().enumerate() {
+					writeln!(self.out, "{}", self.quote_write_value(&format!("value[{i}]"), inner))?;	
+				}
+			}
+			ContainerFormat::Enum(variants) => {
+				self.generate_enum_container(name, variants)?;
+				return Ok(());
+			}
+		}
 
-        Ok(())
-    }
+		writeln!(self.out, "return writer.getBytes()")?;
+		
+		self.out.unindent();
+		writeln!(self.out, "}},")?;
+		
 
-    fn quote_qualified_name(&self, name: &str) -> String {
-        self.generator
-            .external_qualified_names
-            .get(name)
-            .cloned()
-            .unwrap_or_else(|| name.to_string())
-    }
+		// DECODE
+		writeln!(self.out, "decode(input: Uint8Array, reader = new BincodeReader(input)) {{")?;
+		self.out.indent();
+				
+		match container {
+			ContainerFormat::UnitStruct => {
+				writeln!(self.out, "const value: $t.unit = {}", self.quote_read_value(&Format::Unit))?;
+			}
+			ContainerFormat::NewTypeStruct(inner) => {
+				writeln!(self.out, "const value: {name} = {}", self.quote_read_value(inner))?;
+			}
+			ContainerFormat::TupleStruct(inner_types) => {
+				writeln!(self.out, "const value: {name} = {}", self.quote_read_value(&Format::Tuple(inner_types.clone())))?;
+			}
+			_ => { writeln!(self.out, "const value = {{}} as {name}")?; }
+		}
+		
+		match container {
+			ContainerFormat::UnitStruct => {  /* set at initialization */ }
+			ContainerFormat::TupleStruct(inner_types) => { /* set at initialization */ }
+			ContainerFormat::NewTypeStruct(inner_type) => { /* set at initialization */  }
+			ContainerFormat::Struct(fields) => {
+				for field in fields.iter() {
+					writeln!(self.out, "value.{} = {}", field.name, self.quote_read_value(&field.value))?;
+				}
+			}
+			ContainerFormat::Enum(..) => { /* handled before with generate_enum_container() */ }
+		}
 
-    fn output_comment(&mut self, name: &str) -> std::io::Result<()> {
-        let path = vec![name.to_string()];
-        if let Some(doc) = self.generator.config.comments.get(&path) {
-            let text = textwrap::indent(doc, " * ").replace("\n\n", "\n *\n");
-            writeln!(self.out, "/**\n{} */", text)?;
-        }
-        Ok(())
-    }
+		writeln!(self.out, "return value")?;
+		
+		self.out.unindent(); 
+		writeln!(self.out, "}}")?; // decode end
+		
+		self.out.unindent(); 
+		writeln!(self.out, "}}")?; // object end		
+		
+		Ok(())
+	}
+	
+	fn generate_enum_container(&mut self, name: &str, variants: &BTreeMap<u32, Named<VariantFormat>>) -> Result<()> {
+		writeln!(self.out, "switch (value.$) {{")?;
+		self.out.indent();
+		
+		for (index, variant) in variants {
+			writeln!(self.out, r#"case "{}": {{"#, variant.name)?;
+			self.out.indent();
+			writeln!(self.out, "writer.writeVariantIndex({index})");
+			
+			match &variant.value {
+				VariantFormat::Unit => {
+					writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}", &variant.name), &Format::Unit));
+				},
+				VariantFormat::NewType(inner) => {
+					writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}", &variant.name), inner));
+				}
+				VariantFormat::Tuple(members) => {
+					let tuple = Format::Tuple(members.clone());
+					writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}", &variant.name), &tuple));
+				}
+				VariantFormat::Struct(fields) => {
+					for field in fields {
+						writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}.{}", variant.name, field.name), &field.value))?;
+					}
+				}
+				VariantFormat::Variable(_) => panic!("not supported")
+			}
+			writeln!(self.out, "break")?;
+			self.out.unindent();
+			writeln!(self.out, "}}")?; // case end
+		}
+		
+		self.out.unindent();
+		writeln!(self.out, "}}")?; // switch end
+		
+		writeln!(self.out, "return writer.getBytes()");
+		self.out.unindent();
+		writeln!(self.out, "}},")?; // encode end
+		
+		writeln!(self.out, "decode(input: Uint8Array, reader = new BincodeReader(input)) {{")?;
+		self.out.indent();
+		
+		writeln!(self.out, r#"let value: {name}"#);
 
-    fn quote_type(&self, format: &Format) -> String {
-        use Format::*;
-        match format {
-            TypeName(x) => self.quote_qualified_name(x),
-            Unit => "unit".into(),
-            Bool => "bool".into(),
-            I8 => "int8".into(),
-            I16 => "int16".into(),
-            I32 => "int32".into(),
-            I64 => "int64".into(),
-            I128 => "int128".into(),
-            U8 => "uint8".into(),
-            U16 => "uint16".into(),
-            U32 => "uint32".into(),
-            U64 => "uint64".into(),
-            U128 => "uint128".into(),
-            F32 => "float32".into(),
-            F64 => "float64".into(),
-            Char => "char".into(),
-            Str => "str".into(),
-            Bytes => "bytes".into(),
+		writeln!(self.out, "switch (reader.readVariantIndex()) {{")?;
+		self.out.indent();
+		
+		for (index, variant) in variants {
+			writeln!(self.out, r#"case {index}: {{"#)?;
+			self.out.indent();
+			
+			writeln!(self.out, r#"value = {{ $: "{}" }} as $t.WrapperOfCase<{}, "{}">"#, variant.name, name, variant.name);
 
-            Option(format) => format!("Optional<{}>", self.quote_type(format)),
-            Seq(format) => format!("Seq<{}>", self.quote_type(format)),
-            Map { key, value } => {
-                format!("Map<{},{}>", self.quote_type(key), self.quote_type(value))
-            }
-            Tuple(formats) => format!("Tuple<[{}]>", self.quote_types(formats, ", ")),
-            TupleArray {
-                content,
-                size: _size,
-            } => format!("ListTuple<[{}]>", self.quote_type(content),),
-            Variable(_) => panic!("unexpected value"),
-        }
-    }
+			match &variant.value {
+				VariantFormat::Unit => {
+					writeln!(self.out, "value.{} = {}", variant.name, self.quote_read_value(&Format::Unit));
+				},
+				VariantFormat::Tuple(members) => {
+					let tuple = Format::Tuple(members.clone());
+					writeln!(self.out, "value.{} = {}", variant.name, self.quote_read_value(&tuple));
+				}
+				VariantFormat::NewType(inner) => {
+					writeln!(self.out, "value.{} = {}", variant.name, self.quote_read_value(inner));
+				}
+				VariantFormat::Struct(fields) => {
+					writeln!(self.out, r#"value.{var} = {{}} as $t.WrapperOfCase<{name}, "{var}">["{var}"]"#, var = variant.name);
+					for field in fields {
+						writeln!(self.out, "value.{}.{} = {}", variant.name, field.name, self.quote_read_value(&field.value))?;
+					}
+				}
+				VariantFormat::Variable(_) => panic!("not supported")
+			}
 
-    fn quote_types(&self, formats: &[Format], sep: &str) -> String {
-        formats
-            .iter()
-            .map(|f| self.quote_type(f))
-            .collect::<Vec<_>>()
-            .join(sep)
-    }
+			writeln!(self.out, "break")?;
+			self.out.unindent();
+			writeln!(self.out, "}}")?; // case end
+		}
 
-    fn output_helpers(&mut self, registry: &Registry) -> Result<()> {
-        let mut subtypes = BTreeMap::new();
-        for format in registry.values() {
-            format
-                .visit(&mut |f| {
-                    if Self::needs_helper(f) {
-                        subtypes.insert(common::mangle_type(f), f.clone());
-                    }
-                    Ok(())
-                })
-                .unwrap();
-        }
+		self.out.unindent(); 
+		writeln!(self.out, "}}")?; // switch end
 
-        writeln!(self.out, "export class Helpers {{")?;
-        self.out.indent();
-        for (mangled_name, subtype) in &subtypes {
-            self.output_serialization_helper(mangled_name, subtype)?;
-            self.output_deserialization_helper(mangled_name, subtype)?;
-        }
-        self.out.unindent();
-        writeln!(self.out, "}}")?;
-        writeln!(self.out)
-    }
+		writeln!(self.out)?;
+		writeln!(self.out, "return value")?;
+		
+		self.out.unindent();
+		writeln!(self.out, "}}")?; // decode end
 
-    fn needs_helper(format: &Format) -> bool {
-        use Format::*;
-        matches!(
-            format,
-            Option(_) | Seq(_) | Map { .. } | Tuple(_) | TupleArray { .. }
-        )
-    }
+		self.out.unindent();
+		writeln!(self.out, "}}")?; // object end
+		
+		Ok(())
+	}
 
-    fn quote_serialize_value(&self, value: &str, format: &Format, use_this: bool) -> String {
-        use Format::*;
-        let this_str = if use_this { "this." } else { "" };
-
-        match format {
-            TypeName(_) => format!("{}{}.serialize(serializer);", this_str, value),
-            Unit => format!("serializer.serializeUnit({}{});", this_str, value),
-            Bool => format!("serializer.serializeBool({}{});", this_str, value),
-            I8 => format!("serializer.serializeI8({}{});", this_str, value),
-            I16 => format!("serializer.serializeI16({}{});", this_str, value),
-            I32 => format!("serializer.serializeI32({}{});", this_str, value),
-            I64 => format!("serializer.serializeI64({}{});", this_str, value),
-            I128 => format!("serializer.serializeI128({}{});", this_str, value),
-            U8 => format!("serializer.serializeU8({}{});", this_str, value),
-            U16 => format!("serializer.serializeU16({}{});", this_str, value),
-            U32 => format!("serializer.serializeU32({}{});", this_str, value),
-            U64 => format!("serializer.serializeU64({}{});", this_str, value),
-            U128 => format!("serializer.serializeU128({}{});", this_str, value),
-            F32 => format!("serializer.serializeF32({}{});", this_str, value),
-            F64 => format!("serializer.serializeF64({}{});", this_str, value),
-            Char => format!("serializer.serializeChar({}{});", this_str, value),
-            Str => format!("serializer.serializeStr({}{});", this_str, value),
-            Bytes => format!("serializer.serializeBytes({}{});", this_str, value),
-            _ => format!(
-                "Helpers.serialize{}({}{}, serializer);",
-                common::mangle_type(format).to_camel_case(),
-                this_str,
-                value
-            ),
-        }
-    }
-
-    fn quote_deserialize(&self, format: &Format) -> String {
-        use Format::*;
-        match format {
-            TypeName(name) => format!(
-                "{}.deserialize(deserializer)",
-                self.quote_qualified_name(name)
-            ),
-            Unit => "deserializer.deserializeUnit()".to_string(),
-            Bool => "deserializer.deserializeBool()".to_string(),
-            I8 => "deserializer.deserializeI8()".to_string(),
-            I16 => "deserializer.deserializeI16()".to_string(),
-            I32 => "deserializer.deserializeI32()".to_string(),
-            I64 => "deserializer.deserializeI64()".to_string(),
-            I128 => "deserializer.deserializeI128()".to_string(),
-            U8 => "deserializer.deserializeU8()".to_string(),
-            U16 => "deserializer.deserializeU16()".to_string(),
-            U32 => "deserializer.deserializeU32()".to_string(),
-            U64 => "deserializer.deserializeU64()".to_string(),
-            U128 => "deserializer.deserializeU128()".to_string(),
-            F32 => "deserializer.deserializeF32()".to_string(),
-            F64 => "deserializer.deserializeF64()".to_string(),
-            Char => "deserializer.deserializeChar()".to_string(),
-            Str => "deserializer.deserializeStr()".to_string(),
-            Bytes => "deserializer.deserializeBytes()".to_string(),
-            _ => format!(
-                "Helpers.deserialize{}(deserializer)",
-                common::mangle_type(format).to_camel_case(),
-            ),
-        }
-    }
-
-    fn output_serialization_helper(&mut self, name: &str, format0: &Format) -> Result<()> {
-        use Format::*;
-
-        write!(
-            self.out,
-            "static serialize{}(value: {}, serializer: Serializer): void {{",
-            name.to_camel_case(),
-            self.quote_type(format0)
-        )?;
-        self.out.indent();
-        match format0 {
-            Option(format) => {
-                write!(
-                    self.out,
-                    r#"
-if (value) {{
-    serializer.serializeOptionTag(true);
-    {}
-}} else {{
-    serializer.serializeOptionTag(false);
-}}
-"#,
-                    self.quote_serialize_value("value", format, false)
-                )?;
-            }
-
-            Seq(format) => {
-                write!(
-                    self.out,
-                    r#"
-serializer.serializeLen(value.length);
-value.forEach((item: {}) => {{
-    {}
-}});
-"#,
-                    self.quote_type(format),
-                    self.quote_serialize_value("item", format, false)
-                )?;
-            }
-
-            Map { key, value } => {
-                write!(
-                    self.out,
-                    r#"
-serializer.serializeLen(value.size);
-const offsets: number[] = [];
-for (const [k, v] of value.entries()) {{
-  offsets.push(serializer.getBufferOffset());
-  {}
-  {}
-}}
-serializer.sortMapEntries(offsets);
-"#,
-                    self.quote_serialize_value("k", key, false),
-                    self.quote_serialize_value("v", value, false)
-                )?;
-            }
-
-            Tuple(formats) => {
-                writeln!(self.out)?;
-                for (index, format) in formats.iter().enumerate() {
-                    let expr = format!("value[{}]", index);
-                    writeln!(
-                        self.out,
-                        "{}",
-                        self.quote_serialize_value(&expr, format, false)
-                    )?;
-                }
-            }
-
-            TupleArray {
-                content,
-                size: _size,
-            } => {
-                write!(
-                    self.out,
-                    r#"
-value.forEach((item) =>{{
-    {}
-}});
-"#,
-                    self.quote_serialize_value("item[0]", content, false)
-                )?;
-            }
-
-            _ => panic!("unexpected case"),
-        }
-        self.out.unindent();
-        writeln!(self.out, "}}\n")
-    }
-
-    fn output_deserialization_helper(&mut self, name: &str, format0: &Format) -> Result<()> {
-        use Format::*;
-
-        write!(
-            self.out,
-            "static deserialize{}(deserializer: Deserializer): {} {{",
-            name.to_camel_case(),
-            self.quote_type(format0),
-        )?;
-        self.out.indent();
-        match format0 {
-            Option(format) => {
-                write!(
-                    self.out,
-                    r#"
-const tag = deserializer.deserializeOptionTag();
-if (!tag) {{
-    return null;
-}} else {{
-    return {};
-}}
-"#,
-                    self.quote_deserialize(format),
-                )?;
-            }
-
-            Seq(format) => {
-                write!(
-                    self.out,
-                    r#"
-const length = deserializer.deserializeLen();
-const list: {} = [];
-for (let i = 0; i < length; i++) {{
-    list.push({});
-}}
-return list;
-"#,
-                    self.quote_type(format0),
-                    self.quote_deserialize(format)
-                )?;
-            }
-
-            Map { key, value } => {
-                write!(
-                    self.out,
-                    r#"
-const length = deserializer.deserializeLen();
-const obj = new Map<{0}, {1}>();
-let previousKeyStart = 0;
-let previousKeyEnd = 0;
-for (let i = 0; i < length; i++) {{
-    const keyStart = deserializer.getBufferOffset();
-    const key = {2};
-    const keyEnd = deserializer.getBufferOffset();
-    if (i > 0) {{
-        deserializer.checkThatKeySlicesAreIncreasing(
-            [previousKeyStart, previousKeyEnd],
-            [keyStart, keyEnd]);
-    }}
-    previousKeyStart = keyStart;
-    previousKeyEnd = keyEnd;
-    const value = {3};
-    obj.set(key, value);
-}}
-return obj;
-"#,
-                    self.quote_type(key),
-                    self.quote_type(value),
-                    self.quote_deserialize(key),
-                    self.quote_deserialize(value),
-                )?;
-            }
-
-            Tuple(formats) => {
-                write!(
-                    self.out,
-                    r#"
-return [{}
-];
-"#,
-                    formats
-                        .iter()
-                        .map(|f| format!("\n    {}", self.quote_deserialize(f)))
-                        .collect::<Vec<_>>()
-                        .join(",")
-                )?;
-            }
-
-            TupleArray { content, size } => {
-                write!(
-                    self.out,
-                    r#"
-const list: {} = [];
-for (let i = 0; i < {}; i++) {{
-    list.push([{}]);
-}}
-return list;
-"#,
-                    self.quote_type(format0),
-                    size,
-                    self.quote_deserialize(content)
-                )?;
-            }
-
-            _ => panic!("unexpected case"),
-        }
-        self.out.unindent();
-        writeln!(self.out, "}}\n")
-    }
-
-    fn output_variant(
-        &mut self,
-        base: &str,
-        index: u32,
-        name: &str,
-        variant: &VariantFormat,
-    ) -> Result<()> {
-        use VariantFormat::*;
-        let fields = match variant {
-            Unit => Vec::new(),
-            NewType(format) => vec![Named {
-                name: "value".to_string(),
-                value: format.as_ref().clone(),
-            }],
-            Tuple(formats) => formats
-                .iter()
-                .enumerate()
-                .map(|(i, f)| Named {
-                    name: format!("field{}", i),
-                    value: f.clone(),
-                })
-                .collect(),
-            Struct(fields) => fields.clone(),
-            Variable(_) => panic!("incorrect value"),
-        };
-        self.output_struct_or_variant_container(Some(base), Some(index), name, &fields)
-    }
-
-    fn output_variants(
-        &mut self,
-        base: &str,
-        variants: &BTreeMap<u32, Named<VariantFormat>>,
-    ) -> Result<()> {
-        for (index, variant) in variants {
-            self.output_variant(base, *index, &variant.name, &variant.value)?;
-        }
-        Ok(())
-    }
-
-    fn output_struct_or_variant_container(
-        &mut self,
-        variant_base: Option<&str>,
-        variant_index: Option<u32>,
-        name: &str,
-        fields: &[Named<Format>],
-    ) -> Result<()> {
-        let mut variant_base_name = String::new();
-
-        // Beginning of class
-        if let Some(base) = variant_base {
-            writeln!(self.out)?;
-            self.output_comment(name)?;
-            writeln!(
-                self.out,
-                "export class {0}Variant{1} extends {0} {{",
-                base, name
-            )?;
-            variant_base_name = format!("{0}Variant", base);
-        } else {
-            self.output_comment(name)?;
-            writeln!(self.out, "export class {} {{", name)?;
-        }
-        if !fields.is_empty() {
-            writeln!(self.out)?;
-        }
-        // Constructor.
-        writeln!(
-            self.out,
-            "constructor ({}) {{",
-            fields
-                .iter()
-                .map(|f| { format!("public {}: {}", &f.name, self.quote_type(&f.value)) })
-                .collect::<Vec<_>>()
-                .join(", ")
-        )?;
-        if let Some(_base) = variant_base {
-            self.out.indent();
-            writeln!(self.out, "super();")?;
-            self.out.unindent();
-        }
-        writeln!(self.out, "}}\n")?;
-        // Serialize
-        if self.generator.config.serialization {
-            writeln!(
-                self.out,
-                "public serialize(serializer: Serializer): void {{",
-            )?;
-            self.out.indent();
-            if let Some(index) = variant_index {
-                writeln!(self.out, "serializer.serializeVariantIndex({});", index)?;
-            }
-            for field in fields {
-                writeln!(
-                    self.out,
-                    "{}",
-                    self.quote_serialize_value(&field.name, &field.value, true)
-                )?;
-            }
-            self.out.unindent();
-            writeln!(self.out, "}}\n")?;
-        }
-        // Deserialize (struct) or Load (variant)
-        if self.generator.config.serialization {
-            if variant_index.is_none() {
-                writeln!(
-                    self.out,
-                    "static deserialize(deserializer: Deserializer): {} {{",
-                    name,
-                )?;
-            } else {
-                writeln!(
-                    self.out,
-                    "static load(deserializer: Deserializer): {}{} {{",
-                    variant_base_name, name,
-                )?;
-            }
-            self.out.indent();
-            for field in fields {
-                writeln!(
-                    self.out,
-                    "const {} = {};",
-                    field.name,
-                    self.quote_deserialize(&field.value)
-                )?;
-            }
-            writeln!(
-                self.out,
-                r#"return new {0}{1}({2});"#,
-                variant_base_name,
-                name,
-                fields
-                    .iter()
-                    .map(|f| f.name.to_string())
-                    .collect::<Vec<_>>()
-                    .join(",")
-            )?;
-            self.out.unindent();
-            writeln!(self.out, "}}\n")?;
-        }
-        writeln!(self.out, "}}")
-    }
-
-    fn output_enum_container(
-        &mut self,
-        name: &str,
-        variants: &BTreeMap<u32, Named<VariantFormat>>,
-    ) -> Result<()> {
-        self.output_comment(name)?;
-        writeln!(self.out, "export abstract class {} {{", name)?;
-        if self.generator.config.serialization {
-            writeln!(
-                self.out,
-                "abstract serialize(serializer: Serializer): void;\n"
-            )?;
-            write!(
-                self.out,
-                "static deserialize(deserializer: Deserializer): {} {{",
-                name
-            )?;
-            self.out.indent();
-            writeln!(
-                self.out,
-                r#"
-const index = deserializer.deserializeVariantIndex();
-switch (index) {{"#,
-            )?;
-            self.out.indent();
-            for (index, variant) in variants {
-                writeln!(
-                    self.out,
-                    "case {}: return {}Variant{}.load(deserializer);",
-                    index, name, variant.name,
-                )?;
-            }
-            writeln!(
-                self.out,
-                "default: throw new Error(\"Unknown variant index for {}: \" + index);",
-                name,
-            )?;
-            self.out.unindent();
-            writeln!(self.out, "}}")?;
-            self.out.unindent();
-            writeln!(self.out, "}}")?;
-        }
-        writeln!(self.out, "}}\n")?;
-        self.output_variants(name, variants)?;
-        Ok(())
-    }
-
-    fn output_container(&mut self, name: &str, format: &ContainerFormat) -> Result<()> {
-        use ContainerFormat::*;
-        let fields = match format {
-            UnitStruct => Vec::new(),
-            NewTypeStruct(format) => vec![Named {
-                name: "value".to_string(),
-                value: format.as_ref().clone(),
-            }],
-            TupleStruct(formats) => formats
-                .iter()
-                .enumerate()
-                .map(|(i, f)| Named {
-                    name: format!("field{}", i),
-                    value: f.clone(),
-                })
-                .collect::<Vec<_>>(),
-            Struct(fields) => fields.clone(),
-            Enum(variants) => {
-                self.output_enum_container(name, variants)?;
-                return Ok(());
-            }
-        };
-        self.output_struct_or_variant_container(None, None, name, &fields)
-    }
-}
-
-/// Installer for generated source files in TypeScript.
-pub struct Installer {
-    install_dir: PathBuf,
-}
-
-impl Installer {
-    pub fn new(install_dir: PathBuf) -> Self {
-        Installer { install_dir }
-    }
-
-    fn install_runtime(
-        &self,
-        source_dir: include_dir::Dir,
-        path: &str,
-    ) -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let dir_path = self.install_dir.join(path);
-        std::fs::create_dir_all(&dir_path)?;
-        for entry in source_dir.files() {
-            let mut file = std::fs::File::create(dir_path.join(entry.path()))?;
-            file.write_all(entry.contents())?;
-        }
-        Ok(())
-    }
-}
-
-impl crate::SourceInstaller for Installer {
-    type Error = Box<dyn std::error::Error>;
-
-    fn install_module(
-        &self,
-        config: &CodeGeneratorConfig,
-        registry: &Registry,
-    ) -> std::result::Result<(), Self::Error> {
-        let dir_path = self.install_dir.join(&config.module_name);
-        std::fs::create_dir_all(&dir_path)?;
-        let source_path = dir_path.join("mod.ts");
-        let mut file = std::fs::File::create(source_path)?;
-
-        let generator = CodeGenerator::new(config);
-        generator.output(&mut file, registry)?;
-        Ok(())
-    }
-
-    fn install_serde_runtime(&self) -> std::result::Result<(), Self::Error> {
-        self.install_runtime(include_directory!("runtime/typescript/serde"), "serde")
-    }
-
-    fn install_bincode_runtime(&self) -> std::result::Result<(), Self::Error> {
-        self.install_runtime(include_directory!("runtime/typescript/bincode"), "bincode")
-    }
-
-    fn install_bcs_runtime(&self) -> std::result::Result<(), Self::Error> {
-        self.install_runtime(include_directory!("runtime/typescript/bcs"), "bcs")
-    }
+	fn output_container_typedef(&mut self, name: &str, container: &ContainerFormat) -> Result<()> {
+		match container {
+			ContainerFormat::UnitStruct => {
+				writeln!(self.out, "export type {name} = $t.unit")?;
+			}
+			ContainerFormat::TupleStruct(fields) => {
+				writeln!(self.out, "export type {name} = [{}]", self.quote_types(&fields, ", "))?;
+				self.out.unindent();
+			}
+			ContainerFormat::Struct(fields) => {
+				writeln!(self.out, "export type {name} = {{")?;
+				self.out.indent();
+				for field in fields {
+					writeln!(self.out, "{}: {},", field.name, self.quote_type(&field.value))?;
+				}
+				self.out.unindent();
+				writeln!(self.out, "}}")?;
+			}
+			ContainerFormat::NewTypeStruct(format) => {
+				writeln!(self.out, "export type {name} = {}", self.quote_type(format))?;
+			}
+			ContainerFormat::Enum(variants) => { 
+				// TODO https://github.com/zefchain/serde-reflection/issues/45
+				writeln!(self.out, "export type {name} = ")?;
+				self.out.indent();
+				for (_index, variant) in variants {
+					match &variant.value {
+						VariantFormat::Unit => {
+							writeln!(self.out, r#"| {{ $: "{0}", {0}: {1} }}"#, variant.name, self.quote_type(&Format::Unit))?;
+						}
+						VariantFormat::Struct(fields) => {
+							let fields_str = fields.iter().map(|f| format!("{}: {}", f.name, self.quote_type(&f.value))).collect::<Vec<_>>().join(", ");
+							writeln!(self.out, r#"| {{ $: "{0}", {0}: {{ {1} }} }}"#, variant.name, fields_str)?;
+						}
+						VariantFormat::NewType(t) => {
+							writeln!(self.out, r#"| {{ $: "{0}", {0}: {1} }}"#, variant.name, self.quote_type(&t))?;
+						}
+						VariantFormat::Tuple(t) => {
+							writeln!(self.out, r#"| {{ $: "{0}", {0}: {1} }}"#, variant.name, self.quote_type(&Format::Tuple(t.clone())))?;
+						}
+						VariantFormat::Variable(v) => panic!("unknown variant format")
+					}
+				}
+				self.out.unindent();
+			}
+			_ => panic!("format not implemented")
+		}
+		
+		Ok(())
+	}
+	
+	fn quote_qualified_name(&self, name: &str) -> String {
+		self.generator.external_qualified_names.get(name).cloned().unwrap_or_else(|| name.to_string())
+	}
+	
+	fn output_comment(&mut self, name: &str) -> std::io::Result<()> {
+		let path = vec![name.to_string()];
+		if let Some(doc) = self.generator.config.comments.get(&path) {
+			let text = textwrap::indent(doc, " * ").replace("\n\n", "\n *\n");
+			writeln!(self.out, "/**\n{} */", text)?;
+		}
+		Ok(())
+	}
+	
+	fn quote_type(&self, format: &Format) -> String {
+		use Format::*;
+		let str = match format {
+			Unit  => "$t.unit",
+			Bool  => "$t.bool",
+			I8    => "$t.i8",
+			I16   => "$t.i16",
+			I32   => "$t.i32",
+			I64   => "$t.i64",
+			I128  => "$t.i128",
+			U8    => "$t.u8",
+			U16   => "$t.u16",
+			U32   => "$t.u32",
+			U64   => "$t.u64",
+			U128  => "$t.u128",
+			F32   => "$t.f32",
+			F64   => "$t.f64",
+			Char  => "$t.char",
+			Str   => "$t.str",
+			Bytes => "$t.bytes",
+			
+			Option(format)                       => &format!("$t.Optional<{}>", self.quote_type(format)),
+			Seq(format)                          => &format!("$t.Seq<{}>", self.quote_type(format)),
+			Map { key, value }                   => &format!("$t.Map<{}, {}>", self.quote_type(key), self.quote_type(value)),
+			Tuple(formats)                       => &format!("$t.Tuple<[{}]>", self.quote_types(formats, ", ")),
+			TupleArray { content, .. }           => &format!("$t.ListTuple<[{}]>", self.quote_type(content)),
+			
+			TypeName(x) => &self.quote_qualified_name(x),
+			
+			Variable(_) => panic!("unexpected value"),
+		};
+		str.to_string()
+	}
+	
+	fn quote_types(&self, formats: &[Format], sep: &str) -> String {
+		formats.iter().map(|f| self.quote_type(f)).collect::<Vec<_>>().join(sep)
+	}
+	
+	fn quote_write_value(&self, value: &str, format: &Format) -> String {
+		use Format::*;
+		match format {
+			TypeName(typename) => format!("{typename}.encode({value}, writer)"),
+			Unit        => format!("writer.writeUnit({value})"),
+			Bool        => format!("writer.writeBool({value})"),
+			I8          => format!("writer.writeI8({value})"),
+			I16         => format!("writer.writeI16({value})"),
+			I32         => format!("writer.writeI32({value})"),
+			I64         => format!("writer.writeI64({value})"),
+			I128        => format!("writer.writeI128({value})"),
+			U8          => format!("writer.writeU8({value})"),
+			U16         => format!("writer.writeU16({value})"),
+			U32         => format!("writer.writeU32({value})"),
+			U64         => format!("writer.writeU64({value})"),
+			U128        => format!("writer.writeU128({value})"),
+			F32         => format!("writer.writeF32({value})"),
+			F64         => format!("writer.writeF64({value})"),
+			Char        => format!("writer.writeChar({value})"),
+			Str         => format!("writer.writeString({value})"),
+			Bytes       => format!("writer.writeBytes({value})"),
+			Option(inner) => {
+				formatdoc! {
+					"
+						if ({value}) {{
+							writer.writeOptionTag(true)
+							{}
+						}} 
+						else writer.writeOptionTag(false)
+                    ",
+					self.quote_write_value(value, inner)
+				}
+			},
+			Seq(format) => {
+				format!("writer.writeLength({value}.length); {value}.forEach((item) => {}) ", self.quote_write_value("item", format))
+			}
+			Map { key: map_key, value: map_value } => {
+				format! {
+					"writer.writeMap({value}, k => {}, v => {})",
+					self.quote_write_value("k", map_key),
+					self.quote_write_value("v", map_value)
+				}
+			}
+			Tuple(formats) => {
+				use std::fmt::Write;
+				let mut lines = Vec::new();
+				for (index, format) in formats.iter().enumerate() {
+					let expr = format!("{value}[{}]", index);
+					lines.push(self.quote_write_value(&expr, format));
+				}
+				lines.join("\n")
+			}
+			TupleArray { content, .. } => {
+				format!("{value}.forEach((item) => {})", self.quote_write_value("item[0]", content))
+			}
+			_ => panic!("unexpected case"),
+		}
+	}
+	
+	fn quote_read_value(&self, format: &Format) -> String {
+		use Format::*;
+		let str = match format {
+			TypeName(name) => &format!("{}.decode(input, reader)", self.quote_qualified_name(name)),
+			Unit  => "reader.readUnit()",
+			Bool  => "reader.readBool()",
+			I8    => "reader.readI8()",
+			I16   => "reader.readI16()",
+			I32   => "reader.readI32()",
+			I64   => "reader.readI64()",
+			I128  => "reader.readI128()",
+			U8    => "reader.readU8()",
+			U16   => "reader.readU16()",
+			U32   => "reader.readU32()",
+			U64   => "reader.readU64()",
+			U128  => "reader.readU128()",
+			F32   => "reader.readF32()",
+			F64   => "reader.readF64()",
+			Char  => "reader.readChar()",
+			Str   => "reader.readString()",
+			Bytes => "reader.readBytes()",
+			Option(format) => {
+				&formatdoc!(
+					r#"function () {{
+						const tag = reader.readOptionTag()
+						return tag ? {} : null
+					}}()"#,
+					self.quote_read_value(format),
+				)
+			}
+			Seq(format) => {
+				&formatdoc!(
+					r#"function () {{
+						const length = reader.readLength()
+						const list: {}[] = []
+						for (let i = 0; i < length; i++) list.push({})
+						return list
+					}}()"#,
+					self.quote_type(format),
+					self.quote_read_value(format)
+				)
+			}
+			Map { key, value } => {
+				&format!(
+					"reader.readMap<{}, {}>(() => {}, () => {})",
+					self.quote_type(key),
+					self.quote_type(value),
+					self.quote_read_value(key),
+					self.quote_read_value(value),
+				)
+			}
+			Tuple(formats) => {
+				&format!(
+					"[{}]",formats.iter()
+					.map(|f| format!("{}", self.quote_read_value(f)))
+					.collect::<Vec<_>>()
+					.join(", ")
+				)
+			}
+			TupleArray { content, size } => {
+				&formatdoc!(
+					r#"function() {{
+						const list: {} = []
+						for (let i = 0; i < {}; i++) list.push([{}])
+						return list
+					}}()
+					"#,
+					self.quote_type(format), size, self.quote_read_value(content)
+				)
+			}
+			Variable(_) => panic!("unsupported value")
+		};
+		str.to_string()
+	}
+	
 }

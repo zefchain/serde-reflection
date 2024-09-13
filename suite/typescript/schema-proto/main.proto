@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+message UnitStruct {}
+
+message NewtypeStruct {
+  int32 value = 1;
+}
+
+message TupleStruct {
+  int32 first = 1;
+  double second = 2;
+  string third = 3;
+}
+
+message SimpleStruct {
+  int32 a = 1;
+  string b = 2;
+}
+
+message ComplexStruct {
+  SimpleStruct inner = 1;
+  bool flag = 2;
+  repeated MultiEnum items = 3;
+  UnitStruct unit = 4;
+  int32 newtype = 5;
+  TupleStruct tuple = 6;
+}
+
+message MultiEnum {
+  oneof variant {
+    VariantA variant_a = 1;
+    VariantB variant_b = 2;
+    VariantC variant_c = 3;
+    UnitVariant unit_variant = 4;
+  }
+}
+
+message VariantA {
+  int32 value = 1;
+}
+
+message VariantB {
+  string value = 1;
+}
+
+message VariantC {
+  int32 x = 1;
+  double y = 2;
+}
+
+// Unit variant (empty)
+message UnitVariant {}

@@ -1,0 +1,14 @@
+[package]
+name = "ts-generator"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "generator"
+path = "./rs/generator.rs"
+
+[dependencies]
+bincode = { version = "1.3.3", features = ["i128"] }
+serde = "1"
+serde-generate = { path = "../../serde-generate" }
+serde-reflection = { path = "../../serde-reflection" }
