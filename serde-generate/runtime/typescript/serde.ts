@@ -83,7 +83,7 @@ export abstract class BinaryWriter implements Writer {
 	public static readonly BIG_64Fs = 18446744073709551615n
 	public static readonly TEXT_ENCODER = new TextEncoder()
 
-	public buffer = new ArrayBuffer(64)
+	public buffer = new ArrayBuffer(8)
 	public offset = 0
 
 	private ensureBufferWillHandleSize(bytes: number) {
@@ -91,13 +91,13 @@ export abstract class BinaryWriter implements Writer {
 		if (wishSize > this.buffer.byteLength) {
 			let newBufferLength = this.buffer.byteLength
 			while (newBufferLength < wishSize) newBufferLength *= 2
-			newBufferLength = Math.max(wishSize, newBufferLength)
 
 			// TODO: there is new API for resizing buffer, but in Node it seems to be slower then allocating new
 			// this.buffer.resize(newBufferLength)
-			const newBuffer = new ArrayBuffer(newBufferLength)
-			new Uint8Array(newBuffer).set(new Uint8Array(this.buffer))
-			this.buffer = newBuffer
+
+			const newBuffer = new Uint8Array(newBufferLength)
+			newBuffer.set(new Uint8Array(this.buffer))
+			this.buffer = newBuffer.buffer
 		}
 	}
 
@@ -155,8 +155,8 @@ export abstract class BinaryWriter implements Writer {
 	}
 
 	public writeU64(value: bigint | number) {
-		const low = BigInt(value) & BinaryWriter.BIG_32Fs
-		const high = BigInt(value) >> BinaryWriter.BIG_32
+		const low = BigInt(value) & BinaryWriter.BIG_32Fs,
+			high = BigInt(value) >> BinaryWriter.BIG_32
 
 		// write little endian number
 		this.writeU32(Number(low))
@@ -164,8 +164,8 @@ export abstract class BinaryWriter implements Writer {
 	}
 
 	public writeU128(value: bigint | number) {
-		const low = BigInt(value) & BinaryWriter.BIG_64Fs
-		const high = BigInt(value) >> BinaryWriter.BIG_64
+		const low = BigInt(value) & BinaryWriter.BIG_64Fs,
+			high = BigInt(value) >> BinaryWriter.BIG_64
 
 		// write little endian number
 		this.writeU64(low)
@@ -194,8 +194,8 @@ export abstract class BinaryWriter implements Writer {
 	}
 
 	public writeI64(value: bigint | number) {
-		const low = BigInt(value) & BinaryWriter.BIG_32Fs
-		const high = BigInt(value) >> BinaryWriter.BIG_32
+		const low = BigInt(value) & BinaryWriter.BIG_32Fs,
+			high = BigInt(value) >> BinaryWriter.BIG_32
 
 		// write little endian number
 		this.writeI32(Number(low))
@@ -203,8 +203,8 @@ export abstract class BinaryWriter implements Writer {
 	}
 
 	public writeI128(value: bigint | number) {
-		const low = BigInt(value) & BinaryWriter.BIG_64Fs
-		const high = BigInt(value) >> BinaryWriter.BIG_64
+		const low = BigInt(value) & BinaryWriter.BIG_64Fs,
+			high = BigInt(value) >> BinaryWriter.BIG_64
 
 		// write little endian number
 		this.writeI64(low)
@@ -245,7 +245,7 @@ export abstract class BinaryWriter implements Writer {
 	}
 
 	public getBytes() {
-		return new Uint8Array(this.buffer).slice(0, this.offset)
+		return new Uint8Array(this.buffer.slice(0, this.offset))
 	}
 }
 
@@ -264,9 +264,7 @@ export abstract class BinaryReader implements Reader {
 	}
 
 	private read(length: number) {
-		const bytes = this.buffer.slice(this.offset, this.offset + length)
-		this.offset += length
-		return bytes
+		return this.buffer.slice(this.offset, (this.offset = this.offset + length))
 	}
 
 	abstract readLength(): number
@@ -274,8 +272,7 @@ export abstract class BinaryReader implements Reader {
 	abstract checkThatKeySlicesAreIncreasing(key1: [number, number], key2: [number, number]): void
 
 	public readString() {
-		const value = this.readBytes()
-		return BinaryReader.TEXT_DECODER.decode(value)
+		return BinaryReader.TEXT_DECODER.decode(this.readBytes())
 	}
 
 	public readBytes() {
@@ -287,8 +284,7 @@ export abstract class BinaryReader implements Reader {
 	}
 
 	public readBool() {
-		const bool = new Uint8Array(this.read(1))[0]
-		return bool == 1
+		return new Uint8Array(this.read(1))[0] === 1
 	}
 
 	public readUnit() {
@@ -308,17 +304,13 @@ export abstract class BinaryReader implements Reader {
 	}
 
 	public readU64() {
-		const low = this.readU32()
-		const high = this.readU32()
-
+		const low = this.readU32(), high = this.readU32()
 		// combine the two 32-bit values and return (little endian)
 		return (BigInt(high) << BinaryReader.BIG_32) | BigInt(low)
 	}
 
 	public readU128() {
-		const low = this.readU64()
-		const high = this.readU64()
-
+		const low = this.readU64(), high = this.readU64()
 		// combine the two 64-bit values and return (little endian)
 		return (high << BinaryReader.BIG_64) | low
 	}
@@ -336,28 +328,21 @@ export abstract class BinaryReader implements Reader {
 	}
 
 	public readI64() {
-		const low = this.readI32()
-		const high = this.readI32()
-
+		const low = this.readI32(), high = this.readI32()
 		// combine the two 32-bit values and return (little endian)
 		return (BigInt(high) << BinaryReader.BIG_32) | BigInt(low)
 	}
 
 	public readI128() {
-		const low = this.readI64()
-		const high = this.readI64()
-
+		const low = this.readI64(), high = this.readI64()
 		// combine the two 64-bit values and return (little endian)
 		return (high << BinaryReader.BIG_64) | low
 	}
 
-	public readOptionTag() {
-		return this.readBool()
-	}
+	public readOptionTag = this.readBool
 
 	public readList<T>(readFn: () => T, listLength?: number) {
-		const length = listLength ?? this.readLength()
-		const list = new Array<T>(length)
+		const length = listLength ?? this.readLength(), list = new Array<T>(length)
 		for (let i = 0; i < length; i++) list[i] = readFn()
 		return list
 	}
@@ -366,9 +351,7 @@ export abstract class BinaryReader implements Reader {
 		const length = this.readLength(), obj = new Map<K, V>()
 		let previousKeyStart = 0, previousKeyEnd = 0
 		for (let i = 0; i < length; i++) {
-			const keyStart = this.offset,
-				key = readKey(),
-				keyEnd = this.offset
+			const keyStart = this.offset, key = readKey(), keyEnd = this.offset
 			if (i > 0) {
 				this.checkThatKeySlicesAreIncreasing([previousKeyStart, previousKeyEnd], [keyStart, keyEnd])
 			}

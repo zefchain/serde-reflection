@@ -18,7 +18,11 @@ const ComplexStruct_pb_obj: ProtobufRegistry.ComplexStruct = {
 }
 
 await async function bench_encode() {
-	const b = new Bench({ time: 1_000 })
+	const b = new Bench({ time: 1_500 })
+
+	b.add('serdegen-bincode:encode', () => {
+		BincodeRegistry.ComplexStruct.encode(Data.ComplexStruct_obj)
+	})
 
 	b.add('JSON:encode', () => {
 		JSON.stringify(Data.ComplexStruct_obj)
@@ -26,18 +30,23 @@ await async function bench_encode() {
 	b.add('protobuf-js-ts-proto:encode', () => {
 		ProtobufRegistry.ComplexStruct.encode(ComplexStruct_pb_obj)
 	})
-	b.add('serdegen-bincode:encode', () => {
-		BincodeRegistry.ComplexStruct.encode(Data.ComplexStruct_obj)
-	})
+
 	await b.warmup()
 	await b.run()
+	b.results.sort((x, y) => x.hz - y.hz)
+
 	console.table(b.table())
 }()
 
 
 
 await async function bench_decode() {
-	const b = new Bench({ time: 1_000 })
+	const b = new Bench({ time: 1_500 })
+
+	const bincodec_encoded = BincodeRegistry.ComplexStruct.encode(Data.ComplexStruct_obj)
+	b.add('serdegen-bincode:decode', () => {
+		BincodeRegistry.ComplexStruct.decode(bincodec_encoded)
+	})
 
 	const json_encoded = JSON.stringify(Data.ComplexStruct_obj)
 	b.add('JSON:decode', () => {
@@ -49,13 +58,10 @@ await async function bench_decode() {
 		ProtobufRegistry.ComplexStruct.decode(pb_encoded)
 	})
 
-	const bincodec_encoded = BincodeRegistry.ComplexStruct.encode(Data.ComplexStruct_obj)
-	b.add('serdegen-bincode:decode', () => {
-		BincodeRegistry.ComplexStruct.decode(bincodec_encoded)
-	})
-
 	await b.warmup()
 	await b.run()
+	b.results.sort((x, y) => x.hz - y.hz)
+	
 	console.table(b.table())
 }()
 
