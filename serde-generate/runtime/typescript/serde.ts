@@ -76,17 +76,15 @@ export interface Writer {
 	sortMapEntries(offsets: number[]): void
 }
 
-
 export abstract class BinaryWriter implements Writer {
-	public static readonly BIG_32: bigint = 32n
-	public static readonly BIG_64: bigint = 64n
-	public static readonly BIG_32Fs: bigint = 429967295n
-	public static readonly BIG_64Fs: bigint = 18446744073709551615n
-	public static readonly textEncoder = new TextEncoder()
+	public static readonly BIG_32 = 32n
+	public static readonly BIG_64 = 64n
+	public static readonly BIG_32Fs = 429967295n
+	public static readonly BIG_64Fs = 18446744073709551615n
+	public static readonly TEXT_ENCODER = new TextEncoder()
 
 	public buffer = new ArrayBuffer(64)
 	public offset = 0
-
 
 	private ensureBufferWillHandleSize(bytes: number) {
 		const wishSize = this.offset + bytes
@@ -117,7 +115,7 @@ export abstract class BinaryWriter implements Writer {
 		const bytes = value.length * 3 + 8
 		this.ensureBufferWillHandleSize(bytes)
 		// TODO: check this for correctness
-		const { written } = BinaryWriter.textEncoder.encodeInto(value, new Uint8Array(this.buffer, this.offset + 8))
+		const { written } = BinaryWriter.TEXT_ENCODER.encodeInto(value, new Uint8Array(this.buffer, this.offset + 8))
 		this.writeU64(written)
 		this.offset += written
 	}
@@ -252,9 +250,9 @@ export abstract class BinaryWriter implements Writer {
 }
 
 export abstract class BinaryReader implements Reader {
-	private static readonly BIG_32: bigint = 32n
-	private static readonly BIG_64: bigint = 64n
-	private static readonly textDecoder = new TextDecoder()
+	private static readonly BIG_32 = 32n
+	private static readonly BIG_64 = 64n
+	private static readonly TEXT_DECODER = new TextDecoder()
 
 	public buffer: ArrayBuffer
 	public offset = 0
@@ -277,7 +275,7 @@ export abstract class BinaryReader implements Reader {
 
 	public readString() {
 		const value = this.readBytes()
-		return BinaryReader.textDecoder.decode(value)
+		return BinaryReader.TEXT_DECODER.decode(value)
 	}
 
 	public readBytes() {
