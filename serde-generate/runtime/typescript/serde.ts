@@ -79,11 +79,19 @@ const BIG_64 = 64n
 const BIG_32Fs = 429967295n
 const BIG_64Fs = 18446744073709551615n
 
+let WRITE_HEAP = new DataView(new ArrayBuffer(128))
+
 export abstract class BinaryWriter implements Writer {
 	public static readonly TEXT_ENCODER = new TextEncoder()
 
-	public view = new DataView(new ArrayBuffer(128))
+	public view = WRITE_HEAP
 	public offset = 0
+
+	constructor() {
+		if (WRITE_HEAP.byteLength > 1024) {
+			this.view = WRITE_HEAP = new DataView(new ArrayBuffer(128))
+		}
+	}
 
 	private alloc(allocLength: number) {
 		const wishSize = this.offset + allocLength
@@ -99,7 +107,7 @@ export abstract class BinaryWriter implements Writer {
 			const newBuffer = new Uint8Array(newBufferLength)
 			newBuffer.set(new Uint8Array(this.view.buffer))
 
-			this.view = new DataView(newBuffer.buffer)
+			this.view = WRITE_HEAP = new DataView(newBuffer.buffer)
 		}
 	}
 
@@ -238,7 +246,7 @@ export abstract class BinaryWriter implements Writer {
 	}
 
 	public getBytes() {
-		return new Uint8Array(this.view.buffer).slice(0, this.offset)
+		return new Uint8Array(this.view.buffer).subarray(0, this.offset)
 	}
 }
 

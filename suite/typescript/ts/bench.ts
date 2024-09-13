@@ -27,13 +27,13 @@ await async function bench_encode() {
 	b.add('JSON:encode', () => {
 		JSON.stringify(Data.ComplexStruct_obj)
 	})
+	
 	b.add('protobuf-js-ts-proto:encode', () => {
 		ProtobufRegistry.ComplexStruct.encode(ComplexStruct_pb_obj)
 	})
 
 	await b.warmup()
 	await b.run()
-	b.results.sort((x, y) => x.hz - y.hz)
 
 	console.table(b.table())
 }()
@@ -60,8 +60,7 @@ await async function bench_decode() {
 
 	await b.warmup()
 	await b.run()
-	b.results.sort((x, y) => x.hz - y.hz)
-	
+
 	console.table(b.table())
 }()
 

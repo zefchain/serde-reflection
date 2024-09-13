@@ -1,4 +1,4 @@
-import { BinaryReader, BinaryWriter } from "./serde";
+import { BinaryReader, BinaryWriter } from "./serde.ts";
 
 export class BincodeReader extends BinaryReader {
 	readLength() {
