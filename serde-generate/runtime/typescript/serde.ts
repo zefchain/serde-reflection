@@ -87,7 +87,7 @@ export abstract class BinaryWriter implements Writer {
 
 	private alloc(allocLength: number) {
 		const wishSize = this.offset + allocLength
-		
+
 		const currentLength = this.view.buffer.byteLength
 		if (wishSize > currentLength) {
 			let newBufferLength = currentLength
@@ -98,7 +98,7 @@ export abstract class BinaryWriter implements Writer {
 
 			const newBuffer = new Uint8Array(newBufferLength)
 			newBuffer.set(new Uint8Array(this.view.buffer))
-			
+
 			this.view = new DataView(newBuffer.buffer)
 		}
 	}
@@ -108,12 +108,17 @@ export abstract class BinaryWriter implements Writer {
 	abstract sortMapEntries(offsets: number[]): void
 
 	public writeString(value: string) {
-		const bytes = value.length * 3 + 8
-		this.alloc(bytes)
-		// TODO: check this for correctness
-		const { written } = BinaryWriter.TEXT_ENCODER.encodeInto(value, new Uint8Array(this.view.buffer, this.offset + 8))
-		this.writeU64(written)
-		this.offset += written
+		const length = value.length
+		// char and U64 for length
+		this.alloc(8 + length)
+
+		// encode into buffer with space for string length (u64)
+		BinaryWriter.TEXT_ENCODER.encodeInto(value, new Uint8Array(this.view.buffer, this.offset + 8))
+
+		const bLength = BigInt(length)
+		this.view.setUint32(this.offset, Number(bLength & BIG_32Fs), true)
+		this.view.setUint32(this.offset + 4, Number(bLength >> BIG_32), true)
+		this.offset += (8 + length)
 	}
 
 	public writeBool(value: boolean) {
@@ -146,9 +151,13 @@ export abstract class BinaryWriter implements Writer {
 	public writeU64(value: bigint | number) {
 		const low = BigInt(value) & BIG_32Fs, high = BigInt(value) >> BIG_32
 
+		this.alloc(8)
+
 		// write little endian number
-		this.writeU32(Number(low))
-		this.writeU32(Number(high))
+		this.view.setUint32(this.offset, Number(low), true)
+		this.view.setUint32(this.offset + 4, Number(high), true)
+
+		this.offset += 8
 	}
 
 	public writeU128(value: bigint | number) {
@@ -180,9 +189,13 @@ export abstract class BinaryWriter implements Writer {
 	public writeI64(value: bigint | number) {
 		const low = BigInt(value) & BIG_32Fs, high = BigInt(value) >> BIG_32
 
+		this.alloc(8)
+
 		// write little endian number
-		this.writeI32(Number(low))
-		this.writeI32(Number(high))
+		this.view.setInt32(this.offset, Number(low), true)
+		this.view.setInt32(this.offset + 4, Number(high), true)
+
+		this.offset += 8
 	}
 
 	public writeI128(value: bigint | number) {
