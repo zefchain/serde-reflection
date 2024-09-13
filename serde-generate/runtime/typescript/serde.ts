@@ -45,7 +45,8 @@ export interface Reader {
 	readLength(): number
 	readVariantIndex(): number
 	readOptionTag(): boolean
-	readMap<K, V>(readKey: () => K, readValue: () => V): Map<K, V>,
+	readList<T>(readFn: () => T, length?: number): T[]
+	readMap<K, V>(readKey: () => K, readValue: () => V): Map<K, V>
 	checkThatKeySlicesAreIncreasing(key1: [number, number], key2: [number, number]): void
 }
 
@@ -366,6 +367,13 @@ export abstract class BinaryReader implements Reader {
 
 	public readOptionTag() {
 		return this.readBool()
+	}
+
+	public readList<T>(readFn: () => T, listLength?: number) {
+		const length = listLength ?? this.readLength()
+		const list = new Array<T>(length)
+		for (let i = 0; i < length; i++) list[i] = readFn()
+		return list
 	}
 
 	public readMap<K, V>(readKey: () => K, readValue: () => V) {

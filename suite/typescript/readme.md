@@ -4,7 +4,7 @@ Run:
 ```sh
 nix develop . --impure
 pnpm i
-generate:proto && generate:bincode && run:test && run:benchmark
+gen:proto && gen:bincode && run:test && run:benchmarks
 ```
 
 ## Results

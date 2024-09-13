@@ -12,7 +12,8 @@ const ComplexStruct_pb_obj: ProtobufRegistry.ComplexStruct = {
 	],
 	unit: {},
 	newtype: 99,
-	tuple: { first: 123, second: 45.67, third: "Test" }
+	tuple: { first: 123, second: 45.67, third: "Test" },
+	map: { 3: 7n }
 }
 
 await async function bench_encode() {

@@ -38,7 +38,7 @@
               inherit (config.devenv) root state profile;
             in {
               packages = with pkgs; [nodejs_22 nodePackages.pnpm protobuf_28];
-              scripts."generate:proto".exec = concatStringsSep " \\\n" [
+              scripts."gen:proto".exec = concatStringsSep " \\\n" [
                 "protoc"
                 "--plugin ${root}/node_modules/.bin/protoc-gen-ts_proto"
                 "--ts_proto_out ts/proto"
@@ -49,7 +49,7 @@
                 ''$(find schema-proto -iname "*.proto")''
               ];
 
-              scripts."generate:bincode".exec = ''
+              scripts."gen:bincode".exec = ''
                 pushd ${root}
                   cargo run
                 popd
@@ -60,7 +60,7 @@
                   node_modules/.bin/tsx ts/test.ts
                 popd
               '';
-              scripts."run:benchmark".exec = ''
+              scripts."run:benchmarks".exec = ''
                 pushd ${root}
                   node_modules/.bin/tsx ts/bench.ts
                 popd

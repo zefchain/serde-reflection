@@ -8,6 +8,7 @@ export type ComplexStruct = {
 	unit: UnitStruct,
 	newtype: NewtypeStruct,
 	tuple: TupleStruct,
+	map: $t.Map<$t.i32, $t.i64>,
 }
 
 export type MultiEnum = 
@@ -31,25 +32,25 @@ export const ComplexStruct = {
 	encode(value: ComplexStruct, writer = new BincodeWriter()) {
 		SimpleStruct.encode(value.inner, writer)
 		writer.writeBool(value.flag)
-		writer.writeLength(value.items.length); value.items.forEach((item) => MultiEnum.encode(item, writer)) 
+		writer.writeLength(value.items.length)
+		for (const item of value.items) {
+			MultiEnum.encode(item, writer)
+		}
 		UnitStruct.encode(value.unit, writer)
 		NewtypeStruct.encode(value.newtype, writer)
 		TupleStruct.encode(value.tuple, writer)
+		writer.writeMap(value.map, writer.writeI32.bind(writer), writer.writeI64.bind(writer))
 		return writer.getBytes()
 	},
 	decode(input: Uint8Array, reader = new BincodeReader(input)) {
 		const value = {} as ComplexStruct
 		value.inner = SimpleStruct.decode(input, reader)
 		value.flag = reader.readBool()
-		value.items = function () {
-			const length = reader.readLength()
-			const list: MultiEnum[] = []
-			for (let i = 0; i < length; i++) list.push(MultiEnum.decode(input, reader))
-			return list
-		}()
+		value.items = reader.readList<MultiEnum>(() => MultiEnum.decode(input, reader))
 		value.unit = UnitStruct.decode(input, reader)
 		value.newtype = NewtypeStruct.decode(input, reader)
 		value.tuple = TupleStruct.decode(input, reader)
+		value.map = reader.readMap<$t.i32, $t.i64>(reader.readI32.bind(reader), reader.readI64.bind(reader))
 		return value
 	}
 }

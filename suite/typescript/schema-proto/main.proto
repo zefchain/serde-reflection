@@ -24,6 +24,7 @@ message ComplexStruct {
   UnitStruct unit = 4;
   int32 newtype = 5;
   TupleStruct tuple = 6;
+  map<int32, int64> map = 7;
 }
 
 message MultiEnum {

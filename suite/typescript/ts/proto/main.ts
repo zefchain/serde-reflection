@@ -5,6 +5,7 @@
 // source: main.proto
 
 /* eslint-disable */
+import Long from "long";
 import _m0 from "protobufjs/minimal";
 
 export const protobufPackage = "";
@@ -34,6 +35,12 @@ export interface ComplexStruct {
   unit: UnitStruct | undefined;
   newtype: number;
   tuple: TupleStruct | undefined;
+  map: { [key: number]: number };
+}
+
+export interface ComplexStruct_MapEntry {
+  key: number;
+  value: number;
 }
 
 export interface MultiEnum {
@@ -265,7 +272,7 @@ export const SimpleStruct = {
 };
 
 function createBaseComplexStruct(): ComplexStruct {
-  return { inner: undefined, flag: false, items: [], unit: undefined, newtype: 0, tuple: undefined };
+  return { inner: undefined, flag: false, items: [], unit: undefined, newtype: 0, tuple: undefined, map: {} };
 }
 
 export const ComplexStruct = {
@@ -288,6 +295,9 @@ export const ComplexStruct = {
     if (message.tuple !== undefined) {
       TupleStruct.encode(message.tuple, writer.uint32(50).fork()).ldelim();
     }
+    Object.entries(message.map).forEach(([key, value]) => {
+      ComplexStruct_MapEntry.encode({ key: key as any, value }, writer.uint32(58).fork()).ldelim();
+    });
     return writer;
   },
 
@@ -340,6 +350,16 @@ export const ComplexStruct = {
 
           message.tuple = TupleStruct.decode(reader, reader.uint32());
           continue;
+        case 7:
+          if (tag !== 58) {
+            break;
+          }
+
+          const entry7 = ComplexStruct_MapEntry.decode(reader, reader.uint32());
+          if (entry7.value !== undefined) {
+            message.map[entry7.key] = entry7.value;
+          }
+          continue;
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -366,6 +386,68 @@ export const ComplexStruct = {
     message.tuple = (object.tuple !== undefined && object.tuple !== null)
       ? TupleStruct.fromPartial(object.tuple)
       : undefined;
+    message.map = Object.entries(object.map ?? {}).reduce<{ [key: number]: number }>((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[globalThis.Number(key)] = globalThis.Number(value);
+      }
+      return acc;
+    }, {});
+    return message;
+  },
+};
+
+function createBaseComplexStruct_MapEntry(): ComplexStruct_MapEntry {
+  return { key: 0, value: 0 };
+}
+
+export const ComplexStruct_MapEntry = {
+  encode(message: ComplexStruct_MapEntry, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.key !== 0) {
+      writer.uint32(8).int32(message.key);
+    }
+    if (message.value !== 0) {
+      writer.uint32(16).int64(message.value);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): ComplexStruct_MapEntry {
+    const reader = input instanceof _m0.Reader ? input : _m0.Reader.create(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseComplexStruct_MapEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          if (tag !== 8) {
+            break;
+          }
+
+          message.key = reader.int32();
+          continue;
+        case 2:
+          if (tag !== 16) {
+            break;
+          }
+
+          message.value = longToNumber(reader.int64() as Long);
+          continue;
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skipType(tag & 7);
+    }
+    return message;
+  },
+
+  create<I extends Exact<DeepPartial<ComplexStruct_MapEntry>, I>>(base?: I): ComplexStruct_MapEntry {
+    return ComplexStruct_MapEntry.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ComplexStruct_MapEntry>, I>>(object: I): ComplexStruct_MapEntry {
+    const message = createBaseComplexStruct_MapEntry();
+    message.key = object.key ?? 0;
+    message.value = object.value ?? 0;
     return message;
   },
 };
@@ -666,3 +748,18 @@ export type DeepPartial<T> = T extends Builtin ? T
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 export type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function longToNumber(long: Long): number {
+  if (long.gt(globalThis.Number.MAX_SAFE_INTEGER)) {
+    throw new globalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+  }
+  if (long.lt(globalThis.Number.MIN_SAFE_INTEGER)) {
+    throw new globalThis.Error("Value is smaller than Number.MIN_SAFE_INTEGER");
+  }
+  return long.toNumber();
+}
+
+if (_m0.util.Long !== Long) {
+  _m0.util.Long = Long as any;
+  _m0.configure();
+}

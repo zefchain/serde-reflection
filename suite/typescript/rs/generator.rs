@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 		unit: UnitStruct,
 		newtype: NewtypeStruct,
 		tuple: TupleStruct,
+		map: HashMap<i32, i64>
 	}
 	
     tracer.trace_simple_type::<SimpleStruct>()?;
@@ -55,6 +56,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         unit: UnitStruct,
         newtype: NewtypeStruct(99),
         tuple: TupleStruct(123, 45.67, "Test".to_string()),
+		map: HashMap::from_iter([(3, 7)])
     };
 
     println!("simple_instance: {:?}", bincode::serialize(&simple_instance)?);

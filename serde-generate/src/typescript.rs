@@ -394,13 +394,19 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				}
 			},
 			Seq(format) => {
-				format!("writer.writeLength({value}.length); {value}.forEach((item) => {}) ", self.quote_write_value("item", format))
+				formatdoc!("
+					writer.writeLength({value}.length)
+					for (const item of {value}) {{
+						{}
+					}}", 
+					self.quote_write_value("item", format)
+				)
 			}
 			Map { key: map_key, value: map_value } => {
 				format! {
-					"writer.writeMap({value}, k => {}, v => {})",
-					self.quote_write_value("k", map_key),
-					self.quote_write_value("v", map_value)
+					"writer.writeMap({value}, {}, {})",
+					self.quote_write_value("", map_key).replace("()", ".bind(writer)"),
+					self.quote_write_value("", map_value).replace("()", ".bind(writer)")
 				}
 			}
 			Tuple(formats) => {
@@ -413,7 +419,12 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				lines.join("\n")
 			}
 			TupleArray { content, .. } => {
-				format!("{value}.forEach((item) => {})", self.quote_write_value("item[0]", content))
+				formatdoc!("
+					for (const item of {value}) {{
+						{}
+					}}",
+					self.quote_write_value("item[0]", content)
+				)
 			}
 			_ => panic!("unexpected case"),
 		}
@@ -441,33 +452,22 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 			Str   => "reader.readString()",
 			Bytes => "reader.readBytes()",
 			Option(format) => {
-				&formatdoc!(
-					r#"function () {{
-						const tag = reader.readOptionTag()
-						return tag ? {} : null
-					}}()"#,
-					self.quote_read_value(format),
-				)
+				&format!("reader.readOptionTag() ? {} : null", self.quote_read_value(format))
 			}
 			Seq(format) => {
-				&formatdoc!(
-					r#"function () {{
-						const length = reader.readLength()
-						const list: {}[] = []
-						for (let i = 0; i < length; i++) list.push({})
-						return list
-					}}()"#,
+				&format!(
+					"reader.readList<{}>(() => {})",
 					self.quote_type(format),
 					self.quote_read_value(format)
 				)
 			}
 			Map { key, value } => {
 				&format!(
-					"reader.readMap<{}, {}>(() => {}, () => {})",
+					"reader.readMap<{}, {}>({}, {})",
 					self.quote_type(key),
 					self.quote_type(value),
-					self.quote_read_value(key),
-					self.quote_read_value(value),
+					self.quote_read_value(key).replace("()", ".bind(reader)"),
+					self.quote_read_value(value).replace("()", ".bind(reader)"),
 				)
 			}
 			Tuple(formats) => {
@@ -479,14 +479,9 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				)
 			}
 			TupleArray { content, size } => {
-				&formatdoc!(
-					r#"function() {{
-						const list: {} = []
-						for (let i = 0; i < {}; i++) list.push([{}])
-						return list
-					}}()
-					"#,
-					self.quote_type(format), size, self.quote_read_value(content)
+				&format!(
+					"reader.readList<{}>(() => {}, {})",
+					self.quote_type(format), self.quote_read_value(content), size,
 				)
 			}
 			Variable(_) => panic!("unsupported value")
