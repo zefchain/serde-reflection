@@ -316,10 +316,7 @@ export abstract class BinaryReader implements Reader {
 		const high = this.readU32()
 
 		// combine the two 32-bit values and return (little endian)
-		return BigInt(
-			(BigInt(high.toString()) << BinaryReader.BIG_32) |
-			BigInt(low.toString()),
-		)
+		return (BigInt(high) << BinaryReader.BIG_32) | BigInt(low)
 	}
 
 	public readU128() {
@@ -327,10 +324,7 @@ export abstract class BinaryReader implements Reader {
 		const high = this.readU64()
 
 		// combine the two 64-bit values and return (little endian)
-		return BigInt(
-			(BigInt(high.toString()) << BinaryReader.BIG_64) |
-			BigInt(low.toString()),
-		)
+		return (high << BinaryReader.BIG_64) | low
 	}
 
 	public readI8() {
@@ -350,8 +344,7 @@ export abstract class BinaryReader implements Reader {
 		const high = this.readI32()
 
 		// combine the two 32-bit values and return (little endian)
-		return (BigInt(high.toString()) << BinaryReader.BIG_32) |
-			BigInt(low.toString())
+		return (BigInt(high) << BinaryReader.BIG_32) | BigInt(low)
 	}
 
 	public readI128() {
@@ -359,8 +352,7 @@ export abstract class BinaryReader implements Reader {
 		const high = this.readI64()
 
 		// combine the two 64-bit values and return (little endian)
-		return (BigInt(high.toString()) << BinaryReader.BIG_64) |
-			BigInt(low.toString())
+		return (BigInt(high) << BinaryReader.BIG_64) | BigInt(low)
 	}
 
 	public readOptionTag() {
