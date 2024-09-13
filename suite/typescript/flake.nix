@@ -55,12 +55,12 @@
                 popd
               '';
 
-              scripts."test".exec = ''
+              scripts."run:test".exec = ''
                 pushd ${root}
                   node_modules/.bin/tsx ts/test.ts
                 popd
               '';
-              scripts."benchmark".exec = ''
+              scripts."run:benchmark".exec = ''
                 pushd ${root}
                   node_modules/.bin/tsx ts/bench.ts
                 popd
