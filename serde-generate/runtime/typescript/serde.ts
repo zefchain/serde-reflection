@@ -257,10 +257,7 @@ export abstract class BinaryReader implements Reader {
 	public view: DataView
 
 	constructor(data: Uint8Array) {
-		// copies data to prevent outside mutation of buffer.
-		const buffer = new ArrayBuffer(data.length)
-		new Uint8Array(buffer).set(data, 0)
-		this.view = new DataView(buffer)
+		this.view = new DataView(data.buffer)
 	}
 
 	abstract readLength(): number
