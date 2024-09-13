@@ -37,7 +37,6 @@ await async function bench_encode() {
 
 
 await async function bench_decode() {
-
 	const b = new Bench({ time: 1_000 })
 
 	const json_encoded = JSON.stringify(Data.ComplexStruct_obj)
