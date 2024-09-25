@@ -38,11 +38,12 @@ impl<'de, 'a> Deserializer<'de, 'a> {
 impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
     type Error = Error;
 
-    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        Err(Error::NotSupported("deserialize_any"))
+        self.format.unify(Format::Any)?;
+        visitor.visit_str("deserialize_any is unsupported")
     }
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>

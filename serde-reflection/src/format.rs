@@ -34,6 +34,9 @@ pub enum Format {
     /// The name of a container.
     TypeName(String),
 
+    // Format of self-describing dataformats like `serde_json::Value`
+    Any,
+
     // The formats of primitive types
     Unit,
     Bool,
@@ -505,7 +508,8 @@ impl FormatHolder for Format {
     fn visit<'a>(&'a self, f: &mut dyn FnMut(&'a Format) -> Result<()>) -> Result<()> {
         match self {
             Self::Variable(variable) => variable.visit(f)?,
-            Self::TypeName(_)
+            Self::Any
+            | Self::TypeName(_)
             | Self::Unit
             | Self::Bool
             | Self::I8
@@ -556,7 +560,8 @@ impl FormatHolder for Format {
                     .into_inner()
                     .expect("variable is known");
             }
-            Self::TypeName(_)
+            Self::Any
+            | Self::TypeName(_)
             | Self::Unit
             | Self::Bool
             | Self::I8

@@ -502,3 +502,27 @@ fn test_default_value_for_primitive_types() {
     assert_eq!(format, Format::Str);
     assert_eq!(value, "A borrowed str");
 }
+
+
+#[test]
+fn test_trace_value() {
+    let mut tracer = Tracer::new(TracerConfig::default());
+
+    #[derive(Serialize, Deserialize)]
+    struct Thing {
+        value: serde_json::Value,
+        other_field: u32,
+    }
+
+    tracer.trace_simple_type::<Thing>().unwrap();
+
+    let registry = tracer.registry().unwrap();
+    match registry.get("Thing").unwrap() {
+        ContainerFormat::Struct(fields) => {
+            assert_eq!(fields.len(), 2);
+            assert_eq!(fields[0].value, Format::Any);
+            assert_eq!(fields[1].value, Format::U32);
+        },
+        _ => panic!("should be a struct"),
+    }
+}
