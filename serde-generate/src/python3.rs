@@ -11,6 +11,7 @@ use std::{
     io::{Result, Write},
     path::PathBuf,
 };
+use serde_reflection::Format::Any;
 
 /// Main configuration object for code-generation in Python.
 pub struct CodeGenerator<'a> {
@@ -179,6 +180,7 @@ import typing
             ), // Sadly, there are no fixed-size arrays in python.
 
             Variable(_) => panic!("unexpected value"),
+            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
         }
     }
 

@@ -14,6 +14,7 @@ use std::{
     io::{Result, Write},
     path::PathBuf,
 };
+use serde_reflection::Format::Any;
 
 /// Main configuration object for code-generation in TypeScript, powered by
 /// the Deno runtime.
@@ -157,6 +158,7 @@ import {{ Optional, Seq, Tuple, ListTuple, unit, bool, int8, int16, int32, int64
                 size: _size,
             } => format!("ListTuple<[{}]>", self.quote_type(content),),
             Variable(_) => panic!("unexpected value"),
+            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
         }
     }
 

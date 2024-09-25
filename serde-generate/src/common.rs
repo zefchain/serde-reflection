@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use serde_reflection::Format;
+use serde_reflection::Format::Any;
 
 pub(crate) fn mangle_type(format: &Format) -> String {
     use Format::*;
@@ -39,6 +40,7 @@ pub(crate) fn mangle_type(format: &Format) -> String {
         ),
         TupleArray { content, size } => format!("array{}_{}_array", size, mangle_type(content)),
         Variable(_) => panic!("unexpected value"),
+        Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
     }
 }
 

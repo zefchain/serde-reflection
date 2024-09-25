@@ -14,6 +14,7 @@ use std::{
     io::{Result, Write},
     path::PathBuf,
 };
+use serde_reflection::Format::Any;
 
 /// Main configuration object for code-generation in Java.
 pub struct CodeGenerator<'a> {
@@ -227,6 +228,7 @@ where
                 self.quote_type(content)
             ),
             Variable(_) => panic!("unexpected value"),
+            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
         }
     }
 

@@ -16,6 +16,7 @@ use std::{
     io::{Result, Write},
     path::PathBuf,
 };
+use serde_reflection::Format::Any;
 
 /// Main configuration object for code-generation in Swift.
 pub struct CodeGenerator<'a> {
@@ -165,6 +166,7 @@ where
             }
 
             Variable(_) => panic!("unexpected value"),
+            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
         }
     }
 
