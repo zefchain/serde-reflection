@@ -632,7 +632,8 @@ impl FormatHolder for Format {
                 }
             }
 
-            (Self::Unit, Self::Unit)
+            (Self::Any, Self::Any)
+            | (Self::Unit, Self::Unit)
             | (Self::Bool, Self::Bool)
             | (Self::I8, Self::I8)
             | (Self::I16, Self::I16)
