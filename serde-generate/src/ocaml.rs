@@ -10,7 +10,7 @@ use heck::CamelCase;
 use heck::SnakeCase;
 use include_dir::include_dir as include_directory;
 use phf::phf_set;
-use serde_reflection::Format::Any;
+
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
     collections::BTreeMap,

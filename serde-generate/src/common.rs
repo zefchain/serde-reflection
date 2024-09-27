@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use serde_reflection::Format;
-use serde_reflection::Format::Any;
+
 
 pub(crate) fn mangle_type(format: &Format) -> String {
     use Format::*;

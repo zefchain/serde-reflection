@@ -8,7 +8,7 @@ use crate::{
 };
 use heck::{CamelCase, MixedCase, SnakeCase};
 use include_dir::include_dir as include_directory;
-use serde_reflection::Format::Any;
+
 use serde_reflection::{ContainerFormat, Format, FormatHolder, Named, Registry, VariantFormat};
 use std::{
     collections::{BTreeMap, HashMap},

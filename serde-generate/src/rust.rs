@@ -6,7 +6,7 @@ use crate::{
     indent::{IndentConfig, IndentedWriter},
     CodeGeneratorConfig,
 };
-use serde_reflection::Format::Any;
+
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
     borrow::Cow,

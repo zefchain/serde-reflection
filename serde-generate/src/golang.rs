@@ -7,7 +7,7 @@ use crate::{
     CodeGeneratorConfig, Encoding,
 };
 use heck::CamelCase;
-use serde_reflection::Format::Any;
+
 use serde_reflection::{ContainerFormat, Format, FormatHolder, Named, Registry, VariantFormat};
 use std::{
     collections::{BTreeMap, HashMap},
