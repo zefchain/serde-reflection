@@ -8,13 +8,13 @@ use crate::{
 };
 use heck::CamelCase;
 use include_dir::include_dir as include_directory;
+use serde_reflection::Format::Any;
 use serde_reflection::{ContainerFormat, Format, FormatHolder, Named, Registry, VariantFormat};
 use std::{
     collections::{BTreeMap, HashMap},
     io::{Result, Write},
     path::PathBuf,
 };
-use serde_reflection::Format::Any;
 
 /// Main configuration object for code-generation in Java.
 pub struct CodeGenerator<'a> {
@@ -228,7 +228,9 @@ where
                 self.quote_type(content)
             ),
             Variable(_) => panic!("unexpected value"),
-            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
+            Any => panic!(
+                "Types that require self-describing formats are not supported in serde-generate"
+            ),
         }
     }
 

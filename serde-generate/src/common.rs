@@ -40,7 +40,9 @@ pub(crate) fn mangle_type(format: &Format) -> String {
         ),
         TupleArray { content, size } => format!("array{}_{}_array", size, mangle_type(content)),
         Variable(_) => panic!("unexpected value"),
-        Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
+        Any => {
+            panic!("Types that require self-describing formats are not supported in serde-generate")
+        }
     }
 }
 

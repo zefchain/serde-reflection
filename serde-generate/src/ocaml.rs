@@ -10,13 +10,13 @@ use heck::CamelCase;
 use heck::SnakeCase;
 use include_dir::include_dir as include_directory;
 use phf::phf_set;
+use serde_reflection::Format::Any;
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
     collections::BTreeMap,
     io::{Result, Write},
     path::PathBuf,
 };
-use serde_reflection::Format::Any;
 
 pub struct CodeGenerator<'a> {
     config: &'a CodeGeneratorConfig,
@@ -175,7 +175,9 @@ where
                 self.output_format(content, false)?;
                 write!(self.out, " array [@length {}])", size)?
             }
-            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
+            Any => panic!(
+                "Types that require self-describing formats are not supported in serde-generate"
+            ),
         }
         if is_struct {
             write!(self.out, " [@struct])")?

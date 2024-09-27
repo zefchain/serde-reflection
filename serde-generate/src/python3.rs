@@ -5,13 +5,13 @@ use crate::{
     indent::{IndentConfig, IndentedWriter},
     CodeGeneratorConfig, Encoding,
 };
+use serde_reflection::Format::Any;
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
     collections::{BTreeMap, HashMap},
     io::{Result, Write},
     path::PathBuf,
 };
-use serde_reflection::Format::Any;
 
 /// Main configuration object for code-generation in Python.
 pub struct CodeGenerator<'a> {
@@ -180,7 +180,9 @@ import typing
             ), // Sadly, there are no fixed-size arrays in python.
 
             Variable(_) => panic!("unexpected value"),
-            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
+            Any => panic!(
+                "Types that require self-describing formats are not supported in serde-generate"
+            ),
         }
     }
 

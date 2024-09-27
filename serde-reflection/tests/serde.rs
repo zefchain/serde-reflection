@@ -503,7 +503,6 @@ fn test_default_value_for_primitive_types() {
     assert_eq!(value, "A borrowed str");
 }
 
-
 #[test]
 fn test_trace_value() {
     let mut tracer = Tracer::new(TracerConfig::default());
@@ -522,7 +521,7 @@ fn test_trace_value() {
             assert_eq!(fields.len(), 2);
             assert_eq!(fields[0].value, Format::Any);
             assert_eq!(fields[1].value, Format::U32);
-        },
+        }
         _ => panic!("should be a struct"),
     }
 }

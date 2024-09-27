@@ -235,7 +235,9 @@ where
             ),
 
             Variable(_) => panic!("unexpected value"),
-            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
+            Any => panic!(
+                "Types that require self-describing formats are not supported in serde-generate"
+            ),
         }
     }
 

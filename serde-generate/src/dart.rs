@@ -8,13 +8,13 @@ use crate::{
 };
 use heck::{CamelCase, MixedCase, SnakeCase};
 use include_dir::include_dir as include_directory;
+use serde_reflection::Format::Any;
 use serde_reflection::{ContainerFormat, Format, FormatHolder, Named, Registry, VariantFormat};
 use std::{
     collections::{BTreeMap, HashMap},
     io::{Result, Write},
     path::{Path, PathBuf},
 };
-use serde_reflection::Format::Any;
 
 /// Main configuration object for code-generation in Dart.
 pub struct CodeGenerator<'a> {
@@ -275,7 +275,9 @@ where
             Tuple(formats) => format!("Tuple{}<{}>", formats.len(), self.quote_types(formats)),
             TupleArray { content, size: _ } => format!("List<{}>", self.quote_type(content)),
             Variable(_) => panic!("unexpected value"),
-            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
+            Any => panic!(
+                "Types that require self-describing formats are not supported in serde-generate"
+            ),
         }
     }
 

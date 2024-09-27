@@ -6,6 +6,7 @@ use crate::{
     indent::{IndentConfig, IndentedWriter},
     CodeGeneratorConfig,
 };
+use serde_reflection::Format::Any;
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
     borrow::Cow,
@@ -13,7 +14,6 @@ use std::{
     io::{Result, Write},
     path::PathBuf,
 };
-use serde_reflection::Format::Any;
 
 /// Main configuration object for code-generation in Rust.
 pub struct CodeGenerator<'a> {
@@ -258,7 +258,9 @@ where
             }
 
             Variable(_) => panic!("unexpected value"),
-            Any => panic!("Types that require self-describing formats are not supported in serde-generate"),
+            Any => panic!(
+                "Types that require self-describing formats are not supported in serde-generate"
+            ),
         }
     }
 
