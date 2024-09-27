@@ -3,7 +3,6 @@
 
 use serde_reflection::Format;
 
-
 pub(crate) fn mangle_type(format: &Format) -> String {
     use Format::*;
     match format {
