@@ -80,10 +80,10 @@ impl<'a> CodeGenerator<'a> {
 
 impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 	fn output_preamble(&mut self) -> Result<()> {
-		writeln!(self.out, r#"import type * as $t from "./serde.ts""#)?;
-		writeln!(self.out, r#"import {{ BincodeReader, BincodeWriter }} from "./bincode.ts""#)?;
+		writeln!(self.out, r#"import type * as $t from "./serde""#)?;
+		writeln!(self.out, r#"import {{ BincodeReader, BincodeWriter }} from "./bincode""#)?;
 		for namespace in self.generator.namespaces_to_import.iter() {
-			writeln!(self.out, "import * as {} from '../{}/mod.ts';\n", namespace.to_camel_case(), namespace)?;
+			writeln!(self.out, "import * as {} from '../{}/mod';\n", namespace.to_camel_case(), namespace)?;
 		}
 		Ok(())
 	}
