@@ -1,29 +1,29 @@
-import { BinaryReader, BinaryWriter } from "./serde.ts";
+import { BinaryReader, BinaryWriter } from "./serde";
 
 export class BincodeReader extends BinaryReader {
-	readLength() {
-		return Number(this.readU64())
+	read_length() {
+		return Number(this.read_u64())
 	}
 
-	public readVariantIndex() {
-		return this.readU32()
+	public read_variant_index() {
+		return this.read_u32()
 	}
 
-	checkThatKeySlicesAreIncreasing(key1: [number, number], key2: [number, number]) {
+	check_that_key_slices_are_increasing(key1: [number, number], key2: [number, number]) {
 		return
 	}
 }
 
 export class BincodeWriter extends BinaryWriter {
-	writeLength(value: number) {
-		this.writeU64(value)
+	write_length(value: number) {
+		this.write_u64(value)
 	}
 
-	public writeVariantIndex(value: number) {
-		this.writeU32(value)
+	public write_variant_index(value: number) {
+		this.write_u32(value)
 	}
 
-	public sortMapEntries(offsets: number[]) {
+	public sort_map_entries(offsets: number[]) {
 		return
 	}
 }

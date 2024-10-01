@@ -1,6 +1,8 @@
 export type Optional<T> = T | null
 export type Seq<T> = T[]
-export type Tuple<T extends any[]> = T
+export type Tuple<T extends any[]> = { 
+	[K in keyof T as `$${Exclude<K, keyof any[]> extends string ? Exclude<K, keyof any[]> : never}` ]: T[K] 
+}
 export type ListTuple<T extends any[]> = Tuple<T>[]
 export type Map<K, V> = globalThis.Map<K, V>
 
@@ -25,53 +27,53 @@ export type bytes = Uint8Array
 export type WrapperOfCase<T extends { $: string }, K = T["$"]> = T extends { $: infer _U extends K } ? T : never
 
 export interface Reader {
-	readString(): string
-	readBool(): boolean
-	readUnit(): null
-	readChar(): string
-	readF32(): number
-	readF64(): number
-	readU8(): number
-	readU16(): number
-	readU32(): number
-	readU64(): bigint
-	readU128(): bigint
-	readI8(): number
-	readI16(): number
-	readI32(): number
-	readI64(): bigint
-	readI128(): bigint
-	readLength(): number
-	readVariantIndex(): number
-	readOptionTag(): boolean
-	readList<T>(readFn: () => T, length?: number): T[]
-	readMap<K, V>(readKey: () => K, readValue: () => V): Map<K, V>
-	checkThatKeySlicesAreIncreasing(key1: [number, number], key2: [number, number]): void
+	read_string(): string
+	read_bool(): boolean
+	read_unit(): null
+	read_char(): string
+	read_f32(): number
+	read_f64(): number
+	read_u8(): number
+	read_u16(): number
+	read_u32(): number
+	read_u64(): bigint
+	read_u128(): bigint
+	read_i8(): number
+	read_i16(): number
+	read_i32(): number
+	read_i64(): bigint
+	read_i128(): bigint
+	read_length(): number
+	read_variant_index(): number
+	read_option_tag(): boolean
+	read_list<T>(read_fn: () => T, length?: number): T[]
+	read_map<K, V>(read_key: () => K, read_value: () => V): Map<K, V>
+	check_that_key_slices_are_increasing(key1: [number, number], key2: [number, number]): void
 }
 
 export interface Writer {
-	writeString(value: string): void
-	writeBool(value: boolean): void
-	writeUnit(value: null): void
-	writeChar(value: string): void
-	writeF32(value: number): void
-	writeF64(value: number): void
-	writeU8(value: number): void
-	writeU16(value: number): void
-	writeU32(value: number): void
-	writeU64(value: bigint | number): void
-	writeU128(value: bigint | number): void
-	writeI8(value: number): void
-	writeI16(value: number): void
-	writeI32(value: number): void
-	writeI64(value: bigint | number): void
-	writeI128(value: bigint | number): void
-	writeLength(value: number): void
-	writeVariantIndex(value: number): void
-	writeOptionTag(value: boolean): void
-	writeMap<K, V>(value: Map<K, V>, writeKey: (key: K) => void, writeValue: (value: V) => void): void
-	getBytes(): Uint8Array
-	sortMapEntries(offsets: number[]): void
+	write_string(value: string): void
+	write_bool(value: boolean): void
+	write_unit(value: null): void
+	write_char(value: string): void
+	write_f32(value: number): void
+	write_f64(value: number): void
+	write_u8(value: number): void
+	write_u16(value: number): void
+	write_u32(value: number): void
+	write_u64(value: bigint | number): void
+	write_u128(value: bigint | number): void
+	write_i8(value: number): void
+	write_i16(value: number): void
+	write_i32(value: number): void
+	write_i64(value: bigint | number): void
+	write_i128(value: bigint | number): void
+	write_length(value: number): void
+	write_variant_index(value: number): void
+	write_option_tag(value: boolean): void
+	write_map<K, V>(value: Map<K, V>, write_key: (key: K) => void, write_value: (value: V) => void): void
+	get_bytes(): Uint8Array
+	sort_map_entries(offsets: number[]): void
 }
 
 const BIG_32 = 32n
@@ -111,11 +113,11 @@ export abstract class BinaryWriter implements Writer {
 		}
 	}
 
-	abstract writeLength(value: number): void
-	abstract writeVariantIndex(value: number): void
-	abstract sortMapEntries(offsets: number[]): void
+	abstract write_length(value: number): void
+	abstract write_variant_index(value: number): void
+	abstract sort_map_entries(offsets: number[]): void
 
-	public writeString(value: string) {
+	public write_string(value: string) {
 		const length = value.length
 		// char and U64 for length
 		this.alloc(8 + length)
@@ -129,34 +131,34 @@ export abstract class BinaryWriter implements Writer {
 		this.offset += (8 + length)
 	}
 
-	public writeBool(value: boolean) {
-		this.writeU8(value ? 1 : 0)
+	public write_bool(value: boolean) {
+		this.write_u8(value ? 1 : 0)
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars,@typescript-eslint/explicit-module-boundary-types
-	public writeUnit(_value: null) {
+	public write_unit(_value: null) {
 		return
 	}
 
-	public writeU8(value: number) {
+	public write_u8(value: number) {
 		this.alloc(1)
 		this.view.setUint8(this.offset, value)
 		this.offset += 1
 	}
 
-	public writeU16(value: number) {
+	public write_u16(value: number) {
 		this.alloc(2)
 		this.view.setUint16(this.offset, value, true)
 		this.offset += 2
 	}
 
-	public writeU32(value: number) {
+	public write_u32(value: number) {
 		this.alloc(4)
 		this.view.setUint32(this.offset, value, true)
 		this.offset += 4
 	}
 
-	public writeU64(value: bigint | number) {
+	public write_u64(value: bigint | number) {
 		const low = BigInt(value) & BIG_32Fs, high = BigInt(value) >> BIG_32
 
 		this.alloc(8)
@@ -168,33 +170,33 @@ export abstract class BinaryWriter implements Writer {
 		this.offset += 8
 	}
 
-	public writeU128(value: bigint | number) {
+	public write_u128(value: bigint | number) {
 		const low = BigInt(value) & BIG_64Fs, high = BigInt(value) >> BIG_64
 
 		// write little endian number
-		this.writeU64(low)
-		this.writeU64(high)
+		this.write_u64(low)
+		this.write_u64(high)
 	}
 
-	public writeI8(value: number) {
+	public write_i8(value: number) {
 		this.alloc(1)
 		this.view.setInt8(this.offset, value)
 		this.offset += 1
 	}
 
-	public writeI16(value: number) {
+	public write_i16(value: number) {
 		this.alloc(2)
 		this.view.setInt16(this.offset, value, true)
 		this.offset += 2
 	}
 
-	public writeI32(value: number) {
+	public write_i32(value: number) {
 		this.alloc(4)
 		this.view.setInt32(this.offset, value, true)
 		this.offset += 4
 	}
 
-	public writeI64(value: bigint | number) {
+	public write_i64(value: bigint | number) {
 		const low = BigInt(value) & BIG_32Fs, high = BigInt(value) >> BIG_32
 
 		this.alloc(8)
@@ -206,46 +208,46 @@ export abstract class BinaryWriter implements Writer {
 		this.offset += 8
 	}
 
-	public writeI128(value: bigint | number) {
+	public write_i128(value: bigint | number) {
 		const low = BigInt(value) & BIG_64Fs, high = BigInt(value) >> BIG_64
 
 		// write little endian number
-		this.writeI64(low)
-		this.writeI64(high)
+		this.write_i64(low)
+		this.write_i64(high)
 	}
 
-	public writeOptionTag(value: boolean) {
-		this.writeBool(value)
+	public write_option_tag(value: boolean) {
+		this.write_bool(value)
 	}
 
-	public writeMap<T, V>(map: Map<T, V>, writeKey: (key: T) => void, writeValue: (value: V) => void): void {
-		this.writeLength(map.size)
+	public write_map<T, V>(map: Map<T, V>, write_key: (key: T) => void, write_value: (value: V) => void): void {
+		this.write_length(map.size)
 		const offsets: number[] = []
 		for (const [k, v] of map.entries()) {
 			offsets.push(this.offset)
-			writeKey(k)
-			writeValue(v)
+			write_key(k)
+			write_value(v)
 		}
-		this.sortMapEntries(offsets)
+		this.sort_map_entries(offsets)
 	}
 
-	public writeF32(value: number) {
+	public write_f32(value: number) {
 		this.alloc(4)
 		this.view.setFloat32(this.offset, value, true)
 		this.offset += 4
 	}
 
-	public writeF64(value: number) {
+	public write_f64(value: number) {
 		this.alloc(8)
 		this.view.setFloat64(this.offset, value, true)
 		this.offset += 8
 	}
 
-	public writeChar(_value: string) {
+	public write_char(_value: string) {
 		throw new Error("Method serializeChar not implemented.")
 	}
 
-	public getBytes() {
+	public get_bytes() {
 		return new Uint8Array(this.view.buffer).subarray(0, this.offset)
 	}
 }
@@ -260,119 +262,119 @@ export abstract class BinaryReader implements Reader {
 		this.view = new DataView(data.buffer)
 	}
 
-	abstract readLength(): number
-	abstract readVariantIndex(): number
-	abstract checkThatKeySlicesAreIncreasing(key1: [number, number], key2: [number, number]): void
+	abstract read_length(): number
+	abstract read_variant_index(): number
+	abstract check_that_key_slices_are_increasing(key1: [number, number], key2: [number, number]): void
 
-	public readString() {
-		const length = this.readLength()
+	public read_string() {
+		const length = this.read_length()
 		const decoded = BinaryReader.TEXT_DECODER.decode(new Uint8Array(this.view.buffer, this.offset, length))
 		this.offset += length
 		return decoded
 	}
 
-	public readBool() {
-		return this.readU8() === 1
+	public read_bool() {
+		return this.read_u8() === 1
 	}
 
-	public readUnit() {
+	public read_unit() {
 		return null
 	}
 
-	public readU8() {
+	public read_u8() {
 		const value = this.view.getUint8(this.offset)
 		this.offset += 1
 		return value
 	}
 
-	public readU16() {
+	public read_u16() {
 		const value = this.view.getUint16(this.offset, true)
 		this.offset += 2
 		return value
 	}
 
-	public readU32() {
+	public read_u32() {
 		const value = this.view.getUint32(this.offset, true)
 		this.offset += 4
 		return value
 	}
 
-	public readU64() {
-		const low = this.readU32(), high = this.readU32()
+	public read_u64() {
+		const low = this.read_u32(), high = this.read_u32()
 		// combine the two 32-bit values and return (little endian)
 		return (BigInt(high) << BIG_32) | BigInt(low)
 	}
 
-	public readU128() {
-		const low = this.readU64(), high = this.readU64()
+	public read_u128() {
+		const low = this.read_u64(), high = this.read_u64()
 		// combine the two 64-bit values and return (little endian)
 		return (high << BIG_64) | low
 	}
 
-	public readI8() {
+	public read_i8() {
 		const value = this.view.getInt8(this.offset)
 		this.offset += 1
 		return value
 	}
 
-	public readI16() {
+	public read_i16() {
 		const value = this.view.getInt16(this.offset, true)
 		this.offset += 2
 		return value
 	}
 
-	public readI32() {
+	public read_i32() {
 		const value = this.view.getInt32(this.offset, true)
 		this.offset += 4
 		return value
 	}
 
-	public readI64() {
-		const low = this.readI32(), high = this.readI32()
+	public read_i64() {
+		const low = this.read_i32(), high = this.read_i32()
 		// combine the two 32-bit values and return (little endian)
 		return (BigInt(high) << BIG_32) | BigInt(low)
 	}
 
-	public readI128() {
-		const low = this.readI64(), high = this.readI64()
+	public read_i128() {
+		const low = this.read_i64(), high = this.read_i64()
 		// combine the two 64-bit values and return (little endian)
 		return (high << BIG_64) | low
 	}
 
-	public readOptionTag = this.readBool
+	public read_option_tag = this.read_bool
 
-	public readList<T>(readFn: () => T, listLength?: number) {
-		const length = listLength ?? this.readLength(), list = new Array<T>(length)
-		for (let i = 0; i < length; i++) list[i] = readFn()
+	public read_list<T>(read_fn: () => T, listLength?: number) {
+		const length = listLength ?? this.read_length(), list = new Array<T>(length)
+		for (let i = 0; i < length; i++) list[i] = read_fn()
 		return list
 	}
 
-	public readMap<K, V>(readKey: () => K, readValue: () => V) {
-		const length = this.readLength(), obj = new Map<K, V>()
+	public read_map<K, V>(read_key: () => K, read_value: () => V) {
+		const length = this.read_length(), obj = new Map<K, V>()
 		let previousKeyStart = 0, previousKeyEnd = 0
 		for (let i = 0; i < length; i++) {
-			const keyStart = this.offset, key = readKey(), keyEnd = this.offset
+			const keyStart = this.offset, key = read_key(), keyEnd = this.offset
 			if (i > 0) {
-				this.checkThatKeySlicesAreIncreasing([previousKeyStart, previousKeyEnd], [keyStart, keyEnd])
+				this.check_that_key_slices_are_increasing([previousKeyStart, previousKeyEnd], [keyStart, keyEnd])
 			}
 			previousKeyStart = keyStart
 			previousKeyEnd = keyEnd
-			obj.set(key, readValue())
+			obj.set(key, read_value())
 		}
 		return obj
 	}
 
-	public readChar(): string {
-		throw new Error("Method readChar not implemented.")
+	public read_char(): string {
+		throw new Error("Method read_char not implemented.")
 	}
 
-	public readF32() {
+	public read_f32() {
 		const value = this.view.getFloat32(this.offset, true)
 		this.offset += 4
 		return value
 	}
 
-	public readF64() {
+	public read_f64() {
 		const value = this.view.getFloat64(this.offset, true)
 		this.offset += 8
 		return value

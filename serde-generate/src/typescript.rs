@@ -4,7 +4,7 @@ use crate::{
 	indent::{IndentConfig, IndentedWriter},
 	CodeGeneratorConfig,
 };
-use heck::CamelCase;
+use heck::{CamelCase, SnakeCase};
 use include_dir::include_dir as include_directory;
 use indoc::{formatdoc, indoc, writedoc};
 use serde_reflection::{ContainerFormat, Format, FormatHolder, Named, Registry, VariantFormat};
@@ -14,8 +14,7 @@ use std::{
 	path::PathBuf,
 };
 
-/// Main configuration object for code-generation in TypeScript, powered by
-/// the Deno runtime.
+/// Main configuration object for code-generation in TypeScript
 pub struct CodeGenerator<'a> {
 	/// Language-independent configuration.
 	config: &'a CodeGeneratorConfig,
@@ -67,7 +66,7 @@ impl<'a> CodeGenerator<'a> {
 		
 		for (name, format) in registry {
 			writeln!(emitter.out)?;
-			emitter.output_container_typedef(name, format)?;
+			emitter.generate_container_typedef(name, format)?;
 		}
 		for (name, format) in registry {
 			writeln!(emitter.out)?;
@@ -89,7 +88,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 	}
 	
 	fn generate_container(&mut self, name: &str, container: &ContainerFormat) -> Result<()> {
-		// ENCODE
+		// Encode
 		writeln!(self.out, "export const {name} = {{")?;
 		self.out.indent();
 		
@@ -110,7 +109,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 			}
 			ContainerFormat::TupleStruct(inner_types) => {
 				for (i, inner) in inner_types.iter().enumerate() {
-					writeln!(self.out, "{}", self.quote_write_value(&format!("value[{i}]"), inner))?;	
+					writeln!(self.out, "{}", self.quote_write_value(&format!("value.${i}"), inner))?;	
 				}
 			}
 			ContainerFormat::Enum(variants) => {
@@ -119,13 +118,13 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 			}
 		}
 
-		writeln!(self.out, "return writer.getBytes()")?;
+		writeln!(self.out, "return writer.get_bytes()")?;
 		
 		self.out.unindent();
 		writeln!(self.out, "}},")?;
 		
 
-		// DECODE
+		// Decode
 		writeln!(self.out, "decode(input: Uint8Array, reader = new BincodeReader(input)) {{")?;
 		self.out.indent();
 				
@@ -137,7 +136,13 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				writeln!(self.out, "const value: {name} = {}", self.quote_read_value(inner))?;
 			}
 			ContainerFormat::TupleStruct(inner_types) => {
-				writeln!(self.out, "const value: {name} = {}", self.quote_read_value(&Format::Tuple(inner_types.clone())))?;
+				writeln!(self.out, "const value: {name} = {{")?;
+				self.out.indent();
+				for (i, inner) in inner_types.iter().enumerate() {
+					writeln!(self.out, "${i}: {},", self.quote_read_value(&inner))?;	
+				}
+				self.out.unindent();
+				writeln!(self.out, "}}")?;
 			}
 			_ => { writeln!(self.out, "const value = {{}} as {name}")?; }
 		}
@@ -170,24 +175,24 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 		self.out.indent();
 		
 		for (index, variant) in variants {
-			writeln!(self.out, r#"case "{}": {{"#, variant.name)?;
+			writeln!(self.out, r#"case "{}": {{"#, variant.name.to_snake_case())?;
 			self.out.indent();
-			writeln!(self.out, "writer.writeVariantIndex({index})");
+			writeln!(self.out, "writer.write_variant_index({index})");
 			
 			match &variant.value {
 				VariantFormat::Unit => {
-					writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}", &variant.name), &Format::Unit));
+					writeln!(self.out, "{}", self.quote_write_value("value.$0", &Format::Unit));
 				},
 				VariantFormat::NewType(inner) => {
-					writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}", &variant.name), inner));
+					writeln!(self.out, "{}", self.quote_write_value("value.$0", inner));
 				}
 				VariantFormat::Tuple(members) => {
 					let tuple = Format::Tuple(members.clone());
-					writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}", &variant.name), &tuple));
+					writeln!(self.out, "{}", self.quote_write_value("value", &tuple));
 				}
 				VariantFormat::Struct(fields) => {
 					for field in fields {
-						writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}.{}", variant.name, field.name), &field.value))?;
+						writeln!(self.out, "{}", self.quote_write_value(&format!("value.{}", field.name), &field.value))?;
 					}
 				}
 				VariantFormat::Variable(_) => panic!("not supported")
@@ -200,7 +205,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 		self.out.unindent();
 		writeln!(self.out, "}}")?; // switch end
 		
-		writeln!(self.out, "return writer.getBytes()");
+		writeln!(self.out, "return writer.get_bytes()");
 		self.out.unindent();
 		writeln!(self.out, "}},")?; // encode end
 		
@@ -209,34 +214,40 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 		
 		writeln!(self.out, r#"let value: {name}"#);
 
-		writeln!(self.out, "switch (reader.readVariantIndex()) {{")?;
+		writeln!(self.out, "switch (reader.read_variant_index()) {{")?;
 		self.out.indent();
 		
 		for (index, variant) in variants {
 			writeln!(self.out, r#"case {index}: {{"#)?;
 			self.out.indent();
 			
-			writeln!(self.out, r#"value = {{ $: "{}" }} as $t.WrapperOfCase<{}, "{}">"#, variant.name, name, variant.name);
+			writeln!(self.out, r#"value = {{"#);
+			self.out.indent();
+			writeln!(self.out, r#"$: "{0}","#, variant.name.to_snake_case());
 
 			match &variant.value {
 				VariantFormat::Unit => {
-					writeln!(self.out, "value.{} = {}", variant.name, self.quote_read_value(&Format::Unit));
+					writeln!(self.out, "$0: {}", self.quote_read_value(&Format::Unit));
 				},
 				VariantFormat::Tuple(members) => {
 					let tuple = Format::Tuple(members.clone());
-					writeln!(self.out, "value.{} = {}", variant.name, self.quote_read_value(&tuple));
+					for (i, member) in members.iter().enumerate() {
+						writeln!(self.out, "${i}: {},", self.quote_read_value(&member));
+					}
 				}
 				VariantFormat::NewType(inner) => {
-					writeln!(self.out, "value.{} = {}", variant.name, self.quote_read_value(inner));
+					writeln!(self.out, "$0: {},", self.quote_read_value(inner));
 				}
 				VariantFormat::Struct(fields) => {
-					writeln!(self.out, r#"value.{var} = {{}} as $t.WrapperOfCase<{name}, "{var}">["{var}"]"#, var = variant.name);
 					for field in fields {
-						writeln!(self.out, "value.{}.{} = {}", variant.name, field.name, self.quote_read_value(&field.value))?;
+						writeln!(self.out, "{}: {},", field.name, self.quote_read_value(&field.value))?;
 					}
 				}
 				VariantFormat::Variable(_) => panic!("not supported")
 			}
+
+			self.out.unindent();
+			writeln!(self.out, r#"}} satisfies $t.WrapperOfCase<{0}, "{1}">"#, name, variant.name.to_snake_case())?;
 
 			writeln!(self.out, "break")?;
 			self.out.unindent();
@@ -258,13 +269,13 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 		Ok(())
 	}
 
-	fn output_container_typedef(&mut self, name: &str, container: &ContainerFormat) -> Result<()> {
+	fn generate_container_typedef(&mut self, name: &str, container: &ContainerFormat) -> Result<()> {
 		match container {
 			ContainerFormat::UnitStruct => {
 				writeln!(self.out, "export type {name} = $t.unit")?;
 			}
 			ContainerFormat::TupleStruct(fields) => {
-				writeln!(self.out, "export type {name} = [{}]", self.quote_types(&fields, ", "))?;
+				writeln!(self.out, "export type {name} = $t.Tuple<[{}]>", self.quote_types(&fields, ", "))?;
 				self.out.unindent();
 			}
 			ContainerFormat::Struct(fields) => {
@@ -289,19 +300,20 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				writeln!(self.out, "export type {name} = ")?;
 				self.out.indent();
 				for (_index, variant) in variants {
+					let variant_name_snake = variant.name.to_snake_case();
 					match &variant.value {
 						VariantFormat::Unit => {
-							writeln!(self.out, r#"| {{ $: "{0}", {0}?: {1} }}"#, variant.name, self.quote_type(&Format::Unit))?;
+							writeln!(self.out, r#"| {{ $: "{0}", $0?: {1} }}"#, variant_name_snake, self.quote_type(&Format::Unit))?;
 						}
 						VariantFormat::Struct(fields) => {
 							let fields_str = fields.iter().map(|f| format!("{}: {}", f.name, self.quote_type(&f.value))).collect::<Vec<_>>().join(", ");
-							writeln!(self.out, r#"| {{ $: "{0}", {0}: {{ {1} }} }}"#, variant.name, fields_str)?;
+							writeln!(self.out, r#"| {{ $: "{0}", {1} }}"#, variant_name_snake, fields_str)?;
 						}
 						VariantFormat::NewType(t) => {
-							writeln!(self.out, r#"| {{ $: "{0}", {0}: {1} }}"#, variant.name, self.quote_type(&t))?;
+							writeln!(self.out, r#"| {{ $: "{0}", $0: {1} }}"#, variant_name_snake, self.quote_type(&t))?;
 						}
 						VariantFormat::Tuple(t) => {
-							writeln!(self.out, r#"| {{ $: "{0}", {0}: {1} }}"#, variant.name, self.quote_type(&Format::Tuple(t.clone())))?;
+							writeln!(self.out, r#"| {{ $: "{0}" }} & {1}"#, variant_name_snake, self.quote_type(&Format::Tuple(t.clone())))?;
 						}
 						VariantFormat::Variable(v) => panic!("unknown variant format")
 					}
@@ -369,38 +381,37 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 		use Format::*;
 		match format {
 			TypeName(typename) => format!("{typename}.encode({value}, writer)"),
-			Unit        => format!("writer.writeUnit({value})"),
-			Bool        => format!("writer.writeBool({value})"),
-			I8          => format!("writer.writeI8({value})"),
-			I16         => format!("writer.writeI16({value})"),
-			I32         => format!("writer.writeI32({value})"),
-			I64         => format!("writer.writeI64({value})"),
-			I128        => format!("writer.writeI128({value})"),
-			U8          => format!("writer.writeU8({value})"),
-			U16         => format!("writer.writeU16({value})"),
-			U32         => format!("writer.writeU32({value})"),
-			U64         => format!("writer.writeU64({value})"),
-			U128        => format!("writer.writeU128({value})"),
-			F32         => format!("writer.writeF32({value})"),
-			F64         => format!("writer.writeF64({value})"),
-			Char        => format!("writer.writeChar({value})"),
-			Str         => format!("writer.writeString({value})"),
-			Bytes       => format!("writer.writeBytes({value})"),
-			Option(inner) => {
+			Unit        => format!("writer.write_unit({value})"),
+			Bool        => format!("writer.write_bool({value})"),
+			I8          => format!("writer.write_i8({value})"),
+			I16         => format!("writer.write_i16({value})"),
+			I32         => format!("writer.write_i32({value})"),
+			I64         => format!("writer.write_i64({value})"),
+			I128        => format!("writer.write_i128({value})"),
+			U8          => format!("writer.write_u8({value})"),
+			U16         => format!("writer.write_u16({value})"),
+			U32         => format!("writer.write_u32({value})"),
+			U64         => format!("writer.write_u64({value})"),
+			U128        => format!("writer.write_u128({value})"),
+			F32         => format!("writer.write_f32({value})"),
+			F64         => format!("writer.write_f64({value})"),
+			Char        => format!("writer.write_char({value})"),
+			Str         => format!("writer.write_string({value})"),
+			Bytes       => format!("writer.write_bytes({value})"),			Option(inner) => {
 				formatdoc! {
 					"
 						if ({value}) {{
-							writer.writeOptionTag(true)
+							writer.write_option_tag(true)
 							{}
 						}} 
-						else writer.writeOptionTag(false)
+						else writer.write_option_tag(false)
                     ",
 					self.quote_write_value(value, inner)
 				}
 			},
 			Seq(format) => {
 				formatdoc!("
-					writer.writeLength({value}.length)
+					writer.write_length({value}.length)
 					for (const item of {value}) {{
 						{}
 					}}", 
@@ -409,7 +420,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 			}
 			Map { key: map_key, value: map_value } => {
 				format! {
-					"writer.writeMap({value}, {}, {})",
+					"writer.write_map({value}, {}, {})",
 					self.quote_write_value("", map_key).replace("()", ".bind(writer)"),
 					self.quote_write_value("", map_value).replace("()", ".bind(writer)")
 				}
@@ -418,7 +429,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				use std::fmt::Write;
 				let mut lines = Vec::new();
 				for (index, format) in formats.iter().enumerate() {
-					let expr = format!("{value}[{}]", index);
+					let expr = format!("{value}.${}", index);
 					lines.push(self.quote_write_value(&expr, format));
 				}
 				lines.join("\n")
@@ -439,36 +450,36 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 		use Format::*;
 		let str = match format {
 			TypeName(name) => &format!("{}.decode(input, reader)", self.quote_qualified_name(name)),
-			Unit  => "reader.readUnit()",
-			Bool  => "reader.readBool()",
-			I8    => "reader.readI8()",
-			I16   => "reader.readI16()",
-			I32   => "reader.readI32()",
-			I64   => "reader.readI64()",
-			I128  => "reader.readI128()",
-			U8    => "reader.readU8()",
-			U16   => "reader.readU16()",
-			U32   => "reader.readU32()",
-			U64   => "reader.readU64()",
-			U128  => "reader.readU128()",
-			F32   => "reader.readF32()",
-			F64   => "reader.readF64()",
-			Char  => "reader.readChar()",
-			Str   => "reader.readString()",
-			Bytes => "reader.readBytes()",
+			Unit  => "reader.read_unit()",
+			Bool  => "reader.read_bool()",
+			I8    => "reader.read_i8()",
+			I16   => "reader.read_i16()",
+			I32   => "reader.read_i32()",
+			I64   => "reader.read_i64()",
+			I128  => "reader.read_i128()",
+			U8    => "reader.read_u8()",
+			U16   => "reader.read_u16()",
+			U32   => "reader.read_u32()",
+			U64   => "reader.read_u64()",
+			U128  => "reader.read_u128()",
+			F32   => "reader.read_f32()",
+			F64   => "reader.read_f64()",
+			Char  => "reader.read_char()",
+			Str   => "reader.read_string()",
+			Bytes => "reader.read_bytes()",	
 			Option(format) => {
-				&format!("reader.readOptionTag() ? {} : null", self.quote_read_value(format))
+				&format!("reader.read_option_tag() ? {} : null", self.quote_read_value(format))
 			}
 			Seq(format) => {
 				&format!(
-					"reader.readList<{}>(() => {})",
+					"reader.read_list<{}>(() => {})",
 					self.quote_type(format),
 					self.quote_read_value(format)
 				)
 			}
 			Map { key, value } => {
 				&format!(
-					"reader.readMap<{}, {}>({}, {})",
+					"reader.read_map<{}, {}>({}, {})",
 					self.quote_type(key),
 					self.quote_type(value),
 					self.quote_read_value(key).replace("()", ".bind(reader)"),
@@ -476,16 +487,20 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				)
 			}
 			Tuple(formats) => {
-				&format!(
-					"[{}]",formats.iter()
-					.map(|f| format!("{}", self.quote_read_value(f)))
-					.collect::<Vec<_>>()
-					.join(", ")
-				)
+				let mut buf = Vec::new();
+				let mut writer = IndentedWriter::new(&mut buf, IndentConfig::Tab);
+				writeln!(writer, "{{");
+				writer.indent();
+				for (i, f) in formats.iter().enumerate() {
+					writeln!(writer, "${i}: {},", self.quote_read_value(f));
+				}
+				writer.unindent();
+				write!(writer, "}}");
+				Box::leak(String::from_utf8(buf).unwrap().into_boxed_str())
 			}
 			TupleArray { content, size } => {
 				&format!(
-					"reader.readList<{}>(() => {}, {})",
+					"reader.read_list<{}>(() => {}, {})",
 					self.quote_type(format), self.quote_read_value(content), size,
 				)
 			}

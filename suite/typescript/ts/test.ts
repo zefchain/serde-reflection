@@ -28,7 +28,7 @@ suite("encode", () => {
 	})
 
 	test("MultiEnum unit variant", () => {
-		const bin = Registry.MultiEnum.encode({ $: "UnitVariant", UnitVariant: null })
+		const bin = Registry.MultiEnum.encode({ $: "unit_variant" })
 		assert.deepEqual(bin, Data.MultiEnum_Unit_bin)
 	})
 })
@@ -49,6 +49,3 @@ suite("decode", () => {
 		assert.deepEqual(complex_instance, Data.ComplexStruct_obj)
 	})
 })
-
-
-
