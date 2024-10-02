@@ -68,9 +68,11 @@ impl<'a> CodeGenerator<'a> {
 			writeln!(emitter.out)?;
 			emitter.generate_container_typedef(name, format)?;
 		}
-		for (name, format) in registry {
-			writeln!(emitter.out)?;
-			emitter.generate_container(name, format)?;
+		if self.config.serialization {
+			for (name, format) in registry {
+				writeln!(emitter.out)?;
+				emitter.generate_container(name, format)?;
+			}
 		}
 		
 		Ok(())
