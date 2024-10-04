@@ -146,7 +146,7 @@ fn test_dart_bincode_runtime_on_supported_types() {
 
 fn quote_bytes(bytes: &[u8]) -> String {
     format!(
-        "{{{}}}",
+        "Uint8List.fromList([{}])",
         bytes
             .iter()
             .map(|x| format!("{}", x))
@@ -194,11 +194,18 @@ fn test_dart_runtime_on_supported_types(runtime: Runtime) {
     writeln!(
         source_file,
         r#"
+import 'dart:typed_data';
+import 'package:example/example.dart';
+import 'package:test/test.dart';
+import 'package:tuple/tuple.dart';
+import '../lib/src/bcs/bcs.dart';
+import '../lib/src/bincode/bincode.dart';
+
 void main() {{
-  var positiveInputs = [
+  List<Uint8List> positiveInputs = [
     {0}
   ];
-  var negativeInputs = [
+  List<Uint8List> negativeInputs = [
     {1}
   ];
 
