@@ -13,8 +13,13 @@ use std::{
 };
 use tempfile::tempdir;
 
+#[cfg(target_family = "windows")]
+const DART_EXECUTABLE: &str = "dart.bat";
+#[cfg(not(target_family = "windows"))]
+const DART_EXECUTABLE: &str = "dart";
+
 fn install_test_dependency(path: &Path) -> Result<()> {
-    Command::new("dart")
+    Command::new(DART_EXECUTABLE)
         .current_dir(path)
         .env("PUB_CACHE", "../.pub-cache")
         .args(["pub", "add", "-d", "test"])
@@ -27,7 +32,7 @@ fn install_test_dependency(path: &Path) -> Result<()> {
 fn test_dart_runtime_autotest() {
     // Not setting PUB_CACHE here because this is the only test run with the default
     // config anyway.
-    let dart_test = Command::new("dart")
+    let dart_test = Command::new(DART_EXECUTABLE)
         .current_dir("runtime/dart")
         .args(["test", "-r", "expanded"])
         .status()
@@ -118,7 +123,7 @@ void main() {{"#
 
     writeln!(source, "}}").unwrap();
 
-    let dart_test = Command::new("dart")
+    let dart_test = Command::new(DART_EXECUTABLE)
         .current_dir(&source_path)
         .env("PUB_CACHE", "../.pub-cache")
         .args(["test", "test/runtime_test.dart"])
@@ -258,7 +263,7 @@ SerdeValue? {2}DeserializeSerdeData(List<int> input) {{
         .parent()
         .unwrap()
         .join("../../../serde-generate/runtime/dart");
-    let status = Command::new("dart")
+    let status = Command::new(DART_EXECUTABLE)
         .current_dir("runtime/dart")
         .arg("pub")
         .arg("add")
@@ -271,7 +276,7 @@ SerdeValue? {2}DeserializeSerdeData(List<int> input) {{
         .unwrap();
     assert!(status.success());
 
-    let status = Command::new("dart")
+    let status = Command::new(DART_EXECUTABLE)
         .current_dir("runtime/dart")
         .arg("run")
         .arg(source_path)
