@@ -230,15 +230,6 @@ void main() {{
         }}
     }});
 }}
-
-// Helper function for comparing byte arrays.
-bool listEquals(Uint8List a, Uint8List b) {{
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {{
-        if (a[i] != b[i]) return false;
-    }}
-    return true;
-}}
 "#,
         runtime.name().to_lowercase(),
         positive_encodings,
