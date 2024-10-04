@@ -121,14 +121,17 @@ void main() {{"#
 
     writeln!(source_file, "}}").unwrap();
 
-    let dart_test = Command::new(DART_EXECUTABLE)
+    let output = Command::new(DART_EXECUTABLE)
         .current_dir(&source_path)
         .env("PUB_CACHE", "../.pub-cache")
         .args(["test", "test/runtime_test.dart"])
-        .status()
+        .output()
         .unwrap();
-
-    assert!(dart_test.success());
+    if !output.status.success() {
+        let error_output = String::from_utf8_lossy(&output.stdout);
+        eprintln!("{}", error_output);
+    }
+    assert!(output.status.success());
 }
 
 #[test]
@@ -272,13 +275,13 @@ SerdeValue? {2}DeserializeSerdeData(List<int> input) {{
     .unwrap();
 
     let output = Command::new(DART_EXECUTABLE)
-        .current_dir("runtime/dart")
-        .arg("run")
-        .arg(source_path)
+        .current_dir(&source_path)
+        .env("PUB_CACHE", "../.pub-cache")
+        .args(["test", "test/runtime_test.dart"])
         .output()
         .unwrap();
     if !output.status.success() {
-        let error_output = String::from_utf8_lossy(&output.stderr);
+        let error_output = String::from_utf8_lossy(&output.stdout);
         eprintln!("{}", error_output);
     }
     assert!(output.status.success());
