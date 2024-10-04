@@ -1,7 +1,7 @@
 export type Optional<T> = T | null
 export type Seq<T> = T[]
 export type Tuple<T extends any[]> = {
-	[K in keyof T as `$${Exclude<K, keyof any[]> extends string ? Exclude<K, keyof any[]> : never}` ]: T[K]
+	[K in keyof T as `$${Exclude<K, keyof any[]> extends string ? Exclude<K, keyof any[]> : never}`]: T[K]
 }
 export type ListTuple<T extends any[]> = Tuple<T>[]
 export type Map<K, V> = globalThis.Map<K, V>
@@ -116,12 +116,12 @@ export abstract class BinaryWriter implements Writer {
 	abstract sort_map_entries(offsets: number[]): void
 
 	public write_string(value: string) {
-		const length = value.length
+		// https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#buffer_sizing
 		// char and U64 for length
-		this.alloc(8 + length)
+		this.alloc(8 + value.length * 3)
 
 		// encode into buffer with space for string length (u64)
-		BinaryWriter.TEXT_ENCODER.encodeInto(value, new Uint8Array(this.view.buffer, this.offset + 8))
+		let { written: length } = BinaryWriter.TEXT_ENCODER.encodeInto(value, new Uint8Array(this.view.buffer, this.offset + 8))
 
 		const bLength = BigInt(length)
 		this.view.setUint32(this.offset, Number(bLength & BIG_32Fs), true)
