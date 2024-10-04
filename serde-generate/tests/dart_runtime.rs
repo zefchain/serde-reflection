@@ -71,6 +71,13 @@ fn test_dart_runtime_on_simple_data(runtime: Runtime) {
 
     let source = source_path.join("test/runtime_test.dart");
     let mut source_file = File::create(source).unwrap();
+
+    let reference = runtime.serialize(&Test {
+        a: vec![4, 6],
+        b: (-3, 5),
+        c: Choice::C { x: 7 },
+    });
+
     writeln!(
         source_file,
         r#"
@@ -81,18 +88,7 @@ import 'package:tuple/tuple.dart';
 import '../lib/src/bcs/bcs.dart';
 import '../lib/src/bincode/bincode.dart';
 
-void main() {{"#
-    )
-    .unwrap();
-    let reference = runtime.serialize(&Test {
-        a: vec![4, 6],
-        b: (-3, 5),
-        c: Choice::C { x: 7 },
-    });
-
-    writeln!(
-        source_file,
-        r#"
+void main() {{
     test('{1} serialization matches deserialization', () {{
         final expectedBytes = {0};
         Test deserializedInstance = Test.{1}Deserialize(expectedBytes);
@@ -104,17 +100,14 @@ void main() {{"#
         );
 
         expect(deserializedInstance, equals(expectedInstance));
-
         final serializedBytes = expectedInstance.{1}Serialize();
-
         expect(serializedBytes, equals(expectedBytes));
-    }});"#,
+    }});
+}}"#,
         quote_bytes(&reference),
         runtime.name().to_lowercase(),
     )
     .unwrap();
-
-    writeln!(source_file, "}}").unwrap();
 
     let output = Command::new(DART_EXECUTABLE)
         .current_dir(&source_path)
@@ -178,7 +171,6 @@ fn test_dart_runtime_on_supported_types(runtime: Runtime) {
         .map(|bytes| quote_bytes(bytes))
         .collect::<Vec<_>>()
         .join(", ");
-
     let negative_encodings = runtime
         .get_negative_samples()
         .iter()
@@ -197,51 +189,49 @@ import '../lib/src/bcs/bcs.dart';
 import '../lib/src/bincode/bincode.dart';
 
 void main() {{
-  List<Uint8List> positiveInputs = [{0}];
-  List<Uint8List> negativeInputs = [{1}];
+    List<Uint8List> positiveInputs = [{0}];
+    List<Uint8List> negativeInputs = [{1}];
 
-  for (var input in positiveInputs) {{
-    // Deserialize the input.
-    Test value = Test.{2}Deserialize(input);
-    expect(value, isNotNull);
+    for (var input in positiveInputs) {{
+        // Deserialize the input.
+        Test value = Test.{2}Deserialize(input);
+        expect(value, isNotNull);
 
-    // Serialize the deserialized value.
-    final output = value.{2}Serialize();
-    expect(output, isNotNull);
-    expect(output, equals(input));
+        // Serialize the deserialized value.
+        final output = value.{2}Serialize();
+        expect(output, isNotNull);
+        expect(output, equals(input));
 
-    // Test self-equality for the deserialized value.
-    {{
-      Test value2 = Test.{2}Deserialize(input);
-      expect(value2, isNotNull);
-      expect(value, equals(value2));
+        // Test self-equality for the deserialized value.
+        Test value2 = Test.{2}Deserialize(input);
+        expect(value2, isNotNull);
+        expect(value, equals(value2));
+
+        // Test simple mutations of the input.
+        for (var i = 0; i < input.length; i++) {{
+            var input2 = Uint8List.fromList(input);
+            input2[i] ^= 0x80; // Mutate a byte
+            Test value2 = Test.{2}Deserialize(input2);
+            if (value2 != null) {{
+                expect(value, isNot(equals(value2)));
+            }}
+        }}
     }}
 
-    // Test simple mutations of the input.
-    for (var i = 0; i < input.length; i++) {{
-      var input2 = Uint8List.fromList(input);
-      input2[i] ^= 0x80; // Mutate a byte
-      Test value2 = Test.{2}Deserialize(input2);
-      if (value2 != null) {{
-        expect(value, isNot(equals(value2)));
-      }}
+    // Test negative inputs for deserialization failure.
+    for (var input in negativeInputs) {{
+        var result = Test.{2}Deserialize(input);
+        expect(result, isNull);
     }}
-  }}
-
-  // Test negative inputs for deserialization failure.
-  for (var input in negativeInputs) {{
-    var result = Test.{2}Deserialize(input);
-    expect(result, isNull);
-  }}
 }}
 
 // Helper function for comparing byte arrays.
 bool listEquals(Uint8List a, Uint8List b) {{
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {{
-    if (a[i] != b[i]) return false;
-  }}
-  return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {{
+        if (a[i] != b[i]) return false;
+    }}
+    return true;
 }}
 "#,
         positive_encodings,
