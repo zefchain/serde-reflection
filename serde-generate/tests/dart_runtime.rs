@@ -3,6 +3,7 @@
 
 use crate::test_utils;
 use crate::test_utils::{Choice, Runtime, Test};
+use heck::CamelCase;
 use serde_generate::{dart, CodeGeneratorConfig, SourceInstaller};
 use std::{
     fs::{create_dir_all, File},
@@ -125,4 +126,156 @@ void main() {{"#
         .unwrap();
 
     assert!(dart_test.success());
+}
+
+#[test]
+fn test_dart_bcs_runtime_on_supported_types() {
+    test_dart_runtime_on_supported_types(Runtime::Bcs);
+}
+
+#[test]
+fn test_dart_bincode_runtime_on_supported_types() {
+    test_dart_runtime_on_supported_types(Runtime::Bincode);
+}
+
+fn quote_bytes(bytes: &[u8]) -> String {
+    format!(
+        "{{{}}}",
+        bytes
+            .iter()
+            .map(|x| format!("{}", x))
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
+fn test_dart_runtime_on_supported_types(runtime: Runtime) {
+    let dir = tempdir().unwrap();
+    let source_path = dir
+        .path()
+        .join(format!("dart_project_{}", runtime.name().to_lowercase()));
+    let mut source = File::create(source_path.join("test/runtime_test.dart")).unwrap();
+
+    let positive_encodings = runtime
+        .get_positive_samples_quick()
+        .iter()
+        .map(|bytes| quote_bytes(bytes))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let negative_encodings = runtime
+        .get_negative_samples()
+        .iter()
+        .map(|bytes| quote_bytes(bytes))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    writeln!(
+        source,
+        r#"
+void main() {{
+  var positiveInputs = [
+    {0}
+  ];
+  var negativeInputs = [
+    {1}
+  ];
+
+  for (var input in positiveInputs) {{
+    // Deserialize the input.
+    var value = {2}DeserializeSerdeData(input);
+    if (value == null) {{
+      throw Exception('Failed to deserialize input: $input');
+    }}
+
+    // Serialize the deserialized value.
+    var output = value.{2}Serialize();
+    if (output == null || !listEquals(input, output)) {{
+      throw Exception('input != output:\n  $input\n  $output');
+    }}
+
+    // Test self-equality for the Serde value.
+    {{
+      var value2 = {2}DeserializeSerdeData(input);
+      if (value2 == null) {{
+        throw Exception('Failed to deserialize input: $input');
+      }}
+      if (value != value2) {{
+        throw Exception('Value should test equal to itself.');
+      }}
+    }}
+
+    // Test simple mutations of the input.
+    for (var i = 0; i < input.length; i++) {{
+      var input2 = List<int>.from(input);  // Create a copy of the input
+      input2[i] ^= 0x80;  // Mutate a byte
+      var value2 = {2}DeserializeSerdeData(input2);
+      if (value2 != null && value == value2) {{
+        throw Exception('Modified input should give a different value.');
+      }}
+    }}
+  }}
+
+  // Test negative inputs for deserialization failure.
+  for (var input in negativeInputs) {{
+    var result = {2}DeserializeSerdeData(input);
+    if (result != null) {{
+      throw Exception('Input should fail to deserialize: $input');
+    }}
+  }}
+}}
+
+// Helper function for comparing byte arrays.
+bool listEquals(List a, List b) {{
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {{
+    if (a[i] != b[i]) return false;
+  }}
+  return true;
+}}
+
+// Placeholder class
+class SerdeValue {{
+  List<int> {2}Serialize() {{
+    // Implement serialization logic here.
+    return [];
+  }}
+}}
+
+SerdeValue? {2}DeserializeSerdeData(List<int> input) {{
+  // Implement deserialization logic here.
+  return SerdeValue();
+}}
+"#,
+        positive_encodings,
+        negative_encodings,
+        runtime.name().to_camel_case(),
+    )
+    .unwrap();
+
+    let runtime_mod_path = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("../../../serde-generate/runtime/dart");
+    let status = Command::new("dart")
+        .current_dir("runtime/dart")
+        .arg("pub")
+        .arg("add")
+        .arg("-n") // Use `-n` to avoid versioning, or use appropriate Dart flags
+        .arg(format!(
+            "serde-reflection: {}/runtime/dart",
+            runtime_mod_path.to_str().unwrap()
+        ))
+        .status()
+        .unwrap();
+    assert!(status.success());
+
+    let status = Command::new("dart")
+        .current_dir("runtime/dart")
+        .arg("run")
+        .arg(source_path)
+        .status()
+        .unwrap();
+    assert!(status.success());
 }
