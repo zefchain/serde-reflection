@@ -201,12 +201,8 @@ import '../lib/src/bcs/bcs.dart';
 import '../lib/src/bincode/bincode.dart';
 
 void main() {{
-  List<Uint8List> positiveInputs = [
-    {0}
-  ];
-  List<Uint8List> negativeInputs = [
-    {1}
-  ];
+  List<Uint8List> positiveInputs = [{0}];
+  List<Uint8List> negativeInputs = [{1}];
 
   for (var input in positiveInputs) {{
     // Deserialize the input.
