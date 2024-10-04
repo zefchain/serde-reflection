@@ -146,19 +146,16 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				self.out.unindent();
 				writeln!(self.out, "}}")?;
 			}
-			_ => { writeln!(self.out, "const value = {{}} as {name}")?; }
-		}
-		
-		match container {
-			ContainerFormat::UnitStruct => {  /* set at initialization */ }
-			ContainerFormat::TupleStruct(inner_types) => { /* set at initialization */ }
-			ContainerFormat::NewTypeStruct(inner_type) => { /* set at initialization */  }
 			ContainerFormat::Struct(fields) => {
+				writeln!(self.out, "const value: {name} = {{")?;
+				self.out.indent();
 				for field in fields.iter() {
-					writeln!(self.out, "value.{} = {}", field.name, self.quote_read_value(&field.value))?;
+					writeln!(self.out, "{}: {},", field.name, self.quote_read_value(&field.value))?;
 				}
-			}
-			ContainerFormat::Enum(..) => { /* handled before with generate_enum_container() */ }
+				self.out.unindent();
+				writeln!(self.out, "}}")?;
+			},
+			_ => unreachable!(),
 		}
 
 		writeln!(self.out, "return value")?;

@@ -46,18 +46,19 @@ export const ComplexStruct = {
 		return writer.get_bytes()
 	},
 	decode(input: Uint8Array, reader = new BincodeReader(input)) {
-		const value = {} as ComplexStruct
-		value.inner = SimpleStruct.decode(input, reader)
-		value.flag = reader.read_bool()
-		value.items = reader.read_list<MultiEnum>(() => MultiEnum.decode(input, reader))
-		value.unit = UnitStruct.decode(input, reader)
-		value.newtype = NewtypeStruct.decode(input, reader)
-		value.tuple = TupleStruct.decode(input, reader)
-		value.tupple_inline = {
-			$0: reader.read_string(),
-			$1: reader.read_i32(),
+		const value: ComplexStruct = {
+			inner: SimpleStruct.decode(input, reader),
+			flag: reader.read_bool(),
+			items: reader.read_list<MultiEnum>(() => MultiEnum.decode(input, reader)),
+			unit: UnitStruct.decode(input, reader),
+			newtype: NewtypeStruct.decode(input, reader),
+			tuple: TupleStruct.decode(input, reader),
+			tupple_inline: {
+				$0: reader.read_string(),
+				$1: reader.read_i32(),
+			},
+			map: reader.read_map<$t.i32, $t.i64>(reader.read_i32.bind(reader), reader.read_i64.bind(reader)),
 		}
-		value.map = reader.read_map<$t.i32, $t.i64>(reader.read_i32.bind(reader), reader.read_i64.bind(reader))
 		return value
 	}
 }
@@ -145,9 +146,10 @@ export const SimpleStruct = {
 		return writer.get_bytes()
 	},
 	decode(input: Uint8Array, reader = new BincodeReader(input)) {
-		const value = {} as SimpleStruct
-		value.a = reader.read_u32()
-		value.b = reader.read_string()
+		const value: SimpleStruct = {
+			a: reader.read_u32(),
+			b: reader.read_string(),
+		}
 		return value
 	}
 }

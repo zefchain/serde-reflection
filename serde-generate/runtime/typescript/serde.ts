@@ -1,7 +1,7 @@
 export type Optional<T> = T | null
 export type Seq<T> = T[]
-export type Tuple<T extends any[]> = { 
-	[K in keyof T as `$${Exclude<K, keyof any[]> extends string ? Exclude<K, keyof any[]> : never}` ]: T[K] 
+export type Tuple<T extends any[]> = {
+	[K in keyof T as `$${Exclude<K, keyof any[]> extends string ? Exclude<K, keyof any[]> : never}` ]: T[K]
 }
 export type ListTuple<T extends any[]> = Tuple<T>[]
 export type Map<K, V> = globalThis.Map<K, V>
