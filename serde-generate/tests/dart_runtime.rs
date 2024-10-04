@@ -94,7 +94,7 @@ void main() {{"#
         source_file,
         r#"
     test('{1} serialization matches deserialization', () {{
-        final expectedBytes = Uint8List.fromList([{0}]);
+        final expectedBytes = {0};
         Test deserializedInstance = Test.{1}Deserialize(expectedBytes);
 
         Test expectedInstance = Test(
@@ -109,11 +109,7 @@ void main() {{"#
 
         expect(serializedBytes, equals(expectedBytes));
     }});"#,
-        reference
-            .iter()
-            .map(|x| format!("{}", x))
-            .collect::<Vec<_>>()
-            .join(", "),
+        quote_bytes(&reference),
         runtime.name().to_lowercase(),
     )
     .unwrap();
