@@ -89,9 +89,9 @@ import '../lib/src/bcs/bcs.dart';
 import '../lib/src/bincode/bincode.dart';
 
 void main() {{
-    test('{1} serialization matches deserialization', () {{
-        final expectedBytes = {0};
-        Test deserializedInstance = Test.{1}Deserialize(expectedBytes);
+    test('{0} serialization matches deserialization', () {{
+        final expectedBytes = {1};
+        Test deserializedInstance = Test.{0}Deserialize(expectedBytes);
 
         Test expectedInstance = Test(
             a: [4, 6],
@@ -100,12 +100,12 @@ void main() {{
         );
 
         expect(deserializedInstance, equals(expectedInstance));
-        final serializedBytes = expectedInstance.{1}Serialize();
+        final serializedBytes = expectedInstance.{0}Serialize();
         expect(serializedBytes, equals(expectedBytes));
     }});
 }}"#,
-        quote_bytes(&reference),
         runtime.name().to_lowercase(),
+        quote_bytes(&reference),
     )
     .unwrap();
 
@@ -189,40 +189,42 @@ import '../lib/src/bcs/bcs.dart';
 import '../lib/src/bincode/bincode.dart';
 
 void main() {{
-    List<Uint8List> positiveInputs = [{0}];
-    List<Uint8List> negativeInputs = [{1}];
+    test('{0} serialization matches deserialization', () {{
+        List<Uint8List> positiveInputs = [{1}];
+        List<Uint8List> negativeInputs = [{2}];
 
-    for (var input in positiveInputs) {{
-        // Deserialize the input.
-        Test value = Test.{2}Deserialize(input);
-        expect(value, isNotNull);
+        for (var input in positiveInputs) {{
+            // Deserialize the input.
+            Test value = Test.{0}Deserialize(input);
+            expect(value, isNotNull);
 
-        // Serialize the deserialized value.
-        final output = value.{2}Serialize();
-        expect(output, isNotNull);
-        expect(output, equals(input));
+            // Serialize the deserialized value.
+            final output = value.{0}Serialize();
+            expect(output, isNotNull);
+            expect(output, equals(input));
 
-        // Test self-equality for the deserialized value.
-        Test value2 = Test.{2}Deserialize(input);
-        expect(value2, isNotNull);
-        expect(value, equals(value2));
+            // Test self-equality for the deserialized value.
+            Test value2 = Test.{0}Deserialize(input);
+            expect(value2, isNotNull);
+            expect(value, equals(value2));
 
-        // Test simple mutations of the input.
-        for (var i = 0; i < input.length; i++) {{
-            var input2 = Uint8List.fromList(input);
-            input2[i] ^= 0x80; // Mutate a byte
-            Test value2 = Test.{2}Deserialize(input2);
-            if (value2 != null) {{
-                expect(value, isNot(equals(value2)));
+            // Test simple mutations of the input.
+            for (var i = 0; i < input.length; i++) {{
+                var input2 = Uint8List.fromList(input);
+                input2[i] ^= 0x80; // Mutate a byte
+                Test value2 = Test.{0}Deserialize(input2);
+                if (value2 != null) {{
+                    expect(value, isNot(equals(value2)));
+                }}
             }}
         }}
-    }}
 
-    // Test negative inputs for deserialization failure.
-    for (var input in negativeInputs) {{
-        var result = Test.{2}Deserialize(input);
-        expect(result, isNull);
-    }}
+        // Test negative inputs for deserialization failure.
+        for (var input in negativeInputs) {{
+            var result = Test.{0}Deserialize(input);
+            expect(result, isNull);
+        }}
+    }});
 }}
 
 // Helper function for comparing byte arrays.
@@ -234,9 +236,9 @@ bool listEquals(Uint8List a, Uint8List b) {{
     return true;
 }}
 "#,
+        runtime.name().to_lowercase(),
         positive_encodings,
         negative_encodings,
-        runtime.name().to_lowercase(),
     )
     .unwrap();
 
