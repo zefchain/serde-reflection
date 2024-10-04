@@ -96,14 +96,14 @@ export const MultiEnum = {
 				value = {
 					$: "variant_a",
 					$0: reader.read_i32(),
-				} satisfies $t.WrapperOfCase<MultiEnum, "variant_a">
+				} satisfies Extract<MultiEnum, { $: "variant_a" }>
 				break
 			}
 			case 1: {
 				value = {
 					$: "variant_b",
 					$0: reader.read_string(),
-				} satisfies $t.WrapperOfCase<MultiEnum, "variant_b">
+				} satisfies Extract<MultiEnum, { $: "variant_b" }>
 				break
 			}
 			case 2: {
@@ -111,14 +111,14 @@ export const MultiEnum = {
 					$: "variant_c",
 					x: reader.read_u8(),
 					y: reader.read_f64(),
-				} satisfies $t.WrapperOfCase<MultiEnum, "variant_c">
+				} satisfies Extract<MultiEnum, { $: "variant_c" }>
 				break
 			}
 			case 3: {
 				value = {
 					$: "unit_variant",
 					$0: reader.read_unit()
-				} satisfies $t.WrapperOfCase<MultiEnum, "unit_variant">
+				} satisfies Extract<MultiEnum, { $: "unit_variant" }>
 				break
 			}
 		}

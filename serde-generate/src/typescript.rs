@@ -249,7 +249,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 			}
 
 			self.out.unindent();
-			writeln!(self.out, r#"}} satisfies $t.WrapperOfCase<{0}, "{1}">"#, name, variant.name.to_snake_case())?;
+			writeln!(self.out, r#"}} satisfies Extract<{0}, {{ $: "{1}" }}>"#, name, variant.name.to_snake_case())?;
 
 			writeln!(self.out, "break")?;
 			self.out.unindent();

@@ -24,8 +24,6 @@ export type char = string
 export type str = string
 export type bytes = Uint8Array
 
-export type WrapperOfCase<T extends { $: string }, K = T["$"]> = T extends { $: infer _U extends K } ? T : never
-
 export interface Reader {
 	read_string(): string
 	read_bool(): boolean
