@@ -196,33 +196,37 @@ void main() {{
         for (var input in positiveInputs) {{
             // Deserialize the input.
             Test value = Test.{0}Deserialize(input);
-            expect(value, isNotNull);
 
             // Serialize the deserialized value.
             final output = value.{0}Serialize();
-            expect(output, isNotNull);
             expect(output, equals(input));
 
             // Test self-equality for the deserialized value.
             Test value2 = Test.{0}Deserialize(input);
-            expect(value2, isNotNull);
             expect(value, equals(value2));
 
             // Test simple mutations of the input.
             for (var i = 0; i < input.length; i++) {{
                 var input2 = Uint8List.fromList(input);
                 input2[i] ^= 0x80; // Mutate a byte
-                Test value2 = Test.{0}Deserialize(input2);
-                if (value2 != null) {{
-                    expect(value, isNot(equals(value2)));
+                Test value2;
+                try {{
+                    value2 = Test.{0}Deserialize(input2);
+                }} catch (e) {{
+                    continue;
                 }}
+                expect(value, isNot(equals(value2)));
             }}
         }}
 
         // Test negative inputs for deserialization failure.
         for (var input in negativeInputs) {{
-            var result = Test.{0}Deserialize(input);
-            expect(result, isNull);
+            try {{
+                var result = Test.{0}Deserialize(input);
+            }} catch (e) {{
+                continue;
+            }}
+            throw Exception('Negative inputs should not be deserializable');
         }}
     }});
 }}
