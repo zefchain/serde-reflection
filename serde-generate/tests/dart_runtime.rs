@@ -189,7 +189,7 @@ import '../lib/src/bcs/bcs.dart';
 import '../lib/src/bincode/bincode.dart';
 
 void main() {{
-    test('{0} serialization matches deserialization', () {{
+    test('{0} supported types', () {{
         List<Uint8List> positiveInputs = [{1}];
         List<Uint8List> negativeInputs = [{2}];
 
