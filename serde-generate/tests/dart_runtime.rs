@@ -3,7 +3,6 @@
 
 use crate::test_utils;
 use crate::test_utils::{Choice, Runtime, Test};
-use heck::CamelCase;
 use serde_generate::{dart, CodeGeneratorConfig, SourceInstaller};
 use std::{
     fs::{create_dir_all, File},
@@ -211,73 +210,51 @@ void main() {{
 
   for (var input in positiveInputs) {{
     // Deserialize the input.
-    var value = {2}DeserializeSerdeData(input);
-    if (value == null) {{
-      throw Exception('Failed to deserialize input: $input');
-    }}
+    Test value = Test.{2}Deserialize(input);
+    expect(value, isNotNull);
 
     // Serialize the deserialized value.
-    var output = value.{2}Serialize();
-    if (output == null || !listEquals(input, output)) {{
-      throw Exception('input != output:\n  $input\n  $output');
-    }}
+    final output = value.{2}Serialize();
+    expect(output, isNotNull);
+    expect(output, equals(input));
 
-    // Test self-equality for the Serde value.
+    // Test self-equality for the deserialized value.
     {{
-      var value2 = {2}DeserializeSerdeData(input);
-      if (value2 == null) {{
-        throw Exception('Failed to deserialize input: $input');
-      }}
-      if (value != value2) {{
-        throw Exception('Value should test equal to itself.');
-      }}
+      Test value2 = Test.{2}Deserialize(input);
+      expect(value2, isNotNull);
+      expect(value, equals(value2));
     }}
 
     // Test simple mutations of the input.
     for (var i = 0; i < input.length; i++) {{
-      var input2 = List<int>.from(input);  // Create a copy of the input
-      input2[i] ^= 0x80;  // Mutate a byte
-      var value2 = {2}DeserializeSerdeData(input2);
-      if (value2 != null && value == value2) {{
-        throw Exception('Modified input should give a different value.');
+      var input2 = Uint8List.fromList(input);
+      input2[i] ^= 0x80; // Mutate a byte
+      Test value2 = Test.{2}Deserialize(input2);
+      if (value2 != null) {{
+        expect(value, isNot(equals(value2)));
       }}
     }}
   }}
 
   // Test negative inputs for deserialization failure.
   for (var input in negativeInputs) {{
-    var result = {2}DeserializeSerdeData(input);
-    if (result != null) {{
-      throw Exception('Input should fail to deserialize: $input');
-    }}
+    var result = Test.{2}Deserialize(input);
+    expect(result, isNull);
   }}
 }}
 
 // Helper function for comparing byte arrays.
-bool listEquals(List a, List b) {{
+bool listEquals(Uint8List a, Uint8List b) {{
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {{
     if (a[i] != b[i]) return false;
   }}
   return true;
 }}
-
-// Placeholder class
-class SerdeValue {{
-  List<int> {2}Serialize() {{
-    // Implement serialization logic here.
-    return [];
-  }}
-}}
-
-SerdeValue? {2}DeserializeSerdeData(List<int> input) {{
-  // Implement deserialization logic here.
-  return SerdeValue();
-}}
 "#,
         positive_encodings,
         negative_encodings,
-        runtime.name().to_camel_case(),
+        runtime.name().to_lowercase(),
     )
     .unwrap();
 
