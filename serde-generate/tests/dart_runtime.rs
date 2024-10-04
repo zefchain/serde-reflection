@@ -30,8 +30,8 @@ fn install_test_dependency(path: &Path) -> Result<()> {
 
 #[test]
 fn test_dart_runtime_autotest() {
-    // Not setting PUB_CACHE here because this is the only test run with the default
-    // config anyway.
+    // Not setting PUB_CACHE here because this is the only test run
+    // with the default config anyway.
     let dart_test = Command::new(DART_EXECUTABLE)
         .current_dir("runtime/dart")
         .args(["test", "-r", "expanded"])
@@ -70,9 +70,10 @@ fn test_dart_runtime_on_simple_data(runtime: Runtime) {
 
     create_dir_all(source_path.join("test")).unwrap();
 
-    let mut source = File::create(source_path.join("test/runtime_test.dart")).unwrap();
+    let source = source_path.join("test/runtime_test.dart");
+    let mut source_file = File::create(source).unwrap();
     writeln!(
-        source,
+        source_file,
         r#"
 import 'dart:typed_data';
 import 'package:example/example.dart';
@@ -91,7 +92,7 @@ void main() {{"#
     });
 
     writeln!(
-        source,
+        source_file,
         r#"
     test('{1} serialization matches deserialization', () {{
         final expectedBytes = Uint8List.fromList([{0}]);
@@ -118,7 +119,7 @@ void main() {{"#
     )
     .unwrap();
 
-    writeln!(source, "}}").unwrap();
+    writeln!(source_file, "}}").unwrap();
 
     let dart_test = Command::new(DART_EXECUTABLE)
         .current_dir(&source_path)
@@ -170,7 +171,8 @@ fn test_dart_runtime_on_supported_types(runtime: Runtime) {
 
     create_dir_all(source_path.join("test")).unwrap();
 
-    let mut source = File::create(source_path.join("test/runtime_test.dart")).unwrap();
+    let source = source_path.join("test/runtime_test.dart");
+    let mut source_file = File::create(source).unwrap();
 
     let positive_encodings = runtime
         .get_positive_samples_quick()
@@ -187,7 +189,7 @@ fn test_dart_runtime_on_supported_types(runtime: Runtime) {
         .join(", ");
 
     writeln!(
-        source,
+        source_file,
         r#"
 void main() {{
   var positiveInputs = [
