@@ -23,6 +23,38 @@ class BcsSerializer extends BinarySerializer {
   }
 
   void sortMapEntries(Uint8List offsets) {
-    // TODO(#120)
+    if (offsets.isEmpty) {
+      return;
+    }
+
+    // Create a list of slices based on offsets
+    List<List<int>> slices = [];
+    int totalLength = output.length;
+    List<int> offsetList = List.from(offsets);
+    offsetList.add(totalLength);
+
+    for (int i = 1; i < offsetList.length; i++) {
+      slices.add(output.sublist(offsetList[i - 1], offsetList[i]).toList());
+    }
+
+    // Sort slices using lexicographic comparison
+    slices.sort((a, b) {
+      for (int i = 0; i < a.length && i < b.length; i++) {
+        if (a[i] != b[i]) {
+          return a[i].compareTo(b[i]);
+        }
+      }
+      return a.length.compareTo(b.length);
+    });
+
+    // Write sorted slices back to output
+    int writePosition = offsetList[0];
+    for (final slice in slices) {
+      output.setRange(writePosition, writePosition + slice.length, slice);
+      writePosition += slice.length;
+    }
+
+    // Ensure the final length is correct
+    assert(offsetList.last == output.length);
   }
 }
