@@ -269,29 +269,15 @@ SerdeValue? {2}DeserializeSerdeData(List<int> input) {{
     )
     .unwrap();
 
-    let runtime_mod_path = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("../../../serde-generate/runtime/dart");
-    let status = Command::new(DART_EXECUTABLE)
-        .current_dir("runtime/dart")
-        .arg("pub")
-        .arg("add")
-        .arg("-n") // Use `-n` to avoid versioning, or use appropriate Dart flags
-        .arg(format!(
-            "serde-reflection: {}/runtime/dart",
-            runtime_mod_path.to_str().unwrap()
-        ))
-        .status()
-        .unwrap();
-    assert!(status.success());
-
-    let status = Command::new(DART_EXECUTABLE)
+    let output = Command::new(DART_EXECUTABLE)
         .current_dir("runtime/dart")
         .arg("run")
         .arg(source_path)
-        .status()
+        .output()
         .unwrap();
-    assert!(status.success());
+    if !output.status.success() {
+        let error_output = String::from_utf8_lossy(&output.stderr);
+        eprintln!("{}", error_output);
+    }
+    assert!(output.status.success());
 }
