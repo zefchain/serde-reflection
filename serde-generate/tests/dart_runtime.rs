@@ -56,9 +56,7 @@ fn test_dart_runtime_on_simple_data(runtime: Runtime) {
     let source_path = tempdir
         .path()
         .join(format!("dart_project_{}", runtime.name().to_lowercase()));
-
     let registry = test_utils::get_simple_registry().unwrap();
-
     let config = CodeGeneratorConfig::new("example".to_string())
         .with_encodings(vec![runtime.into()])
         .with_c_style_enums(false);
@@ -68,10 +66,9 @@ fn test_dart_runtime_on_simple_data(runtime: Runtime) {
     installer.install_serde_runtime().unwrap();
     installer.install_bincode_runtime().unwrap();
     installer.install_bcs_runtime().unwrap();
+    install_test_dependency(&source_path).unwrap();
 
     create_dir_all(source_path.join("test")).unwrap();
-
-    install_test_dependency(&source_path).unwrap();
 
     let mut source = File::create(source_path.join("test/runtime_test.dart")).unwrap();
     writeln!(
@@ -155,10 +152,24 @@ fn quote_bytes(bytes: &[u8]) -> String {
 }
 
 fn test_dart_runtime_on_supported_types(runtime: Runtime) {
-    let dir = tempdir().unwrap();
-    let source_path = dir
+    let tempdir = tempdir().unwrap();
+    let source_path = tempdir
         .path()
         .join(format!("dart_project_{}", runtime.name().to_lowercase()));
+    let registry = test_utils::get_simple_registry().unwrap();
+    let config = CodeGeneratorConfig::new("example".to_string())
+        .with_encodings(vec![runtime.into()])
+        .with_c_style_enums(false);
+
+    let installer = dart::Installer::new(source_path.clone());
+    installer.install_module(&config, &registry).unwrap();
+    installer.install_serde_runtime().unwrap();
+    installer.install_bincode_runtime().unwrap();
+    installer.install_bcs_runtime().unwrap();
+    install_test_dependency(&source_path).unwrap();
+
+    create_dir_all(source_path.join("test")).unwrap();
+
     let mut source = File::create(source_path.join("test/runtime_test.dart")).unwrap();
 
     let positive_encodings = runtime
