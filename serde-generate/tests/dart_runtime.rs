@@ -89,7 +89,7 @@ import '../lib/src/bcs/bcs.dart';
 import '../lib/src/bincode/bincode.dart';
 
 void main() {{
-    test('{0} serialization matches deserialization', () {{
+    test('{0} simple data', () {{
         final expectedBytes = {1};
         Test deserializedInstance = Test.{0}Deserialize(expectedBytes);
 
