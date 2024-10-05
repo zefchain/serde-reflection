@@ -148,7 +148,7 @@ fn test_dart_runtime_on_supported_types(runtime: Runtime) {
     let source_path = tempdir
         .path()
         .join(format!("dart_project_{}", runtime.name().to_lowercase()));
-    let registry = test_utils::get_simple_registry().unwrap();
+    let registry = test_utils::get_registry().unwrap();
     let config = CodeGeneratorConfig::new("example".to_string())
         .with_encodings(vec![runtime.into()])
         .with_c_style_enums(false);
@@ -195,23 +195,23 @@ void main() {{
 
         for (var input in positiveInputs) {{
             // Deserialize the input.
-            Test value = Test.{0}Deserialize(input);
+            SerdeData value = SerdeData.{0}Deserialize(input);
 
             // Serialize the deserialized value.
             final output = value.{0}Serialize();
             expect(output, equals(input));
 
             // Test self-equality for the deserialized value.
-            Test value2 = Test.{0}Deserialize(input);
+            SerdeData value2 = SerdeData.{0}Deserialize(input);
             expect(value, equals(value2));
 
             // Test simple mutations of the input.
             for (var i = 0; i < input.length; i++) {{
                 var input2 = Uint8List.fromList(input);
                 input2[i] ^= 0x80; // Mutate a byte
-                Test value2;
+                SerdeData value2;
                 try {{
-                    value2 = Test.{0}Deserialize(input2);
+                    value2 = SerdeData.{0}Deserialize(input2);
                 }} catch (e) {{
                     continue;
                 }}
@@ -222,7 +222,7 @@ void main() {{
         // Test negative inputs for deserialization failure.
         for (var input in negativeInputs) {{
             try {{
-                var result = Test.{0}Deserialize(input);
+                SerdeData result = SerdeData.{0}Deserialize(input);
             }} catch (e) {{
                 continue;
             }}
