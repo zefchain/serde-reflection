@@ -93,39 +93,38 @@ export abstract class BinaryWriter implements Writer {
 		}
 	}
 
-	private alloc(allocLength: number) {
-		const wishSize = this.offset + allocLength
+private alloc(allocLength: number) {
+	const wish_size = this.offset + allocLength
 
-		const currentLength = this.view.buffer.byteLength
-		if (wishSize > currentLength) {
-			let newBufferLength = currentLength
-			while (newBufferLength <= wishSize) newBufferLength = newBufferLength << 1
+	const current_length = this.view.buffer.byteLength
+	if (wish_size > current_length) {
+		let new_buffer_length = current_length
+		while (new_buffer_length < wish_size) new_buffer_length = new_buffer_length << 1
 
-			// TODO: there is new API for resizing buffer, but in Node it seems to be slower then allocating new
-			// this.buffer.resize(newBufferLength)
+		// TODO: there is new API for resizing buffer, but in Node it seems to be slower then allocating new
+		// this.buffer.resize(newBufferLength)
 
-			const newBuffer = new Uint8Array(newBufferLength)
-			newBuffer.set(new Uint8Array(this.view.buffer))
+		const newBuffer = new Uint8Array(new_buffer_length)
+		newBuffer.set(new Uint8Array(this.view.buffer))
 
-			this.view = WRITE_HEAP = new DataView(newBuffer.buffer)
-		}
+		this.view = WRITE_HEAP = new DataView(newBuffer.buffer)
 	}
+}
 
 	abstract write_length(value: number): void
 	abstract write_variant_index(value: number): void
 	abstract sort_map_entries(offsets: number[]): void
 
+	// https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#buffer_sizing
 	public write_string(value: string) {
-		// https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#buffer_sizing
-		// char and U64 for length
+		// allocate space for string length marker and whole string
 		this.alloc(8 + value.length * 3)
 
 		// encode into buffer with space for string length (u64)
 		let { written: length } = BinaryWriter.TEXT_ENCODER.encodeInto(value, new Uint8Array(this.view.buffer, this.offset + 8))
 
-		const bLength = BigInt(length)
-		this.view.setUint32(this.offset, Number(bLength & BIG_32Fs), true)
-		this.view.setUint32(this.offset + 4, Number(bLength >> BIG_32), true)
+		const b_length = BigInt(length)
+		this.view.setBigUint64(this.offset, b_length, true)
 		this.offset += (8 + length)
 	}
 
@@ -157,14 +156,8 @@ export abstract class BinaryWriter implements Writer {
 	}
 
 	public write_u64(value: bigint | number) {
-		const low = BigInt(value) & BIG_32Fs, high = BigInt(value) >> BIG_32
-
 		this.alloc(8)
-
-		// write little endian number
-		this.view.setUint32(this.offset, Number(low), true)
-		this.view.setUint32(this.offset + 4, Number(high), true)
-
+		this.view.setBigUint64(this.offset, BigInt(value), true)
 		this.offset += 8
 	}
 
@@ -195,14 +188,8 @@ export abstract class BinaryWriter implements Writer {
 	}
 
 	public write_i64(value: bigint | number) {
-		const low = BigInt(value) & BIG_32Fs, high = BigInt(value) >> BIG_32
-
 		this.alloc(8)
-
-		// write little endian number
-		this.view.setInt32(this.offset, Number(low), true)
-		this.view.setInt32(this.offset + 4, Number(high), true)
-
+		this.view.setBigInt64(this.offset, BigInt(value), true)
 		this.offset += 8
 	}
 
