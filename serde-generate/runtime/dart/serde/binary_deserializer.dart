@@ -15,9 +15,17 @@ abstract class BinaryDeserializer {
   }
 
   bool deserializeBool() {
-    final result = input.getUint8(_offset) != 0;
+    final result = input.getUint8(_offset);
     _offset += 1;
-    return result;
+    if (result == 0) {
+      return false;
+    } else if (result == 1) {
+      return true;
+    } else {
+      throw Exception(
+        'Invalid boolean: expected 0 or 1, but got ${result}',
+      );
+    }
   }
 
   Unit deserializeUnit() {
