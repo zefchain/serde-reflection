@@ -226,7 +226,7 @@ void main() {{
             }} catch (e) {{
                 continue;
             }}
-            throw Exception('Negative inputs should not be deserializable');
+            throw Exception('Input should fail to deserialize');
         }}
     }});
 }}
