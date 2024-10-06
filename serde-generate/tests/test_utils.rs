@@ -51,7 +51,7 @@ pub enum SerdeData {
     UnitVector(Vec<()>),
     SimpleList(SimpleList),
     CStyleEnum(CStyleEnum),
-    ComplexMap(BTreeMap<([u32; 2], [u8; 4]), ()>),
+    ComplexMap(BTreeMap<(), Vec<(u8, u8, u8)>>),
     EmptyTupleVariant(),
     EmptyStructVariant {},
 }
@@ -297,7 +297,7 @@ pub fn get_sample_values(has_canonical_maps: bool, has_floats: bool) -> Vec<Serd
 
     let v12 = SerdeData::CStyleEnum(CStyleEnum::C);
 
-    let v13 = SerdeData::ComplexMap(btreemap! { ([1,2], [3,4,5,6]) => ()});
+    let v13 = SerdeData::ComplexMap(btreemap! { () => vec![(1, 2, 3), (4, 5, 6)]});
 
     let v14 = SerdeData::EmptyTupleVariant();
     let v15 = SerdeData::EmptyStructVariant {};
