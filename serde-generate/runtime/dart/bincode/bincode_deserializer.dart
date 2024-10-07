@@ -3,8 +3,12 @@
 
 part of bincode;
 
+// Maximum number of nested structs and enum variants.
+const maxContainerDepth = (1 << 31) - 1;
+
 class BincodeDeserializer extends BinaryDeserializer {
-  BincodeDeserializer(Uint8List input) : super(input);
+  BincodeDeserializer(Uint8List input)
+      : super(input: input, containerDepthBudget: maxContainerDepth);
 
   @override
   int deserializeLength() {

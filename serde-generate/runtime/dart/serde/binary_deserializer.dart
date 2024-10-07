@@ -4,11 +4,15 @@
 part of serde;
 
 abstract class BinaryDeserializer {
-  BinaryDeserializer(Uint8List input) : input = ByteData.view(input.buffer);
+  BinaryDeserializer({
+    required Uint8List input,
+    required this.containerDepthBudget,
+  }) : input = ByteData.view(input.buffer);
 
   @protected
   final ByteData input;
   int _offset = 0;
+  int containerDepthBudget;
 
   int get offset {
     return _offset;
@@ -153,5 +157,16 @@ abstract class BinaryDeserializer {
     } else {
       return number.toUnsigned(byteLength * 8);
     }
+  }
+
+  void increaseContainerDepth() {
+    if (containerDepthBudget == 0) {
+      throw Exception('exceeded maximum container depth');
+    }
+    containerDepthBudget -= 1;
+  }
+
+  void decreaseContainerDepth() {
+    containerDepthBudget += 1;
   }
 }

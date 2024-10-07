@@ -4,6 +4,11 @@
 part of serde;
 
 abstract class BinarySerializer {
+  BinarySerializer({
+    required this.containerDepthBudget,
+  });
+
+  int containerDepthBudget;
   final List<int> output = List<int>.empty(growable: true);
 
   Uint8List get bytes {
@@ -136,5 +141,16 @@ abstract class BinarySerializer {
   void serializeUint128(Uint128 value) {
     serializeUint64(Uint64(value.low));
     serializeUint64(Uint64(value.high));
+  }
+
+  void increaseContainerDepth() {
+    if (containerDepthBudget == 0) {
+      throw Exception('exceeded maximum container depth');
+    }
+    containerDepthBudget -= 1;
+  }
+
+  void decreaseContainerDepth() {
+    containerDepthBudget += 1;
   }
 }

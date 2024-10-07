@@ -6,8 +6,15 @@ part of bcs;
 // Maximum length allowed for sequences (vectors, bytes, strings) and maps.
 const maxSequenceLength = (1 << 31) - 1;
 
+// Maximum number of nested structs and enum variants.
+const maxContainerDepth = 500;
+
 class BcsDeserializer extends BinaryDeserializer {
-  BcsDeserializer(Uint8List input) : super(input);
+  BcsDeserializer(Uint8List input)
+      : super(
+          input: input,
+          containerDepthBudget: maxContainerDepth,
+        );
 
   int deserializeUleb128AsUint32() {
     var value = 0;

@@ -670,53 +670,43 @@ return obj;
         }
 
         if self.generator.config.serialization {
-            // a struct (UnitStruct) with zero fields
-            if variant_index.is_none() && fields.is_empty() {
-                writeln!(
-                    self.out,
-                    "\n{}.deserialize(BinaryDeserializer deserializer);",
-                    self.quote_qualified_name(name)
-                )?;
             // Deserialize (struct) or Load (variant)
-            } else if variant_index.is_none() {
+            if variant_index.is_none() {
                 writeln!(
                     self.out,
-                    "\n{}.deserialize(BinaryDeserializer deserializer) :",
-                    self.quote_qualified_name(name)
-                )?;
-            } else if !fields.is_empty() {
-                writeln!(
-                    self.out,
-                    "\n{}.load(BinaryDeserializer deserializer) :",
+                    "\nstatic {} deserialize(BinaryDeserializer deserializer) {{",
                     self.quote_qualified_name(name)
                 )?;
             } else {
                 writeln!(
                     self.out,
-                    "\n{}.load(BinaryDeserializer deserializer);",
+                    "\nstatic {} load(BinaryDeserializer deserializer) {{",
                     self.quote_qualified_name(name)
                 )?;
             }
 
             self.out.indent();
-            for (index, field) in fields.iter().enumerate() {
-                if index == field_count - 1 {
-                    writeln!(
-                        self.out,
-                        "{} = {};",
-                        self.quote_field(&field.name.to_mixed_case()),
-                        self.quote_deserialize(&field.value)
-                    )?;
-                } else {
-                    writeln!(
-                        self.out,
-                        "{} = {},",
-                        self.quote_field(&field.name.to_mixed_case()),
-                        self.quote_deserialize(&field.value)
-                    )?;
-                }
+            writeln!(self.out, "deserializer.increaseContainerDepth();")?;
+            writeln!(
+                self.out,
+                "final instance = {}(",
+                self.quote_qualified_name(name)
+            )?;
+            self.out.indent();
+            for field in fields {
+                writeln!(
+                    self.out,
+                    "{}: {},",
+                    self.quote_field(&field.name.to_mixed_case()),
+                    self.quote_deserialize(&field.value)
+                )?;
             }
             self.out.unindent();
+            writeln!(self.out, ");")?;
+            writeln!(self.out, "deserializer.decreaseContainerDepth();")?;
+            writeln!(self.out, "return instance;")?;
+            self.out.unindent();
+            writeln!(self.out, "}}")?;
 
             if variant_index.is_none() {
                 for encoding in &self.generator.config.encodings {
@@ -780,6 +770,7 @@ return obj;
         if self.generator.config.serialization {
             writeln!(self.out, "\nvoid serialize(BinarySerializer serializer) {{",)?;
             self.out.indent();
+            writeln!(self.out, "serializer.increaseContainerDepth();")?;
             if let Some(index) = variant_index {
                 writeln!(self.out, "serializer.serializeVariantIndex({});", index)?;
             }
@@ -793,6 +784,7 @@ return obj;
                     )
                 )?;
             }
+            writeln!(self.out, "serializer.decreaseContainerDepth();")?;
             self.out.unindent();
             writeln!(self.out, "}}")?;
 

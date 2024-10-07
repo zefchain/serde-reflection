@@ -4,6 +4,11 @@
 part of bcs;
 
 class BcsSerializer extends BinarySerializer {
+  BcsSerializer()
+      : super(
+          containerDepthBudget: maxContainerDepth,
+        );
+
   void serializeUint32AsUleb128(int value) {
     while (((value & 0xFFFFFFFF) >> 7) != 0) {
       output.add((value & 0x7f) | 0x80);

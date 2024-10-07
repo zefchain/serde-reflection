@@ -4,6 +4,11 @@
 part of bincode;
 
 class BincodeSerializer extends BinarySerializer {
+  BincodeSerializer()
+      : super(
+          containerDepthBudget: maxContainerDepth,
+        );
+
   @override
   void serializeLength(int value) {
     serializeUint64(Uint64(BigInt.from(value)));
