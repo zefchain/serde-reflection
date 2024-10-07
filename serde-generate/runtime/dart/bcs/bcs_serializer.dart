@@ -32,14 +32,16 @@ class BcsSerializer extends BinarySerializer {
       return;
     }
 
+    final binOutput = Uint8List.fromList(output);
+
     // Create a list of slices based on offsets
-    List<List<int>> slices = [];
-    int totalLength = output.length;
+    List<Uint8List> slices = [];
+    int totalLength = binOutput.length;
     List<int> offsetList = List.from(offsets);
     offsetList.add(totalLength);
 
     for (int i = 1; i < offsetList.length; i++) {
-      slices.add(output.sublist(offsetList[i - 1], offsetList[i]).toList());
+      slices.add(binOutput.sublist(offsetList[i - 1], offsetList[i]));
     }
 
     // Sort slices using lexicographic comparison
