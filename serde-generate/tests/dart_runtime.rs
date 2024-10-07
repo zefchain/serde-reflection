@@ -222,7 +222,7 @@ void main() {{
         // Test negative inputs for deserialization failure.
         for (var input in negativeInputs) {{
             try {{
-                SerdeData result = SerdeData.{0}Deserialize(input);
+                SerdeData.{0}Deserialize(input);
             }} catch (e) {{
                 continue;
             }}
