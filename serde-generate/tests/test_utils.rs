@@ -778,15 +778,12 @@ SerdeData:
       ComplexMap:
         NEWTYPE:
           MAP:
-            KEY:
-              TUPLE:
-                - TUPLEARRAY:
-                    CONTENT: U32
-                    SIZE: 2
-                - TUPLEARRAY:
-                    CONTENT: U8
-                    SIZE: 4
-            VALUE: UNIT
+            KEY: UNIT
+            VALUE:
+              SEQ:
+                TUPLEARRAY:
+                  CONTENT: U8
+                  SIZE: 3
     13:
       EmptyTupleVariant:
         TUPLE: []
