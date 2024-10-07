@@ -3,6 +3,9 @@
 
 part of bcs;
 
+// Maximum length allowed for sequences (vectors, bytes, strings) and maps.
+const maxSequenceLength = (1 << 31) - 1;
+
 class BcsDeserializer extends BinaryDeserializer {
   BcsDeserializer(Uint8List input) : super(input);
 
@@ -27,7 +30,11 @@ class BcsDeserializer extends BinaryDeserializer {
 
   @override
   int deserializeLength() {
-    return deserializeUleb128AsUint32();
+    final length = deserializeUleb128AsUint32();
+    if (length > maxSequenceLength) {
+      throw Exception("length is too large");
+    }
+    return length;
   }
 
   @override
