@@ -24,6 +24,7 @@ serde = { version = "1.0.126", features = ["derive"] }
 textwrap = "0.13.4"
 phf = { version = "0.10", features = ["macros"], optional = true }
 serde-reflection = { path = "../serde-reflection", version = "0.4.0" }
+indoc = "2.0.5"
 
 [dev-dependencies]
 hex = "0.4.3"

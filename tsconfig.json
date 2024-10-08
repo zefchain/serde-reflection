@@ -1,0 +1,13 @@
+{
+	"compilerOptions": {
+		"noEmit": true,
+		"target": "ESNext",
+		"module": "Preserve",
+		"downlevelIteration": true,
+		"allowImportingTsExtensions": true,
+		"lib": ["DOM", "ES2023"]
+	},
+	"exclude": [
+		"node_modules"
+	]
+}
