@@ -285,9 +285,9 @@ export abstract class BinaryReader implements Reader {
 	}
 
 	public read_u64() {
-		const low = this.read_u32(), high = this.read_u32()
-		// combine the two 32-bit values and return (little endian)
-		return (BigInt(high) << BIG_32) | BigInt(low)
+		const value = this.view.getBigUint64(this.offset, true)
+		this.offset += 8
+		return value
 	}
 
 	public read_u128() {
@@ -315,9 +315,9 @@ export abstract class BinaryReader implements Reader {
 	}
 
 	public read_i64() {
-		const low = this.read_i32(), high = this.read_i32()
-		// combine the two 32-bit values and return (little endian)
-		return (BigInt(high) << BIG_32) | BigInt(low)
+		const value = this.view.getBigInt64(this.offset, true)
+		this.offset += 8
+		return value
 	}
 
 	public read_i128() {
