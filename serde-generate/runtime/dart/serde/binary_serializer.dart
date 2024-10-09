@@ -153,4 +153,6 @@ abstract class BinarySerializer {
   void decreaseContainerDepth() {
     containerDepthBudget += 1;
   }
+
+  void sortMapEntries(List<int> offsets);
 }
