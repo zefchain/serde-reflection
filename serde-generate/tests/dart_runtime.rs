@@ -31,13 +31,16 @@ fn install_test_dependency(path: &Path) -> Result<()> {
 fn test_dart_runtime_autotest() {
     // Not setting PUB_CACHE here because this is the only test run
     // with the default config anyway.
-    let dart_test = Command::new(DART_EXECUTABLE)
+    let output = Command::new(DART_EXECUTABLE)
         .current_dir("runtime/dart")
         .args(["test", "-r", "expanded"])
-        .status()
+        .output()
         .unwrap();
-
-    assert!(dart_test.success());
+    if !output.status.success() {
+        let error_output = String::from_utf8_lossy(&output.stdout);
+        eprintln!("{}", error_output);
+    }
+    assert!(output.status.success());
 }
 
 #[test]
