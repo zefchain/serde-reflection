@@ -86,7 +86,7 @@ impl<'a> CodeGenerator<'a> {
             r#"name: {}
 
 environment:
-  sdk: '>=2.14.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   meta: ^1.0.0
