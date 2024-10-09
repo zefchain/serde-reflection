@@ -29,16 +29,12 @@ fn test_that_csharp_code_compiles_with_config(
     let proj_path = dir_path.join(config.module_name().replace('.', "/"));
     {
         let _lock = MUTEX.lock();
-        let output = Command::new("dotnet")
+        let status = Command::new("dotnet")
             .arg("build")
             .current_dir(&proj_path)
-            .output()
+            .status()
             .unwrap();
-        if !output.status.success() {
-            let error_output = String::from_utf8_lossy(&output.stdout);
-            eprintln!("{}", error_output);
-        }
-        assert!(output.status.success());
+        assert!(status.success());
     }
 
     (dir, proj_path)
