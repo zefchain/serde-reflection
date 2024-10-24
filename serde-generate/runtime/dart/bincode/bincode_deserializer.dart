@@ -3,14 +3,16 @@
 
 part of bincode;
 
+// Maximum number of nested structs and enum variants.
+const maxContainerDepth = (1 << 31) - 1;
+
 class BincodeDeserializer extends BinaryDeserializer {
-  BincodeDeserializer(Uint8List input) : super(input);
+  BincodeDeserializer(Uint8List input)
+      : super(input: input, containerDepthBudget: maxContainerDepth);
 
   @override
   int deserializeLength() {
-    // bincode sends this as a u64 but since transferred data length should never exceed the upper
-    // bounds of an i64 (9223372036854775807 bytes is 9k petabytes) still deserialize to a Dart int
-    return deserializeInt64();
+    return deserializeUint64().toInt();
   }
 
   @override

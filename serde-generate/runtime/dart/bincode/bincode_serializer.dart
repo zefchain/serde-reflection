@@ -4,11 +4,14 @@
 part of bincode;
 
 class BincodeSerializer extends BinarySerializer {
+  BincodeSerializer()
+      : super(
+          containerDepthBudget: maxContainerDepth,
+        );
+
   @override
   void serializeLength(int value) {
-    // bincode expects a u64 but since the capacity of a Dart int is less than that
-    // we can safely serialize as int to simplify over constructing Uint8 bytes
-    return serializeInt64(value);
+    serializeUint64(Uint64(BigInt.from(value)));
   }
 
   @override
@@ -16,7 +19,7 @@ class BincodeSerializer extends BinarySerializer {
     serializeUint32(value);
   }
 
-  void sortMapEntries(Int32List offsets) {
+  void sortMapEntries(List<int> offsets) {
     // Not required by the format.
   }
 }
