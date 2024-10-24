@@ -51,7 +51,7 @@ pub enum SerdeData {
     UnitVector(Vec<()>),
     SimpleList(SimpleList),
     CStyleEnum(CStyleEnum),
-    ComplexMap(BTreeMap<(), Vec<(u8, u8, u8)>>),
+    ComplexMap(BTreeMap<([u32; 2], [u8; 4]), ()>),
     EmptyTupleVariant(),
     EmptyStructVariant {},
 }
@@ -297,7 +297,7 @@ pub fn get_sample_values(has_canonical_maps: bool, has_floats: bool) -> Vec<Serd
 
     let v12 = SerdeData::CStyleEnum(CStyleEnum::C);
 
-    let v13 = SerdeData::ComplexMap(btreemap! { () => vec![(1, 2, 3), (4, 5, 6)]});
+    let v13 = SerdeData::ComplexMap(btreemap! { ([1,2], [3,4,5,6]) => ()});
 
     let v14 = SerdeData::EmptyTupleVariant();
     let v15 = SerdeData::EmptyStructVariant {};
@@ -778,12 +778,15 @@ SerdeData:
       ComplexMap:
         NEWTYPE:
           MAP:
-            KEY: UNIT
-            VALUE:
-              SEQ:
-                TUPLEARRAY:
-                  CONTENT: U8
-                  SIZE: 3
+            KEY:
+              TUPLE:
+                - TUPLEARRAY:
+                    CONTENT: U32
+                    SIZE: 2
+                - TUPLEARRAY:
+                    CONTENT: U8
+                    SIZE: 4
+            VALUE: UNIT
     13:
       EmptyTupleVariant:
         TUPLE: []
@@ -928,7 +931,7 @@ fn test_bincode_get_positive_samples() {
 // This test requires --release because of deserialization of long (unit) vectors.
 #[cfg(not(debug_assertions))]
 fn test_bcs_get_positive_samples() {
-    assert_eq!(test_get_positive_samples(Runtime::Bcs), 81);
+    assert_eq!(test_get_positive_samples(Runtime::Bcs), 82);
 }
 
 // Make sure all the "positive" samples successfully deserialize with the reference Rust
@@ -952,7 +955,7 @@ fn test_bincode_get_negative_samples() {
 // This test requires --release because of deserialization of long (unit) vectors.
 #[cfg(not(debug_assertions))]
 fn test_bcs_get_negative_samples() {
-    assert_eq!(test_get_negative_samples(Runtime::Bcs), 60);
+    assert_eq!(test_get_negative_samples(Runtime::Bcs), 59);
 }
 
 // Make sure all the "negative" samples fail to deserialize with the reference Rust
