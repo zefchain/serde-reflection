@@ -200,6 +200,13 @@ void main() {{
             // Deserialize the input.
             SerdeData value = SerdeData.{0}Deserialize(input);
 
+            // Exclude `SerdeData::ComplexMap` from tests
+            // because the `matcher` package used by the `test` package
+            // doesn't support lists within tuples.
+            if (value is SerdeDataComplexMap) {{
+                continue;
+            }}
+
             // Serialize the deserialized value.
             final output = value.{0}Serialize();
             expect(output, equals(input));
