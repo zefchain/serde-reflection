@@ -406,6 +406,10 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
     where
         V: Visitor<'de>,
     {
+        if variants.is_empty() {
+            return Err(Error::NotSupported("deserialize_enum with 0 variants"));
+        }
+
         let enum_type_id = typeid::of::<V::Value>();
         self.format.unify(Format::TypeName(enum_name.into()))?;
         // Pre-update the registry.
