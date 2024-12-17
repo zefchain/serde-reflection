@@ -8,9 +8,11 @@ use crate::{
     ser::Serializer,
     value::Value,
 };
+use erased_discriminant::Discriminant;
 use once_cell::sync::Lazy;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::any::TypeId;
+use std::collections::BTreeMap;
 
 /// A map of container formats.
 pub type Registry = BTreeMap<String, ContainerFormat>;
@@ -28,7 +30,24 @@ pub struct Tracer {
 
     /// Enums that have detected to be yet incomplete (i.e. missing variants)
     /// while tracing deserialization.
-    pub(crate) incomplete_enums: BTreeSet<String>,
+    pub(crate) incomplete_enums: BTreeMap<String, EnumProgress>,
+
+    /// Discriminant associated with each variant of each enum.
+    pub(crate) discriminants: BTreeMap<(TypeId, VariantId<'static>), Discriminant>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum EnumProgress {
+    /// There are variant names that have not yet been traced.
+    NamedVariantsRemaining,
+    /// There are variant numbers that have not yet been traced.
+    IndexedVariantsRemaining,
+}
+
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
+pub(crate) enum VariantId<'a> {
+    Index(u32),
+    Name(&'a str),
 }
 
 /// User inputs, aka "samples", recorded during serialization.
@@ -169,7 +188,8 @@ impl Tracer {
         Self {
             config,
             registry: BTreeMap::new(),
-            incomplete_enums: BTreeSet::new(),
+            incomplete_enums: BTreeMap::new(),
+            discriminants: BTreeMap::new(),
         }
     }
 
@@ -235,9 +255,12 @@ impl Tracer {
             let (format, value) = self.trace_type_once::<T>(samples)?;
             values.push(value);
             if let Format::TypeName(name) = &format {
-                if self.incomplete_enums.contains(name) {
+                if let Some(&progress) = self.incomplete_enums.get(name) {
                     // Restart the analysis to find more variants of T.
                     self.incomplete_enums.remove(name);
+                    if let EnumProgress::NamedVariantsRemaining = progress {
+                        values.pop().unwrap();
+                    }
                     continue;
                 }
             }
@@ -271,9 +294,12 @@ impl Tracer {
             let (format, value) = self.trace_type_once_with_seed(samples, seed.clone())?;
             values.push(value);
             if let Format::TypeName(name) = &format {
-                if self.incomplete_enums.contains(name) {
+                if let Some(&progress) = self.incomplete_enums.get(name) {
                     // Restart the analysis to find more variants of T.
                     self.incomplete_enums.remove(name);
+                    if let EnumProgress::NamedVariantsRemaining = progress {
+                        values.pop().unwrap();
+                    }
                     continue;
                 }
             }
@@ -298,7 +324,7 @@ impl Tracer {
             Ok(registry)
         } else {
             Err(Error::MissingVariants(
-                self.incomplete_enums.into_iter().collect(),
+                self.incomplete_enums.into_keys().collect(),
             ))
         }
     }

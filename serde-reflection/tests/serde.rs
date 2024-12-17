@@ -13,7 +13,10 @@ enum E {
     Unit,
     Newtype(u16),
     Tuple(u16, Option<bool>),
-    Struct { a: u32 },
+    Struct {
+        a: u32,
+    },
+    #[serde(alias = "NewTupleArray2")]
     NewTupleArray((u16, u16, u16)),
 }
 
