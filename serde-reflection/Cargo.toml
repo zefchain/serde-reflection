@@ -19,7 +19,7 @@ exclude = [
 [dependencies]
 erased-discriminant = "1"
 once_cell = "1.7.2"
-serde = { version = "1.0.126", features = ["derive"] }
+serde = { version = "1.0.216", features = ["derive"] }
 thiserror = "1.0.25"
 typeid = "1"
 
