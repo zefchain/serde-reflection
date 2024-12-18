@@ -422,8 +422,8 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             _ => unreachable!(),
         };
 
-        // If the enum is marked as incomplete, just visit the first index
-        // because we presume it avoids recursion.
+        // If the enum is already marked as incomplete, visit the first index, hoping
+        // to avoid recursion.
         if self.tracer.incomplete_enums.contains_key(enum_name) {
             return visitor.visit_enum(EnumDeserializer::new(
                 self.tracer,
@@ -433,41 +433,42 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             ));
         }
 
-        // First visit each of the variants by name according to `variants`.
-        // Later revisit them by u32 index until an index matching each of the
-        // named variants has been determined.
+        // First, visit each of the variants by name according to `variants`. Later, we
+        // will revisit them by u32 index until an index matching each of the named
+        // variants has been determined.
         let provisional_min = u32::MAX - (variants.len() - 1) as u32;
         for (i, &variant_name) in variants.iter().enumerate() {
-            if !self
+            if self
                 .tracer
                 .discriminants
                 .contains_key(&(enum_type_id, VariantId::Name(variant_name)))
             {
-                // Insert into known_variants with a provisional index.
-                let provisional_index = provisional_min + i as u32;
-                let variant = known_variants
-                    .entry(provisional_index)
-                    .or_insert_with(|| Named {
-                        name: variant_name.to_owned(),
-                        value: VariantFormat::unknown(),
-                    });
-                self.tracer
-                    .incomplete_enums
-                    .insert(enum_name.into(), EnumProgress::NamedVariantsRemaining);
-                // Compute the discriminant and format for this variant.
-                let mut value = variant.value.clone();
-                let enum_value = visitor.visit_enum(EnumDeserializer::new(
-                    self.tracer,
-                    self.samples,
-                    VariantId::Name(variant_name),
-                    &mut value,
-                ))?;
-                let discriminant = Discriminant::of(&enum_value);
-                self.tracer
-                    .discriminants
-                    .insert((enum_type_id, VariantId::Name(variant_name)), discriminant);
-                return Ok(enum_value);
+                continue;
             }
+            // Insert into known_variants with a provisional index.
+            let provisional_index = provisional_min + i as u32;
+            let variant = known_variants
+                .entry(provisional_index)
+                .or_insert_with(|| Named {
+                    name: variant_name.to_owned(),
+                    value: VariantFormat::unknown(),
+                });
+            self.tracer
+                .incomplete_enums
+                .insert(enum_name.into(), EnumProgress::NamedVariantsRemaining);
+            // Compute the discriminant and format for this variant.
+            let mut value = variant.value.clone();
+            let enum_value = visitor.visit_enum(EnumDeserializer::new(
+                self.tracer,
+                self.samples,
+                VariantId::Name(variant_name),
+                &mut value,
+            ))?;
+            let discriminant = Discriminant::of(&enum_value);
+            self.tracer
+                .discriminants
+                .insert((enum_type_id, VariantId::Name(variant_name)), discriminant);
+            return Ok(enum_value);
         }
 
         // We know the discriminant for every variant name. Now visit them again
@@ -503,13 +504,14 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             (enum_type_id, VariantId::Index(index)),
             discriminant.clone(),
         );
-        self.tracer.incomplete_enums.remove(enum_name);
 
         // Rewrite provisional entries for which we now know a u32 index.
         let known_variants = match self.tracer.registry.get_mut(enum_name) {
             Some(ContainerFormat::Enum(x)) => x,
             _ => unreachable!(),
         };
+
+        let mut has_indexed_variants_remaining = false;
         for provisional_index in provisional_min..=u32::MAX {
             if let Entry::Occupied(provisional_entry) = known_variants.entry(provisional_index) {
                 if self.tracer.discriminants
@@ -531,15 +533,23 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
                         }
                     }
                 } else {
-                    self.tracer
-                        .incomplete_enums
-                        .insert(enum_name.into(), EnumProgress::IndexedVariantsRemaining);
+                    has_indexed_variants_remaining = true;
                 }
             }
         }
         if let Some(existing_entry) = known_variants.get_mut(&index) {
             existing_entry.value.unify(value)?;
         }
+        if has_indexed_variants_remaining {
+            // Signal that the top-level tracing must continue.
+            self.tracer
+                .incomplete_enums
+                .insert(enum_name.into(), EnumProgress::IndexedVariantsRemaining);
+        } else {
+            // Signal that the top-level tracing is complete for this enum.
+            self.tracer.incomplete_enums.remove(enum_name);
+        }
+
         Ok(enum_value)
     }
 
