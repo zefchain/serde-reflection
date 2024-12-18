@@ -93,7 +93,10 @@ jobs:
           sdk: 2.14.0
 
       - name: Setup Additional Languages (swift)
-        uses: swift-actions/setup-swift@v2
+        # TODO: Use the release version again once
+        # https://github.com/swift-actions/setup-swift/pull/680
+        # is merged
+        uses: swift-actions/setup-swift@bb83339d1e8577741bdc6c65ba551ce7dc0fb854
         with:
           # older swift versions are having gpg issues https://github.com/swift-actions/setup-swift/issues/520
           swift-version: "5.7"
