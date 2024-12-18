@@ -17,9 +17,9 @@ use std::collections::btree_map::{BTreeMap, Entry};
 
 /// Deserialize a single value.
 /// * The lifetime 'a is set by the deserialization call site and the
-/// `&'a mut` references used to return tracing results.
+///   `&'a mut` references used to return tracing results.
 /// * The lifetime 'de is fixed and the `&'de` reference meant to let us
-/// borrow values from previous serialization runs.
+///   borrow values from previous serialization runs.
 pub(crate) struct Deserializer<'de, 'a> {
     tracer: &'a mut Tracer,
     samples: &'de Samples,
@@ -40,7 +40,7 @@ impl<'de, 'a> Deserializer<'de, 'a> {
     }
 }
 
-impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
+impl<'de> de::Deserializer<'de> for Deserializer<'de, '_> {
     type Error = Error;
 
     fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
@@ -670,7 +670,7 @@ impl<'de, 'a> EnumDeserializer<'de, 'a> {
     }
 }
 
-impl<'de, 'a> de::EnumAccess<'de> for EnumDeserializer<'de, 'a> {
+impl<'de> de::EnumAccess<'de> for EnumDeserializer<'de, '_> {
     type Error = Error;
     type Variant = Self;
 
@@ -686,7 +686,7 @@ impl<'de, 'a> de::EnumAccess<'de> for EnumDeserializer<'de, 'a> {
     }
 }
 
-impl<'de, 'a> de::VariantAccess<'de> for EnumDeserializer<'de, 'a> {
+impl<'de> de::VariantAccess<'de> for EnumDeserializer<'de, '_> {
     type Error = Error;
 
     fn unit_variant(self) -> Result<()> {

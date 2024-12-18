@@ -102,7 +102,7 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-impl<'a, T> GoEmitter<'a, T>
+impl<T> GoEmitter<'_, T>
 where
     T: Write,
 {
