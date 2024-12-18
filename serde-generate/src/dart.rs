@@ -187,7 +187,7 @@ import '../serde/serde.dart';"#,
     }
 }
 
-impl<'a, T> DartEmitter<'a, T>
+impl<T> DartEmitter<'_, T>
 where
     T: Write,
 {

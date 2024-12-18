@@ -158,7 +158,7 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-impl<'a, T> CSharpEmitter<'a, T>
+impl<T> CSharpEmitter<'_, T>
 where
     T: Write,
 {

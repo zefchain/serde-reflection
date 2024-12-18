@@ -82,7 +82,7 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-impl<'a, T> TypeScriptEmitter<'a, T>
+impl<T> TypeScriptEmitter<'_, T>
 where
     T: Write,
 {

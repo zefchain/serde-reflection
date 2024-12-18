@@ -88,7 +88,7 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-impl<'a, T> PythonEmitter<'a, T>
+impl<T> PythonEmitter<'_, T>
 where
     T: Write,
 {

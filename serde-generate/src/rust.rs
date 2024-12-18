@@ -154,7 +154,7 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-impl<'a, T> RustEmitter<'a, T>
+impl<T> RustEmitter<'_, T>
 where
     T: std::io::Write,
 {

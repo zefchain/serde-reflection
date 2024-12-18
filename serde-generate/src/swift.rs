@@ -93,7 +93,7 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-impl<'a, T> SwiftEmitter<'a, T>
+impl<T> SwiftEmitter<'_, T>
 where
     T: Write,
 {
