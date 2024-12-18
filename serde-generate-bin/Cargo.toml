@@ -1,6 +1,6 @@
 [package]
 name = "serde-generate-bin"
-version = "0.2.0"
+version = "0.3.0"
 description = "Tool to generate (de)serialization code in multiple languages"
 documentation = "https://docs.rs/serde-generate"
 repository = "https://github.com/zefchain/serde-reflection"
@@ -13,14 +13,13 @@ edition = "2021"
 rust-version = "1.60"
 
 [dependencies]
-serde-generate = { path = "../serde-generate", version = "0.26.0" }
+serde-generate = { path = "../serde-generate", version = "0.27.0" }
 structopt = "0.3.21"
-serde-reflection = { path = "../serde-reflection", version = "0.4.0" }
+serde-reflection = { path = "../serde-reflection", version = "0.5.0" }
 serde_yaml = "0.8.17"
 
 [dev-dependencies]
 tempfile = "3.2"
-serde-reflection = { path = "../serde-reflection", version = "0.4.0" }
 serde = { version = "1.0.126", features = ["derive"] }
 serde_bytes = "0.11.5"
 

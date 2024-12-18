@@ -451,7 +451,7 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.26.0"
+version = "0.27.0"
 dependencies = [
  "bcs",
  "bincode",
@@ -473,7 +473,7 @@ dependencies = [
 
 [[package]]
 name = "serde-generate-bin"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde-generate",
@@ -495,7 +495,7 @@ dependencies = [
 
 [[package]]
 name = "serde-reflection"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bincode",
  "erased-discriminant",
