@@ -279,7 +279,7 @@ pub struct SeqSerializer<'a> {
     values: Vec<Value>,
 }
 
-impl<'a> ser::SerializeSeq for SeqSerializer<'a> {
+impl ser::SerializeSeq for SeqSerializer<'_> {
     type Ok = (Format, Value);
     type Error = Error;
 
@@ -306,7 +306,7 @@ pub struct TupleSerializer<'a> {
     values: Vec<Value>,
 }
 
-impl<'a> ser::SerializeTuple for TupleSerializer<'a> {
+impl ser::SerializeTuple for TupleSerializer<'_> {
     type Ok = (Format, Value);
     type Error = Error;
 
@@ -334,7 +334,7 @@ pub struct TupleStructSerializer<'a> {
     values: Vec<Value>,
 }
 
-impl<'a> ser::SerializeTupleStruct for TupleStructSerializer<'a> {
+impl ser::SerializeTupleStruct for TupleStructSerializer<'_> {
     type Ok = (Format, Value);
     type Error = Error;
 
@@ -372,7 +372,7 @@ pub struct TupleVariantSerializer<'a> {
     values: Vec<Value>,
 }
 
-impl<'a> ser::SerializeTupleVariant for TupleVariantSerializer<'a> {
+impl ser::SerializeTupleVariant for TupleVariantSerializer<'_> {
     type Ok = (Format, Value);
     type Error = Error;
 
@@ -409,7 +409,7 @@ pub struct MapSerializer<'a> {
     values: Vec<Value>,
 }
 
-impl<'a> ser::SerializeMap for MapSerializer<'a> {
+impl ser::SerializeMap for MapSerializer<'_> {
     type Ok = (Format, Value);
     type Error = Error;
 
@@ -452,7 +452,7 @@ pub struct StructSerializer<'a> {
     values: Vec<Value>,
 }
 
-impl<'a> ser::SerializeStruct for StructSerializer<'a> {
+impl ser::SerializeStruct for StructSerializer<'_> {
     type Ok = (Format, Value);
     type Error = Error;
 
@@ -492,7 +492,7 @@ pub struct StructVariantSerializer<'a> {
     values: Vec<Value>,
 }
 
-impl<'a> ser::SerializeStructVariant for StructVariantSerializer<'a> {
+impl ser::SerializeStructVariant for StructVariantSerializer<'_> {
     type Ok = (Format, Value);
     type Error = Error;
 
