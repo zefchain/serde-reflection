@@ -61,7 +61,7 @@ impl<'a> CodeGenerator<'a> {
         }
     }
 
-    /// Whether the module providing Serde definitions is located within a package.
+     /// Whether the module providing Serde definitions is located within a package.
     pub fn with_serde_package_name(mut self, serde_package_name: Option<String>) -> Self {
         self.serde_package_name = serde_package_name;
         self
