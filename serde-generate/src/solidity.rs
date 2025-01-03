@@ -7,7 +7,7 @@ use crate::{
 };
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     io::{Result, Write},
     path::PathBuf,
 };
@@ -24,10 +24,6 @@ struct SolEmitter<'a, T> {
     out: IndentedWriter<T>,
     /// Generator.
     generator: &'a CodeGenerator<'a>,
-    /// Track which type names have been declared so far. (Used to add forward declarations.)
-    known_names: HashSet<&'a str>,
-    /// Current namespace (e.g. vec!["name", "MyClass"])
-    current_namespace: Vec<String>,
 }
 
 
@@ -51,6 +47,7 @@ enum Primitive {
 
 impl Primitive {
     pub fn name(&self) -> String {
+        use Primitive::*;
         match self {
             Bool => "bool".into(),
             I8 => "int8".into(),
@@ -69,7 +66,8 @@ impl Primitive {
         }
     }
 
-    pub fn output<T: std::io::Write>(&self, out: &IndentedWriter<T>) -> Result<()> {
+    pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
+        use Primitive::*;
         match self {
             Bool => {
                 writeln!(out, "function bcs_serialize(bool input) returns (bytes memory) {{")?;
@@ -223,7 +221,7 @@ enum SolFormat {
     /// One of the primitive types defined elsewhere
     Primitive(Primitive),
     /// A type defined here or elsewhere.
-    Typename(String),
+    TypeName(String),
     /// A sequence of objects.
     Seq(Box<SolFormat>),
     /// A simple solidity enum
@@ -244,7 +242,7 @@ impl SolFormat
         use SolFormat::*;
         match self {
             Primitive(primitive) => primitive.name(),
-            Typename(name) => name.to_string(),
+            TypeName(name) => name.to_string(),
             Option(format) => format!("opt_{}", format.name()),
             Seq(format) => format!("seq_{}", format.name()),
             TupleArray { format, size } => format!("tuplearray{}_{}", size, format.name()),
@@ -254,9 +252,12 @@ impl SolFormat
                     .collect::<Vec<_>>().join("_");
                 format!("struct_{}_{}", name, names)
             },
+            SimpleEnum { name, names: _ } => {
+                name.to_string()
+            },
             Enum { name, formats } => {
                 let names = formats.into_iter()
-                    .map(|named_format| match named_format.value {
+                    .map(|named_format| match &named_format.value {
                         None => format!("{}_unit", named_format.name),
                         Some(format) => format!("{}_{}", named_format.name, format.name()),
                     })
@@ -266,10 +267,13 @@ impl SolFormat
         }
     }
 
-    pub fn output<T: std::io::Write>(&self, out: &IndentedWriter<T>) -> Result<()> {
+    pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
         use SolFormat::*;
         match self {
             Primitive(primitive) => primitive.output(out)?,
+            TypeName(_) => {
+                // by definition for TypeName the code already exists
+            },
             Option(format) => {
                 let name = format.name();
                 let full_name = format!("opt_{}", name);
@@ -302,13 +306,13 @@ impl SolFormat
                 let name = format.name();
                 let full_name = format!("{}[]", name);
             }
-            TupleArray { format, size } => {
+            TupleArray { format: _, size: _ } => {
             }
-            Struct { name, formats } => {
+            Struct { name: _, formats: _ } => {
             },
-            SimpleEnum { name, names } => {
+            SimpleEnum { name: _, names: _ } => {
             },
-            Enum { name, formats } => {
+            Enum { name: _, formats: _ } => {
             },
         }
         Ok(())
@@ -323,7 +327,7 @@ struct SolRegistry {
 
 impl SolRegistry {
     fn insert(&mut self, sol_format: SolFormat) {
-        let key_name = sol_format.key_name();
+        let key_name = sol_format.name();
         self.names.insert(key_name, sol_format);
     }
 }
@@ -332,7 +336,7 @@ fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
     use Format::*;
     let sol_format = match format {
         Variable(_) => panic!("variable is not supported in solidity"),
-        TypeName(name) => SolFormat::Typename(name),
+        TypeName(name) => SolFormat::TypeName(name),
         Unit => panic!("unit should only be in enums"),
         Bool => SolFormat::Primitive(Primitive::Bool),
         I8 => SolFormat::Primitive(Primitive::I8),
@@ -363,13 +367,12 @@ fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
             let value = parse_format(registry, *value);
             let formats = vec![Named { name: "key".into(), value: key }, Named { name: "value".into(), value }];
             let sol_format = SolFormat::Struct { name: "key_values".into(), formats };
-            registry.insert(sol_format);
-            let format = parse_format(registry, format);
-            SolFormat::Seq(Box::new(format))
+            registry.insert(sol_format.clone());
+            SolFormat::Seq(Box::new(sol_format))
         }
         Tuple(formats) => {
             let formats = formats.into_iter()
-                .map(|format| parse_format(&mut registry, format))
+                .map(|format| parse_format(registry, format))
                 .collect::<Vec<_>>();
             let name = format!("tuple_{}", formats.iter()
                                .map(|format| format.name()).collect::<Vec<_>>().join("_"));
@@ -379,7 +382,7 @@ fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
             SolFormat::Struct { name, formats }
         },
         TupleArray { content, size } => {
-            SolFormat::TupleArray { format: Box::new(parse_format(&mut registry, *content)), size }
+            SolFormat::TupleArray { format: Box::new(parse_format(registry, *content)), size }
         },
     };
     registry.insert(sol_format.clone());
@@ -389,7 +392,7 @@ fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
 
 fn parse_struct_format(registry: &mut SolRegistry, name: String, formats: Vec<Named<Format>>) -> SolFormat {
     let formats = formats.into_iter()
-        .map(|named_format| Named { name: named_format.name, value: parse_format(&mut registry, named_format.value) })
+        .map(|named_format| Named { name: named_format.name, value: parse_format(registry, named_format.value) })
         .collect();
     let sol_format = SolFormat::Struct { name, formats };
     registry.insert(sol_format.clone());
@@ -404,16 +407,16 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
         NewTypeStruct(format) => {
             let format = Named { name: "value".to_string(), value: *format };
             let formats = vec![format];
-            parse_struct_format(&mut registry, name, formats)
+            parse_struct_format(registry, name, formats)
         },
         TupleStruct(formats) => {
             let formats = formats.into_iter().enumerate()
                 .map(|(idx, value)| Named { name: format!("{idx}"), value })
                 .collect();
-            parse_struct_format(&mut registry, name, formats)
+            parse_struct_format(registry, name, formats)
         },
         Struct(formats) => {
-            parse_struct_format(&mut registry, name, formats)
+            parse_struct_format(registry, name, formats)
         },
         Enum(map) => {
             let is_trivial = map.iter().all(|(_,v)| matches!(v.value, VariantFormat::Unit));
@@ -427,16 +430,17 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
                     let name_red = value.name;
                     let entry = match value.value {
                         VariantFormat::Unit => None,
-                        NewType(format) => Some(parse_format(&mut registry, *format)),
+                        NewType(format) => Some(parse_format(registry, *format)),
                         Tuple(formats) => {
                             let formats = formats.into_iter().enumerate()
                                 .map(|(idx, value)| Named { name: format!("{idx}"), value })
                                 .collect::<Vec<_>>();
-                            Some(parse_struct_format(&mut registry, "value".to_string(), formats))
+                            Some(parse_struct_format(registry, "value".to_string(), formats))
                         }
                         Struct(formats) => {
-                            Some(parse_struct_format(&mut registry, "value".to_string(), formats))
+                            Some(parse_struct_format(registry, "value".to_string(), formats))
                         }
+                        Variable(_) => panic!("Variable is not supported for solidity")
                     };
                     let format = Named { name: name_red, value: entry };
                     formats.push(format);
@@ -464,17 +468,9 @@ impl<'a> CodeGenerator<'a> {
         out: &mut dyn Write,
         registry: &Registry,
     ) -> std::result::Result<(), Box<dyn std::error::Error>> {
-        let current_namespace = self
-            .config
-            .module_name
-            .split("::")
-            .map(String::from)
-            .collect();
         let mut emitter = SolEmitter {
             out: IndentedWriter::new(out, IndentConfig::Space(4)),
             generator: self,
-            known_names: HashSet::new(),
-            current_namespace,
         };
 
         emitter.output_preamble()?;
@@ -486,7 +482,7 @@ impl<'a> CodeGenerator<'a> {
             parse_container_format(&mut sol_registry, container_format);
         }
         for sol_format in sol_registry.names.values() {
-            sol_format.output(&emitter.out);
+            sol_format.output(&mut emitter.out)?;
         }
 
         emitter.output_close_contract()?;
@@ -544,6 +540,12 @@ pub struct Installer {
 impl Installer {
     pub fn new(install_dir: PathBuf) -> Self {
         Installer { install_dir }
+    }
+
+    fn create_header_file(&self, name: &str) -> Result<std::fs::File> {
+        let dir_path = &self.install_dir;
+        std::fs::create_dir_all(dir_path)?;
+        std::fs::File::create(dir_path.join(name.to_string() + ".hpp"))
     }
 
     fn runtime_installation_message(name: &str) {
