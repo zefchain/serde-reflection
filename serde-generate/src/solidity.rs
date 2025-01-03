@@ -69,7 +69,7 @@ impl Primitive {
         }
     }
 
-    pub fn output(&self, out: &mut IndentedWriter<T>) -> Result<()> {
+    pub fn output<T: std::io::Write>(&self, out: &IndentedWriter<T>) -> Result<()> {
         match self {
             Bool => {
                 writeln!(out, "function bcs_serialize(bool input) returns (bytes memory) {{")?;
@@ -238,7 +238,8 @@ enum SolFormat {
     Enum { name: String, formats: Vec<Named<Option<SolFormat>>> },
 }
 
-impl SolFormat {
+impl SolFormat
+{
     pub fn name(&self) -> String {
         use SolFormat::*;
         match self {
@@ -265,10 +266,10 @@ impl SolFormat {
         }
     }
 
-    pub fn output(&self, out: &mut IndentedWriter<T>) -> Result<()> {
+    pub fn output<T: std::io::Write>(&self, out: &IndentedWriter<T>) -> Result<()> {
         use SolFormat::*;
         match self {
-            Primitive(primitive) => primitive.output(out),
+            Primitive(primitive) => primitive.output(out)?,
             Option(format) => {
                 let name = format.name();
                 let full_name = format!("opt_{}", name);
@@ -422,8 +423,8 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
             } else {
                 let mut formats = Vec::new();
                 for (_key, value) in map {
-                    let name_red = value.value;
                     use VariantFormat::*;
+                    let name_red = value.name;
                     let entry = match value.value {
                         VariantFormat::Unit => None,
                         NewType(format) => Some(parse_format(&mut registry, *format)),
@@ -431,10 +432,10 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
                             let formats = formats.into_iter().enumerate()
                                 .map(|(idx, value)| Named { name: format!("{idx}"), value })
                                 .collect::<Vec<_>>();
-                            Some(parse_struct_format(&mut registry, formats))
+                            Some(parse_struct_format(&mut registry, "value".to_string(), formats))
                         }
                         Struct(formats) => {
-                            Some(parse_struct_format(&mut registry, formats))
+                            Some(parse_struct_format(&mut registry, "value".to_string(), formats))
                         }
                     };
                     let format = Named { name: name_red, value: entry };
@@ -485,7 +486,7 @@ impl<'a> CodeGenerator<'a> {
             parse_container_format(&mut sol_registry, container_format);
         }
         for sol_format in sol_registry.names.values() {
-            sol_format.output(self.out);
+            sol_format.output(&emitter.out);
         }
 
         emitter.output_close_contract()?;
