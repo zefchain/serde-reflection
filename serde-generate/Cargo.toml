@@ -38,7 +38,7 @@ bcs = "0.1.3"
 maplit = "1.0.2"
 
 [features]
-default = ["cpp", "csharp", "dart", "golang", "java", "ocaml", "python3", "rust", "swift", "typescript"]
+default = ["cpp", "csharp", "dart", "golang", "java", "ocaml", "python3", "rust", "swift", "typescript", "solidity"]
 cpp = []
 csharp = ["include_dir"]
 dart = ["include_dir"]
@@ -47,6 +47,7 @@ java = ["include_dir"]
 ocaml = ["phf", "include_dir"]
 python3 = []
 rust = []
+solidity = []
 swift = ["include_dir"]
 typescript = ["include_dir"]
 
