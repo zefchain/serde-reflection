@@ -358,7 +358,27 @@ impl SolFormat
                 writeln!(out, "  return (new_pos, result);")?;
                 writeln!(out, "}}")?;
             }
-            Struct { name: _, formats: _ } => {
+            Struct { name, formats } => {
+                writeln!(out, "struct {name} {{")?;
+                for named_format in formats {
+                    writeln!(out, "  {} {};", named_format.value.code_name(), named_format.name)?;
+                }
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_serialize({name} input) returns (bytes memory) {{")?;
+                writeln!(out, "  Bytes result = bcs_serialize(input.{});", formats[0].name)?;
+                for named_format in &formats[1..] {
+                    writeln!(out, "  result = abi.encodePacked(result, bcs_serialize(input.{});", named_format.name)?;
+                }
+                writeln!(out, "  return result;")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_deserialize_offset_{name}(uint64 pos, bytes memory input) returns (uint64, {name}) {{")?;
+                writeln!(out, "  uint64 new_pos = pos;")?;
+                for named_format in formats {
+                    writeln!(out, "  {} {};", named_format.value.code_name(), named_format.name)?;
+                    writeln!(out, "  (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", named_format.name, named_format.value.key_name())?;
+                }
+                writeln!(out, "  return (pos + 1, {name}({});", formats.into_iter().map(|named_format| named_format.name.clone()).collect::<Vec<_>>().join(", "))?;
+                writeln!(out, "}}")?;
             },
             SimpleEnum { name, names } => {
                 writeln!(out, "enum {name} {{ {} }};", names.join(", "))?;
