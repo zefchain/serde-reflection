@@ -238,17 +238,25 @@ enum SolFormat {
 
 impl SolFormat
 {
-    pub fn name(&self) -> String {
+    pub fn code_name(&self) -> String {
+        use SolFormat::*;
+        if let Seq(format) = self {
+            return format!("{}[]", format.code_name());
+        }
+        self.key_name()
+    }
+
+    pub fn key_name(&self) -> String {
         use SolFormat::*;
         match self {
             Primitive(primitive) => primitive.name(),
             TypeName(name) => name.to_string(),
-            Option(format) => format!("opt_{}", format.name()),
-            Seq(format) => format!("seq_{}", format.name()),
-            TupleArray { format, size } => format!("tuplearray{}_{}", size, format.name()),
+            Option(format) => format!("opt_{}", format.key_name()),
+            Seq(format) => format!("seq_{}", format.key_name()),
+            TupleArray { format, size } => format!("tuplearray{}_{}", size, format.key_name()),
             Struct { name, formats } => {
                 let names = formats.into_iter()
-                    .map(|named_format| format!("{}_{}", named_format.name, named_format.value.name()))
+                    .map(|named_format| format!("{}_{}", named_format.name, named_format.value.key_name()))
                     .collect::<Vec<_>>().join("_");
                 format!("struct_{}_{}", name, names)
             },
@@ -259,7 +267,7 @@ impl SolFormat
                 let names = formats.into_iter()
                     .map(|named_format| match &named_format.value {
                         None => format!("{}_unit", named_format.name),
-                        Some(format) => format!("{}_{}", named_format.name, format.name()),
+                        Some(format) => format!("{}_{}", named_format.name, format.key_name()),
                     })
                     .collect::<Vec<_>>().join("_");
                 format!("enum_{}_{}", name, names)
@@ -275,7 +283,7 @@ impl SolFormat
                 // by definition for TypeName the code already exists
             },
             Option(format) => {
-                let name = format.name();
+                let name = format.key_name();
                 let full_name = format!("opt_{}", name);
                 writeln!(out, "struct {full_name} {{")?;
                 writeln!(out, "  bool has_value;")?;
@@ -291,7 +299,7 @@ impl SolFormat
                 writeln!(out, "    return bcs_serialize(has_value);")?;
                 writeln!(out, "  }}")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{full_name}(uint64 pos, bytes memory input) returns ({full_name}) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_{full_name}(uint64 pos, bytes memory input) returns (uint64, {full_name}) {{")?;
                 writeln!(out, "  uint64 new_pos;")?;
                 writeln!(out, "  bool has_value;")?;
                 writeln!(out, "  (new_pos, has_value) = bcs_deserialize_offset_bool(pos, input);")?;
@@ -303,14 +311,65 @@ impl SolFormat
                 writeln!(out, "}}")?;
             },
             Seq(format) => {
-                let name = format.name();
-                let full_name = format!("{}[]", name);
+                let name = format.key_name();
+                let code_name = format!("{}[]", format.code_name());
+                let key_name = format!("seq_{}", format.key_name());
+                writeln!(out, "function bcs_serialize({code_name} input) returns (bytes memory) {{")?;
+                writeln!(out, "  uint64 len = input.len;")?;
+                writeln!(out, "  Bytes ret;")?;
+                writeln!(out, "  for (uint i=0; i<len; i++) {{")?;
+                writeln!(out, "    bytes block = bcs_serialize(input[i]);")?;
+                writeln!(out, "    ret = bytes.concat(ret, block);")?;
+                writeln!(out, "  }}")?;
+                writeln!(out, "  return ret;")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_deserialize_offset_{key_name}(uint64 pos, bytes memory input) returns (uint64, {code_name}) {{")?;
+                writeln!(out, "  uint64 new_pos;")?;
+                writeln!(out, "  uint64 len;")?;
+                writeln!(out, "  {code_name} result;")?;
+                writeln!(out, "  (new_pos, len) = bcs_deserialize_offset_uint64(pos, input);")?;
+                writeln!(out, "  for (uint i=0; i<len; i++) {{")?;
+                writeln!(out, "    (new_pos, value) = bcs_deserialize_offset_{name}(new_pos, input);")?;
+                writeln!(out, "    result[i] = value;")?;
+                writeln!(out, "  }}")?;
+                writeln!(out, "  return (new_pos, result);")?;
+                writeln!(out, "}}")?;
             }
-            TupleArray { format: _, size: _ } => {
+            TupleArray { format, size } => {
+                let name = format.key_name();
+                let code_name = format!("{}[]", format.code_name());
+                let key_name = format!("seq_{}", format.key_name());
+                writeln!(out, "function bcs_serialize({code_name} input) returns (bytes memory) {{")?;
+                writeln!(out, "  Bytes ret;")?;
+                writeln!(out, "  for (uint i=0; i<{size}; i++) {{")?;
+                writeln!(out, "    bytes block = bcs_serialize(input[i]);")?;
+                writeln!(out, "    ret = bytes.concat(ret, block);")?;
+                writeln!(out, "  }}")?;
+                writeln!(out, "  return ret;")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_deserialize_offset_{key_name}(uint64 pos, bytes memory input) returns (uint64, {code_name}) {{")?;
+                writeln!(out, "  uint64 new_pos = pos;")?;
+                writeln!(out, "  {code_name} result;")?;
+                writeln!(out, "  (new_pos, len) = bcs_deserialize_offset_uint64(pos, input);")?;
+                writeln!(out, "  for (uint i=0; i<{size}; i++) {{")?;
+                writeln!(out, "    (new_pos, value) = bcs_deserialize_offset_{name}(new_pos, input);")?;
+                writeln!(out, "    result[i] = value;")?;
+                writeln!(out, "  }}")?;
+                writeln!(out, "  return (new_pos, result);")?;
+                writeln!(out, "}}")?;
             }
             Struct { name: _, formats: _ } => {
             },
-            SimpleEnum { name: _, names: _ } => {
+            SimpleEnum { name, names } => {
+                writeln!(out, "enum {name} {{ {} }};", names.join(", "))?;
+                writeln!(out, "function bcs_serialize({name} input) returns (bytes memory) {{")?;
+                writeln!(out, "  return abi.encodePacked(input);")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_deserialize_offset_{name}(uint64 pos, bytes memory input) returns (uint64, {name}) {{")?;
+                writeln!(out, "  bytes input_red = slice_bytes(input, pos, 1);")?;
+                writeln!(out, "  int8 value = abi.decode(input_red, ({name}));")?;
+                writeln!(out, "  return (pos + 1, value);")?;
+                writeln!(out, "}}")?;
             },
             Enum { name: _, formats: _ } => {
             },
@@ -327,7 +386,7 @@ struct SolRegistry {
 
 impl SolRegistry {
     fn insert(&mut self, sol_format: SolFormat) {
-        let key_name = sol_format.name();
+        let key_name = sol_format.key_name();
         self.names.insert(key_name, sol_format);
     }
 }
@@ -375,7 +434,7 @@ fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
                 .map(|format| parse_format(registry, format))
                 .collect::<Vec<_>>();
             let name = format!("tuple_{}", formats.iter()
-                               .map(|format| format.name()).collect::<Vec<_>>().join("_"));
+                               .map(|format| format.key_name()).collect::<Vec<_>>().join("_"));
             let formats = formats.into_iter().enumerate()
                 .map(|(idx, format)| Named { name: format!("{idx}"), value: format })
                 .collect();
