@@ -391,7 +391,43 @@ impl SolFormat
                 writeln!(out, "  return (pos + 1, value);")?;
                 writeln!(out, "}}")?;
             },
-            Enum { name: _, formats: _ } => {
+            Enum { name, formats } => {
+                writeln!(out, "struct {name} {{")?;
+                writeln!(out, "  uint64 choice;")?;
+                for named_format in formats {
+                    if let Some(format) = &named_format.value {
+                        writeln!(out, "  {} {};", format.code_name(), named_format.name)?;
+                    }
+                }
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_serialize({name} input) returns (bytes memory) {{")?;
+                writeln!(out, "  Bytes block = abi.encodePacked(input.choice);")?;
+                for (idx, named_format) in formats.iter().enumerate() {
+                    if let Some(_) = &named_format.value {
+                        writeln!(out, "  if (input.choice == {idx}) {{")?;
+                        writeln!(out, "    return abi.encodePacked(block, bcs_serialize(input.{});", named_format.name)?;
+                        writeln!(out, "  }}")?;
+                    }
+                }
+                writeln!(out, "  return block;")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_deserialize_offset_{name}(uint64 pos, bytes memory input) returns (uint64, {name}) {{")?;
+                writeln!(out, "  uint64 new_pos;")?;
+                writeln!(out, "  uint64 choice;")?;
+                writeln!(out, "  (new_pos, choice) = bcs_deserialize_offset_uint64(pos, input);")?;
+                let mut entries = Vec::new();
+                for (idx, named_format) in formats.iter().enumerate() {
+                    if let Some(format) = &named_format.value {
+                        writeln!(out, "  {} {};", format.code_name(), named_format.name)?;
+                        writeln!(out, "  if (choice == {idx}) {{")?;
+                        writeln!(out, "  (new_pos, {}) = bcs_deserialize_offset_{}(pos, input);", named_format.name, format.key_name())?;
+                        writeln!(out, "  }}")?;
+                        entries.push(named_format.name.clone());
+                    }
+                }
+                writeln!(out, "  return (new_pos, {name}(choice, {});", entries.join(", "))?;
+                writeln!(out, "}}")?;
+
             },
         }
         Ok(())
