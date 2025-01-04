@@ -5,6 +5,7 @@ use crate::{
     indent::{IndentConfig, IndentedWriter},
     CodeGeneratorConfig,
 };
+use heck::SnakeCase;
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
     collections::{HashMap, HashSet},
@@ -463,7 +464,7 @@ impl SolFormat
                 writeln!(out, "  uint64 choice;")?;
                 for named_format in formats {
                     if let Some(format) = &named_format.value {
-                        writeln!(out, "  {} {};", format.code_name(), named_format.name)?;
+                        writeln!(out, "  {} {};", format.code_name(), named_format.name.to_snake_case())?;
                     }
                 }
                 writeln!(out, "}}")?;
@@ -472,7 +473,7 @@ impl SolFormat
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(_) = &named_format.value {
                         writeln!(out, "  if (input.choice == {idx}) {{")?;
-                        writeln!(out, "    return abi.encodePacked(result, bcs_serialize(input.{}));", named_format.name)?;
+                        writeln!(out, "    return abi.encodePacked(result, bcs_serialize(input.{}));", named_format.name.to_snake_case())?;
                         writeln!(out, "  }}")?;
                     }
                 }
@@ -485,11 +486,11 @@ impl SolFormat
                 let mut entries = Vec::new();
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
-                        writeln!(out, "  {} {};", format.code_name(), named_format.name)?;
+                        writeln!(out, "  {} {};", format.code_name(), named_format.name.to_snake_case())?;
                         writeln!(out, "  if (choice == {idx}) {{")?;
-                        writeln!(out, "    (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", named_format.name, format.key_name())?;
+                        writeln!(out, "    (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", named_format.name.to_snake_case(), format.key_name())?;
                         writeln!(out, "  }}")?;
-                        entries.push(named_format.name.clone());
+                        entries.push(named_format.name.to_snake_case());
                     }
                 }
                 writeln!(out, "  return (new_pos, {name}(choice, {}));", entries.join(", "))?;
