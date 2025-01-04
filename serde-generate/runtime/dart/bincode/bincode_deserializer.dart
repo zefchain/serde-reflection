@@ -24,10 +24,4 @@ class BincodeDeserializer extends BinaryDeserializer {
   void checkThatKeySlicesAreIncreasing(Slice key1, Slice key2) {
     // Not required by the format.
   }
-
-  bool deserializeBool() {
-    final result = input.getUint8(offset) != 0;
-    offset += 1;
-    return result;
-  }
 }
