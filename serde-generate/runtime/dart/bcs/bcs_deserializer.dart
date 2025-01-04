@@ -56,4 +56,18 @@ class BcsDeserializer extends BinaryDeserializer {
           "Error while decoding map: keys are not serialized in the expected order");
     }
   }
+
+  bool deserializeBool() {
+    final result = input.getUint8(offset);
+    offset += 1;
+    if (result == 0) {
+      return false;
+    } else if (result == 1) {
+      return true;
+    } else {
+      throw Exception(
+        'Invalid boolean: expected 0 or 1, but got ${result}',
+      );
+    }
+  }
 }
