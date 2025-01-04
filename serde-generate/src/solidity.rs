@@ -27,6 +27,21 @@ struct SolEmitter<'a, T> {
 }
 
 
+fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>, key_name: &str, code_name: &str) -> Result<()> {
+    writeln!(out, "bcs_deserialize_{key_name}(bytes input) returns ({code_name}) {{")?;
+    writeln!(out, "  uint64 new_pos;")?;
+    writeln!(out, "  {code_name} value;")?;
+    writeln!(out, "  (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);")?;
+    writeln!(out, "  require(new_pos == input.len(), \"imcomplete deserialization\");")?;
+    writeln!(out, "  return value;")?;
+    writeln!(out, "}}")?;
+    writeln!(out)?;
+    Ok(())
+}
+
+
+
+
 #[derive(Clone)]
 enum Primitive {
     Bool,
@@ -78,6 +93,7 @@ impl Primitive {
                 writeln!(out, "  bool value = abi.decode(input_red, (bool));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             I8 => {
                 writeln!(out, "function bcs_serialize(int8 input) returns (bytes memory) {{")?;
@@ -88,6 +104,7 @@ impl Primitive {
                 writeln!(out, "  int8 value = abi.decode(input_red, (int8));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             I16 => {
                 writeln!(out, "function bcs_serialize(int16 input) returns (bytes memory) {{")?;
@@ -98,6 +115,7 @@ impl Primitive {
                 writeln!(out, "  int16 value = abi.decode(input_red, (int16));")?;
                 writeln!(out, "  return (pos + 2, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             I32 => {
                 writeln!(out, "function bcs_serialize(int32 input) returns (bytes memory) {{")?;
@@ -108,6 +126,7 @@ impl Primitive {
                 writeln!(out, "  int32 value = abi.decode(input_red, (int32));")?;
                 writeln!(out, "  return (pos + 4, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             I64 => {
                 writeln!(out, "function bcs_serialize(int64 input) returns (bytes memory) {{")?;
@@ -118,6 +137,7 @@ impl Primitive {
                 writeln!(out, "  int64 value = abi.decode(input_red, (int64));")?;
                 writeln!(out, "  return (pos + 8, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             I128 => {
                 writeln!(out, "function bcs_serialize(int128 input) returns (bytes memory) {{")?;
@@ -128,6 +148,7 @@ impl Primitive {
                 writeln!(out, "  int128 value = abi.decode(input_red, (int128));")?;
                 writeln!(out, "  return (pos+8, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             U8 => {
                 writeln!(out, "function bcs_serialize(uint8 input) returns (bytes memory) {{")?;
@@ -138,6 +159,7 @@ impl Primitive {
                 writeln!(out, "  uint8 value = abi.decode(input_red, (uint8));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             U16 => {
                 writeln!(out, "function bcs_serialize(uint16 input) returns (bytes memory) {{")?;
@@ -148,6 +170,7 @@ impl Primitive {
                 writeln!(out, "  uint16 value = abi.decode(input_red, (uint16));")?;
                 writeln!(out, "  return (pos + 2, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             U32 => {
                 writeln!(out, "function bcs_serialize(uint32 input) returns (bytes memory) {{")?;
@@ -158,6 +181,7 @@ impl Primitive {
                 writeln!(out, "  uint32 value = abi.decode(input_red, (uint32));")?;
                 writeln!(out, "  return (pos + 4, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             U64 => {
                 writeln!(out, "function bcs_serialize(uint64 input) returns (bytes memory) {{")?;
@@ -168,6 +192,7 @@ impl Primitive {
                 writeln!(out, "  uint64 value = abi.decode(input_red, (uint64));")?;
                 writeln!(out, "  return (pos + 8, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             U128 => {
                 writeln!(out, "function bcs_serialize(uint128 input) returns (bytes memory) {{")?;
@@ -178,6 +203,7 @@ impl Primitive {
                 writeln!(out, "  uint128 value = abi.decode(input_red, (uint128));")?;
                 writeln!(out, "  return (pos + 16, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             Char => {
                 writeln!(out, "function bcs_serialize(bytes1 input) returns (bytes memory) {{")?;
@@ -187,6 +213,7 @@ impl Primitive {
                 writeln!(out, "  bytes input_red = slice_bytes(input, pos, 1);")?;
                 writeln!(out, "  return (pos + 16, input_red);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             Str => {
                 writeln!(out, "function bcs_serialize(string input) returns (bytes memory) {{")?;
@@ -197,6 +224,7 @@ impl Primitive {
                 writeln!(out, "  uint64 new_pos = pos + 8 + value.len();")?;
                 writeln!(out, "  return (new_pos, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
             Bytes => {
                 writeln!(out, "function bcs_serialize(bytes input) returns (bytes memory) {{")?;
@@ -209,6 +237,7 @@ impl Primitive {
                 writeln!(out, "  bytes value = slice_bytes(input, pos+8, len);")?;
                 writeln!(out, "  return (pos + 8 + len, value);")?;
                 writeln!(out, "}}")?;
+                writeln!(out)?;
             },
         }
         Ok(())
@@ -294,7 +323,7 @@ impl SolFormat
                 writeln!(out, "  if (has_value) {{")?;
                 writeln!(out, "    bytes block1 = bcs_serialize(has_value);")?;
                 writeln!(out, "    bytes block2 = bcs_serialize(input.value);")?;
-                writeln!(out, "    return bytes.concat(block1, block2);")?;
+                writeln!(out, "    return bytes.encodePacked(block1, block2);")?;
                 writeln!(out, "  }} else {{")?;
                 writeln!(out, "    return bcs_serialize(has_value);")?;
                 writeln!(out, "  }}")?;
@@ -309,6 +338,7 @@ impl SolFormat
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return (new_pos, {full_name}(true, value));")?;
                 writeln!(out, "}}")?;
+                output_generic_bcs_deserialize(out, &full_name, &full_name)?;
             },
             Seq(format) => {
                 let name = format.key_name();
@@ -334,6 +364,7 @@ impl SolFormat
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return (new_pos, result);")?;
                 writeln!(out, "}}")?;
+                output_generic_bcs_deserialize(out, &key_name, &code_name)?;
             }
             TupleArray { format, size } => {
                 let name = format.key_name();
@@ -357,6 +388,7 @@ impl SolFormat
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return (new_pos, result);")?;
                 writeln!(out, "}}")?;
+                output_generic_bcs_deserialize(out, &key_name, &code_name)?;
             }
             Struct { name, formats } => {
                 writeln!(out, "struct {name} {{")?;
@@ -367,7 +399,7 @@ impl SolFormat
                 writeln!(out, "function bcs_serialize({name} input) returns (bytes memory) {{")?;
                 writeln!(out, "  Bytes result = bcs_serialize(input.{});", formats[0].name)?;
                 for named_format in &formats[1..] {
-                    writeln!(out, "  result = abi.encodePacked(result, bcs_serialize(input.{});", named_format.name)?;
+                    writeln!(out, "  result = abi.encodePacked(result, bcs_serialize(input.{}));", named_format.name)?;
                 }
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
@@ -377,8 +409,9 @@ impl SolFormat
                     writeln!(out, "  {} {};", named_format.value.code_name(), named_format.name)?;
                     writeln!(out, "  (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", named_format.name, named_format.value.key_name())?;
                 }
-                writeln!(out, "  return (pos + 1, {name}({});", formats.into_iter().map(|named_format| named_format.name.clone()).collect::<Vec<_>>().join(", "))?;
+                writeln!(out, "  return (pos + 1, {name}({}));", formats.into_iter().map(|named_format| named_format.name.clone()).collect::<Vec<_>>().join(", "))?;
                 writeln!(out, "}}")?;
+                output_generic_bcs_deserialize(out, &name, &name)?;
             },
             SimpleEnum { name, names } => {
                 writeln!(out, "enum {name} {{ {} }};", names.join(", "))?;
@@ -390,6 +423,7 @@ impl SolFormat
                 writeln!(out, "  int8 value = abi.decode(input_red, ({name}));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
                 writeln!(out, "}}")?;
+                output_generic_bcs_deserialize(out, &name, &name)?;
             },
             Enum { name, formats } => {
                 writeln!(out, "struct {name} {{")?;
@@ -405,7 +439,7 @@ impl SolFormat
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(_) = &named_format.value {
                         writeln!(out, "  if (input.choice == {idx}) {{")?;
-                        writeln!(out, "    return abi.encodePacked(block, bcs_serialize(input.{});", named_format.name)?;
+                        writeln!(out, "    return abi.encodePacked(block, bcs_serialize(input.{}));", named_format.name)?;
                         writeln!(out, "  }}")?;
                     }
                 }
@@ -420,14 +454,14 @@ impl SolFormat
                     if let Some(format) = &named_format.value {
                         writeln!(out, "  {} {};", format.code_name(), named_format.name)?;
                         writeln!(out, "  if (choice == {idx}) {{")?;
-                        writeln!(out, "  (new_pos, {}) = bcs_deserialize_offset_{}(pos, input);", named_format.name, format.key_name())?;
+                        writeln!(out, "    (new_pos, {}) = bcs_deserialize_offset_{}(pos, input);", named_format.name, format.key_name())?;
                         writeln!(out, "  }}")?;
                         entries.push(named_format.name.clone());
                     }
                 }
-                writeln!(out, "  return (new_pos, {name}(choice, {});", entries.join(", "))?;
+                writeln!(out, "  return (new_pos, {name}(choice, {}));", entries.join(", "))?;
                 writeln!(out, "}}")?;
-
+                output_generic_bcs_deserialize(out, &name, &name)?;
             },
         }
         Ok(())
@@ -620,6 +654,7 @@ where
         writeln!(self.out, "  for (uint64 u=0; u<len; u++) {{")?;
         writeln!(self.out, "    result[u] = input[pos + u];")?;
         writeln!(self.out, "  }}")?;
+        writeln!(self.out, "  return result;")?;
         writeln!(self.out, "}}")?;
         Ok(())
     }
@@ -627,7 +662,7 @@ where
     fn output_open_contract(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "\nnamespace {} {{",
+            "\ncontract {} {{",
             self.generator.config.module_name
         )?;
         self.out.indent();
@@ -660,7 +695,7 @@ impl Installer {
     fn create_header_file(&self, name: &str) -> Result<std::fs::File> {
         let dir_path = &self.install_dir;
         std::fs::create_dir_all(dir_path)?;
-        std::fs::File::create(dir_path.join(name.to_string() + ".hpp"))
+        std::fs::File::create(dir_path.join(name.to_string() + ".sol"))
     }
 
     fn runtime_installation_message(name: &str) {
