@@ -32,7 +32,7 @@ fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>
     writeln!(out, "  uint64 new_pos;")?;
     writeln!(out, "  {code_name} value;")?;
     writeln!(out, "  (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);")?;
-    writeln!(out, "  require(new_pos == input.len(), \"imcomplete deserialization\");")?;
+    writeln!(out, "  require(new_pos == input.len(), \"incomplete deserialization\");")?;
     writeln!(out, "  return value;")?;
     writeln!(out, "}}")?;
     writeln!(out)?;
@@ -409,7 +409,7 @@ impl SolFormat
                     writeln!(out, "  {} {};", named_format.value.code_name(), named_format.name)?;
                     writeln!(out, "  (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", named_format.name, named_format.value.key_name())?;
                 }
-                writeln!(out, "  return (pos + 1, {name}({}));", formats.into_iter().map(|named_format| named_format.name.clone()).collect::<Vec<_>>().join(", "))?;
+                writeln!(out, "  return (new_pos, {name}({}));", formats.into_iter().map(|named_format| named_format.name.clone()).collect::<Vec<_>>().join(", "))?;
                 writeln!(out, "}}")?;
                 output_generic_bcs_deserialize(out, &name, &name)?;
             },
@@ -454,7 +454,7 @@ impl SolFormat
                     if let Some(format) = &named_format.value {
                         writeln!(out, "  {} {};", format.code_name(), named_format.name)?;
                         writeln!(out, "  if (choice == {idx}) {{")?;
-                        writeln!(out, "    (new_pos, {}) = bcs_deserialize_offset_{}(pos, input);", named_format.name, format.key_name())?;
+                        writeln!(out, "    (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", named_format.name, format.key_name())?;
                         writeln!(out, "  }}")?;
                         entries.push(named_format.name.clone());
                     }
@@ -526,7 +526,7 @@ fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
             let name = format!("tuple_{}", formats.iter()
                                .map(|format| format.key_name()).collect::<Vec<_>>().join("_"));
             let formats = formats.into_iter().enumerate()
-                .map(|(idx, format)| Named { name: format!("{idx}"), value: format })
+                .map(|(idx, format)| Named { name: format!("entry{idx}"), value: format })
                 .collect();
             SolFormat::Struct { name, formats }
         },
@@ -560,7 +560,7 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
         },
         TupleStruct(formats) => {
             let formats = formats.into_iter().enumerate()
-                .map(|(idx, value)| Named { name: format!("{idx}"), value })
+                .map(|(idx, value)| Named { name: format!("entry{idx}"), value })
                 .collect();
             parse_struct_format(registry, name, formats)
         },
@@ -582,7 +582,7 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
                         NewType(format) => Some(parse_format(registry, *format)),
                         Tuple(formats) => {
                             let formats = formats.into_iter().enumerate()
-                                .map(|(idx, value)| Named { name: format!("{idx}"), value })
+                                .map(|(idx, value)| Named { name: format!("entry{idx}"), value })
                                 .collect::<Vec<_>>();
                             Some(parse_struct_format(registry, "value".to_string(), formats))
                         }
