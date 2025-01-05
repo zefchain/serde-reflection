@@ -41,7 +41,7 @@ export class BcsDeserializer extends BinaryDeserializer {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _key2: [number, number],
   ): void {
-    // TODO(#119)
+    // TODO(#58)
     return;
   }
 }

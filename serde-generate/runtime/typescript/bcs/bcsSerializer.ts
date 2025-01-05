@@ -25,6 +25,6 @@ export class BcsSerializer extends BinarySerializer {
   }
 
   public sortMapEntries(_offsets: number[]) {
-    // TODO(#119)
+    // TODO(#58)
   }
 }
