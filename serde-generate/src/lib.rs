@@ -19,11 +19,11 @@
 //! * C# (NetCoreApp >= 2.1)
 //! * Swift 5.3
 //! * OCaml
+//! * Dart >= 3
 //!
 //! The following languages are partially supported and still considered under development:
 //!
-//! * TypeScript 4 (packaged and tested with Deno) [(follow-up issue)](https://github.com/novifinancial/serde-reflection/issues/119)
-//! * Dart >= 2 [(follow-up issue)](https://github.com/novifinancial/serde-reflection/issues/120)
+//! * TypeScript 4 (packaged and tested with Deno) [(follow-up issue)](https://github.com/zefchain/serde-reflection/issues/58)
 //!
 //! ## Supported Encodings
 //!
