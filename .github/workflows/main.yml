@@ -90,7 +90,7 @@ jobs:
       - name: Setup Additional Languages (dart)
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: 2.14.0
+          sdk: 3.5.3
 
       - name: Setup Additional Languages (swift)
         # TODO: Use the release version again once
