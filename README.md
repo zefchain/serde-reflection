@@ -88,8 +88,8 @@ Currently, `serde-generate` generates type definitions and supports [Bincode](ht
 * C#
 * Swift
 * OCaml
+* Dart
 * Typescript (in progress)
-* Dart (in progress)
 
 
 ## Benefits
