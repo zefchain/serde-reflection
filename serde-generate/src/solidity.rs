@@ -28,10 +28,14 @@ struct SolEmitter<'a, T> {
 }
 
 
-fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>, key_name: &str, code_name: &str) -> Result<()> {
-    writeln!(out, "function bcs_deserialize_{key_name}(bytes memory input) internal pure returns ({code_name} memory) {{")?;
+fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>, key_name: &str, code_name: &str, need_memory: bool) -> Result<()> {
+    let data_location = match need_memory {
+        true => " memory".to_string(),
+        false => "".to_string(),
+    };
+    writeln!(out, "function bcs_deserialize_{key_name}(bytes memory input) internal pure returns ({code_name}{data_location}) {{")?;
     writeln!(out, "  uint64 new_pos;")?;
-    writeln!(out, "  {code_name} memory value;")?;
+    writeln!(out, "  {code_name}{data_location} value;")?;
     writeln!(out, "  (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);")?;
     writeln!(out, "  require(new_pos == input.length, \"incomplete deserialization\");")?;
     writeln!(out, "  return value;")?;
@@ -241,7 +245,7 @@ impl Primitive {
                 writeln!(out)?;
             },
             Char => {
-                writeln!(out, "function bcs_serialize(bytes1 input) internal pure returns (bytes memory) {{")?;
+                writeln!(out, "function bcs_serialize(bytes1 memory input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return input;")?;
                 writeln!(out, "}}")?;
                 writeln!(out, "function bcs_deserialize_offset_bytes1(uint64 pos, bytes memory input) internal pure returns (uint64, bytes1 memory) {{")?;
@@ -251,18 +255,18 @@ impl Primitive {
                 writeln!(out)?;
             },
             Str => {
-                writeln!(out, "function bcs_serialize(string input) internal pure returns (bytes memory) {{")?;
+                writeln!(out, "function bcs_serialize(string memory input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
                 writeln!(out, "function bcs_deserialize_offset_string(uint64 pos, bytes memory input) internal pure returns (uint64, string memory) {{")?;
-                writeln!(out, "  string value = abi.decode(input, (string));")?;
+                writeln!(out, "  string memory value = abi.decode(input, (string));")?;
                 writeln!(out, "  uint64 new_pos = pos + 8 + value.length;")?;
                 writeln!(out, "  return (new_pos, value);")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
             },
             Bytes => {
-                writeln!(out, "function bcs_serialize(bytes input) internal pure returns (bytes memory) {{")?;
+                writeln!(out, "function bcs_serialize(bytes memory input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  bytes memory block1 = abi.encodePakes(input.length);")?;
                 writeln!(out, "  return abi.encodePacked(block1, input);")?;
                 writeln!(out, "}}")?;
@@ -324,14 +328,8 @@ impl SolFormat
             SimpleEnum { name, names: _ } => {
                 name.to_string()
             },
-            Enum { name, formats } => {
-                let names = formats.into_iter()
-                    .map(|named_format| match &named_format.value {
-                        None => format!("{}_unit", named_format.name),
-                        Some(format) => format!("{}_{}", named_format.name, format.key_name()),
-                    })
-                    .collect::<Vec<_>>().join("_");
-                format!("enum_{}_{}", name, names)
+            Enum { name, formats: _ } => {
+                name.to_string()
             }
         }
     }
@@ -347,11 +345,15 @@ impl SolFormat
                 let key_name = format.key_name();
                 let code_name = format.code_name();
                 let full_name = format!("opt_{}", key_name);
+                let data_location = match need_memory(&format, sol_registry) {
+                    true => " memory".to_string(),
+                    false => "".to_string(),
+                };
                 writeln!(out, "struct {full_name} {{")?;
                 writeln!(out, "  bool has_value;")?;
                 writeln!(out, "  {code_name} value;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_serialize({full_name} input) internal pure returns (bytes memory) {{")?;
+                writeln!(out, "function bcs_serialize({full_name} memory input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  bool has_value = input.has_value;")?;
                 writeln!(out, "  if (has_value) {{")?;
                 writeln!(out, "    bytes memory block1 = bcs_serialize(has_value);")?;
@@ -361,17 +363,17 @@ impl SolFormat
                 writeln!(out, "    return bcs_serialize(has_value);")?;
                 writeln!(out, "  }}")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{full_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {full_name}) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_{full_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {full_name} memory) {{")?;
                 writeln!(out, "  uint64 new_pos;")?;
                 writeln!(out, "  bool has_value;")?;
                 writeln!(out, "  (new_pos, has_value) = bcs_deserialize_offset_bool(pos, input);")?;
-                writeln!(out, "  {code_name} value;")?;
+                writeln!(out, "  {code_name}{data_location} value;")?;
                 writeln!(out, "  if (has_value) {{")?;
                 writeln!(out, "    (new_pos, value) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return (new_pos, {full_name}(true, value));")?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &full_name, &full_name)?;
+                output_generic_bcs_deserialize(out, &full_name, &full_name, true)?;
             },
             Seq(format) => {
                 let name = format.key_name();
@@ -398,7 +400,7 @@ impl SolFormat
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return (new_pos, result);")?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &key_name, &code_name)?;
+                output_generic_bcs_deserialize(out, &key_name, &code_name, true)?;
             }
             TupleArray { format, size } => {
                 let name = format.key_name();
@@ -424,7 +426,7 @@ impl SolFormat
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return (new_pos, {struct_name}(values));")?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &struct_name, &struct_name)?;
+                output_generic_bcs_deserialize(out, &struct_name, &struct_name, true)?;
             }
             Struct { name, formats } => {
                 println!("fn output for Struct name={name}");
@@ -452,7 +454,7 @@ impl SolFormat
                 }
                 writeln!(out, "  return (new_pos, {name}({}));", formats.into_iter().map(|named_format| safe_variable(&named_format.name)).collect::<Vec<_>>().join(", "))?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &name, &name)?;
+                output_generic_bcs_deserialize(out, &name, &name, true)?;
             },
             SimpleEnum { name, names } => {
                 writeln!(out, "enum {name} {{ {} }}", names.join(", "))?;
@@ -464,7 +466,7 @@ impl SolFormat
                 writeln!(out, "  {name} value = abi.decode(input_red, ({name}));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &name, &name)?;
+                output_generic_bcs_deserialize(out, &name, &name, false)?;
             },
             Enum { name, formats } => {
                 writeln!(out, "struct {name} {{")?;
@@ -493,7 +495,11 @@ impl SolFormat
                 let mut entries = Vec::new();
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
-                        writeln!(out, "  {} {};", format.code_name(), named_format.name.to_snake_case())?;
+                        let data_location = match need_memory(format, sol_registry) {
+                            true => " memory".to_string(),
+                            false => "".to_string(),
+                        };
+                        writeln!(out, "  {}{} {};", format.code_name(), data_location, named_format.name.to_snake_case())?;
                         writeln!(out, "  if (choice == {idx}) {{")?;
                         writeln!(out, "    (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", named_format.name.to_snake_case(), format.key_name())?;
                         writeln!(out, "  }}")?;
@@ -502,7 +508,7 @@ impl SolFormat
                 }
                 writeln!(out, "  return (new_pos, {name}(choice, {}));", entries.join(", "))?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &name, &name)?;
+                output_generic_bcs_deserialize(out, &name, &name, true)?;
             },
         }
         Ok(())
