@@ -77,7 +77,7 @@ fn safe_variable(s: &str) -> String {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Primitive {
     Bool,
     I8,
@@ -266,10 +266,10 @@ impl Primitive {
                 writeln!(out, "  bytes memory block1 = abi.encodePakes(input.length);")?;
                 writeln!(out, "  return abi.encodePacked(block1, input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_bytes(bytes memory input) internal pure returns (uint64, bytes memory) {{")?;
-                writeln!(out, "  bytes input_red = slice_bytes(input, pos, 8);")?;
+                writeln!(out, "function bcs_deserialize_offset_bytes(uint64 pos, bytes memory input) internal pure returns (uint64, bytes memory) {{")?;
+                writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 8);")?;
                 writeln!(out, "  uint64 len = abi.decode(input_red, (uint64));")?;
-                writeln!(out, "  bytes value = slice_bytes(input, pos+8, len);")?;
+                writeln!(out, "  bytes memory value = slice_bytes(input, pos+8, len);")?;
                 writeln!(out, "  return (pos + 8 + len, value);")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
@@ -280,7 +280,7 @@ impl Primitive {
 }
 
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum SolFormat {
     /// One of the primitive types defined elsewhere
     Primitive(Primitive),
@@ -336,28 +336,7 @@ impl SolFormat
         }
     }
 
-    pub fn need_memory(&self) -> bool {
-        use SolFormat::*;
-        match self {
-            Primitive(primitive) => {
-                use crate::solidity::Primitive;
-                match primitive {
-                    Primitive::Bytes => true,
-                    Primitive::Str => true,
-                    _ => false,
-                }
-            },
-            TypeName(_) => false, // That one could very well be a problem.
-            Option(_) => true,
-            Seq(_) => true,
-            TupleArray { format: _, size: _ } => true,
-            Struct { name: _, formats: _ } => true,
-            SimpleEnum { name: _, names: _ } => false,
-            Enum { name: _, formats: _ } => true,
-        }
-    }
-
-    pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
+    pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>, sol_registry: &SolRegistry) -> Result<()> {
         use SolFormat::*;
         match self {
             Primitive(primitive) => primitive.output(out)?,
@@ -377,7 +356,7 @@ impl SolFormat
                 writeln!(out, "  if (has_value) {{")?;
                 writeln!(out, "    bytes memory block1 = bcs_serialize(has_value);")?;
                 writeln!(out, "    bytes memory block2 = bcs_serialize(input.value);")?;
-                writeln!(out, "    return bytes.encodePacked(block1, block2);")?;
+                writeln!(out, "    return abi.encodePacked(block1, block2);")?;
                 writeln!(out, "  }} else {{")?;
                 writeln!(out, "    return bcs_serialize(has_value);")?;
                 writeln!(out, "  }}")?;
@@ -403,7 +382,7 @@ impl SolFormat
                 writeln!(out, "  uint64 len = input.length;")?;
                 writeln!(out, "  bytes memory result;")?;
                 writeln!(out, "  for (uint i=0; i<len; i++) {{")?;
-                writeln!(out, "    result = bytes.encodePacked(result, bcs_serialize(input[i]));")?;
+                writeln!(out, "    result = abi.encodePacked(result, bcs_serialize(input[i]));")?;
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
@@ -424,28 +403,31 @@ impl SolFormat
             TupleArray { format, size } => {
                 let name = format.key_name();
                 let inner_code_name = format.code_name();
-                let code_name = format!("{}[]", format.code_name());
-                let key_name = format!("seq_{}", format.key_name());
-                writeln!(out, "function bcs_serialize({code_name} input) internal pure returns (bytes memory) {{")?;
-                writeln!(out, "  bytes memory result = bcs_serialize(input[0]);")?;
-                writeln!(out, "  for (uint i=1; i<{size}; i++) {{")?;
-                writeln!(out, "    result = bytes.encodePacked(result, bcs_serialize(input[i]));")?;
+                let struct_name = format!("tuplearray{}_{}", size, format.key_name());
+                writeln!(out, "struct {struct_name} {{")?;
+                writeln!(out, "  {inner_code_name}[] values;")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_serialize({struct_name} memory input) internal pure returns (bytes memory) {{")?;
+                writeln!(out, "  bytes memory result;")?;
+                writeln!(out, "  for (uint i=0; i<{size}; i++) {{")?;
+                writeln!(out, "    result = abi.encodePacked(result, bcs_serialize(input.values[i]));")?;
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{key_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {code_name}) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_{struct_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {struct_name} memory) {{")?;
                 writeln!(out, "  uint64 new_pos = pos;")?;
                 writeln!(out, "  {inner_code_name} value;")?;
-                writeln!(out, "  {code_name} result;")?;
+                writeln!(out, "  {inner_code_name}[] memory values;")?;
                 writeln!(out, "  for (uint i=0; i<{size}; i++) {{")?;
                 writeln!(out, "    (new_pos, value) = bcs_deserialize_offset_{name}(new_pos, input);")?;
-                writeln!(out, "    result[i] = value;")?;
+                writeln!(out, "    values[i] = value;")?;
                 writeln!(out, "  }}")?;
-                writeln!(out, "  return (new_pos, result);")?;
+                writeln!(out, "  return (new_pos, {struct_name}(values));")?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &key_name, &code_name)?;
+                output_generic_bcs_deserialize(out, &struct_name, &struct_name)?;
             }
             Struct { name, formats } => {
+                println!("fn output for Struct name={name}");
                 writeln!(out, "struct {name} {{")?;
                 for named_format in formats {
                     writeln!(out, "  {} {};", named_format.value.code_name(), safe_variable(&named_format.name))?;
@@ -461,7 +443,7 @@ impl SolFormat
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint64 pos, bytes memory input) internal pure returns (uint64, {name} memory) {{")?;
                 writeln!(out, "  uint64 new_pos = pos;")?;
                 for named_format in formats {
-                    let data_location = match named_format.value.need_memory() {
+                    let data_location = match need_memory(&named_format.value, sol_registry) {
                         true => " memory".to_string(),
                         false => "".to_string(),
                     };
@@ -536,9 +518,41 @@ struct SolRegistry {
 impl SolRegistry {
     fn insert(&mut self, sol_format: SolFormat) {
         let key_name = sol_format.key_name();
-        self.names.insert(key_name, sol_format);
+        if !matches!(sol_format, SolFormat::TypeName(_)) {
+            println!("SolRegistry, insert key_name={}, sol_format={:?}", key_name, sol_format);
+            self.names.insert(key_name, sol_format);
+        }
     }
 }
+
+
+fn need_memory(sol_format: &SolFormat, sol_registry: &SolRegistry) -> bool {
+    use SolFormat::*;
+    match sol_format {
+        Primitive(primitive) => {
+            use crate::solidity::Primitive;
+            match primitive {
+                Primitive::Bytes => true,
+                Primitive::Str => true,
+                _ => false,
+            }
+        },
+        TypeName(name) => {
+            let mesg = format!("to find a matching entry for name={name}");
+            let sol_format = sol_registry.names.get(name).expect(&mesg);
+            need_memory(sol_format, sol_registry)
+        },
+        Option(_) => true,
+        Seq(_) => true,
+        TupleArray { format: _, size: _ } => true,
+        Struct { name: _, formats: _ } => true,
+        SimpleEnum { name: _, names: _ } => false,
+        Enum { name: _, formats: _ } => true,
+    }
+}
+
+
+
 
 fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
     use Format::*;
@@ -627,6 +641,7 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
             parse_struct_format(registry, name, formats)
         },
         Struct(formats) => {
+            println!("parsing Struct for name={}", name);
             parse_struct_format(registry, name, formats)
         },
         Enum(map) => {
@@ -690,11 +705,13 @@ impl<'a> CodeGenerator<'a> {
 
         let mut sol_registry = SolRegistry::default();
         for (key, container_format) in registry {
+            println!("container_format key={}", key);
             let container_format = Named { name: key.to_string(), value: container_format.clone() };
             parse_container_format(&mut sol_registry, container_format);
         }
+        println!("--------------- now writing -------------------");
         for sol_format in sol_registry.names.values() {
-            sol_format.output(&mut emitter.out)?;
+            sol_format.output(&mut emitter.out, &sol_registry)?;
         }
 
         emitter.output_close_contract()?;
