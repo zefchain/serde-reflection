@@ -87,6 +87,7 @@ fn safe_variable(s: &str) -> String {
 
 #[derive(Clone, Debug)]
 enum Primitive {
+    Unit,
     Bool,
     I8,
     I16,
@@ -107,6 +108,7 @@ impl Primitive {
     pub fn name(&self) -> String {
         use Primitive::*;
         match self {
+            Unit => "empty_struct".into(),
             Bool => "bool".into(),
             I8 => "int8".into(),
             I16 => "int16".into(),
@@ -127,6 +129,20 @@ impl Primitive {
     pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
         use Primitive::*;
         match self {
+            Unit => {
+                writeln!(out, "struct empty_struct {{")?;
+                writeln!(out, "  int8 val;")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_serialize_empty_struct(empty_struct memory input) internal pure returns (bytes memory) {{")?;
+                writeln!(out, "  bytes result;")?;
+                writeln!(out, "  return result;")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "function bcs_deserialize_offset_empty_struct(uint64 pos, bytes memory input) internal pure returns (uint64, empty_struct memory) {{")?;
+                writeln!(out, "  int8 val = 0;")?;
+                writeln!(out, "  return (pos, empty_struct(val));")?;
+                writeln!(out, "}}")?;
+                writeln!(out)?;
+            },
             Bool => {
                 writeln!(out, "function bcs_serialize_bool(bool input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
@@ -510,6 +526,26 @@ impl SolFormat
         Ok(())
     }
 
+    fn get_dependency(&self) -> Vec<String> {
+        use SolFormat::*;
+        match self {
+            Primitive(_) => vec![],
+            TypeName(name) => vec![name.to_string()],
+            Seq(format) => vec![format.key_name()],
+            SimpleEnum { name: _, names: _ } => vec![],
+            Struct { name: _, formats } => {
+                formats.iter().map(|format| format.value.key_name()).collect()
+            },
+            Option(format) => vec![format.key_name()],
+            TupleArray { format, size: _ } => vec![format.key_name()],
+            Enum { name: _, formats } => {
+                formats.iter().map(|format| match &format.value {
+                    None => vec![],
+                    Some(format) => vec![format.key_name()]
+                }).flatten().collect()
+            },
+        }
+    }
 }
 
 #[derive(Default)]
@@ -523,6 +559,33 @@ impl SolRegistry {
         if !matches!(sol_format, SolFormat::TypeName(_)) {
             self.names.insert(key_name, sol_format);
         }
+    }
+
+    fn has_circular_dependency(&self) -> bool {
+        for start_key in self.names.keys() {
+            let mut level = HashSet::<String>::new();
+            level.insert(start_key.to_string());
+            let mut total_dependency = level.clone();
+            loop {
+                let mut new_level = HashSet::new();
+                for key in level {
+                    for depend in self.names.get(&key).unwrap().get_dependency() {
+                        if !total_dependency.contains(&depend) {
+                            total_dependency.insert(depend.clone());
+                            new_level.insert(depend);
+                        }
+                    }
+                }
+                if new_level.contains(start_key) {
+                    return true;
+                }
+                if new_level.is_empty() {
+                    break;
+                }
+                level = new_level;
+            }
+        }
+        false
     }
 }
 
@@ -563,7 +626,7 @@ fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
     let sol_format = match format {
         Variable(_) => panic!("variable is not supported in solidity"),
         TypeName(name) => SolFormat::TypeName(name),
-        Unit => panic!("unit should only be in enums"),
+        Unit => SolFormat::Primitive(Primitive::Unit),
         Bool => SolFormat::Primitive(Primitive::Bool),
         I8 => SolFormat::Primitive(Primitive::I8),
         I16 => SolFormat::Primitive(Primitive::I16),
@@ -639,13 +702,18 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
             parse_struct_format(registry, name, formats)
         },
         TupleStruct(formats) => {
+            assert!(!formats.is_empty(), "The TupleStruct should be non-trivial in solidity");
             let formats = formats.into_iter().enumerate()
                 .map(|(idx, value)| Named { name: format!("entry{idx}"), value })
                 .collect();
             parse_struct_format(registry, name, formats)
         },
-        Struct(formats) => parse_struct_format(registry, name, formats),
+        Struct(formats) => {
+            assert!(!formats.is_empty(), "The struct should be non-trivial in solidity");
+            parse_struct_format(registry, name, formats)
+        },
         Enum(map) => {
+            assert!(!map.is_empty(), "The enum should be non-trivial in solidity");
             let is_trivial = map.iter().all(|(_,v)| matches!(v.value, VariantFormat::Unit));
             if is_trivial {
                 let names = map.into_iter().map(|(_,named_format)| named_format.name).collect();
@@ -709,6 +777,9 @@ impl<'a> CodeGenerator<'a> {
             let container_format = Named { name: key.to_string(), value: container_format.clone() };
             parse_container_format(&mut sol_registry, container_format);
         }
+        if sol_registry.has_circular_dependency() {
+            panic!("solidity does not allow for circular dependencies");
+        }
         for sol_format in sol_registry.names.values() {
             sol_format.output(&mut emitter.out, &sol_registry)?;
         }
@@ -735,6 +806,15 @@ where
         writeln!(self.out, "    result[u] = input[pos + u];")?;
         writeln!(self.out, "  }}")?;
         writeln!(self.out, "  return result;")?;
+        writeln!(self.out, "}}")?;
+        writeln!(self.out)?;
+        writeln!(self.out, "function bcs_serialize_len(uint256 pos) pure returns (bytes memory) {{")?;
+        writeln!(self.out, "  return abi.encodePacked(pos);")?;
+        writeln!(self.out, "}}")?;
+        writeln!(self.out, "function bcs_deserialize_len(uint64 pos, bytes memory input) pure returns (uint64, uint256) {{")?;
+        writeln!(self.out, "  bytes memory input_red = slice_bytes(input, pos, 32);")?;
+        writeln!(self.out, "  uint256 value = abi.decode(input_red, (uin256));")?;
+        writeln!(self.out, "  return (pos + 32, value);")?;
         writeln!(self.out, "}}")?;
         Ok(())
     }
