@@ -400,9 +400,9 @@ impl SolFormat
                 let code_name = format!("{}[]", format.code_name());
                 let key_name = format!("seq_{}", format.key_name());
                 writeln!(out, "function bcs_serialize_{key_name}({code_name} memory input) internal pure returns (bytes memory) {{")?;
-                writeln!(out, "  uint len = input.length;")?;
-                writeln!(out, "  bytes memory result;")?;
-                writeln!(out, "  for (uint i=0; i<len; i++) {{")?;
+                writeln!(out, "  uint256 len = input.length;")?;
+                writeln!(out, "  bytes memory result = bcs_serialize_len(len);")?;
+                writeln!(out, "  for (uint256 i=0; i<len; i++) {{")?;
                 writeln!(out, "    result = abi.encodePacked(result, bcs_serialize_{inner_key_name}(input[i]));")?;
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return result;")?;
@@ -412,8 +412,8 @@ impl SolFormat
                 writeln!(out, "  uint64 len;")?;
                 writeln!(out, "  {code_name} memory result;")?;
                 writeln!(out, "  {inner_code_name} memory value;")?;
-                writeln!(out, "  (new_pos, len) = bcs_deserialize_offset_uint64(pos, input);")?;
-                writeln!(out, "  for (uint i=0; i<len; i++) {{")?;
+                writeln!(out, "  (new_pos, len) = bcs_deserialize_offset_len(pos, input);")?;
+                writeln!(out, "  for (uint256 i=0; i<len; i++) {{")?;
                 writeln!(out, "    (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);")?;
                 writeln!(out, "    result[i] = value;")?;
                 writeln!(out, "  }}")?;
@@ -570,14 +570,14 @@ impl SolRegistry {
                 let mut new_level = HashSet::new();
                 for key in level {
                     for depend in self.names.get(&key).unwrap().get_dependency() {
+                        if depend == *start_key {
+                            return true;
+                        }
                         if !total_dependency.contains(&depend) {
                             total_dependency.insert(depend.clone());
                             new_level.insert(depend);
                         }
                     }
-                }
-                if new_level.contains(start_key) {
-                    return true;
                 }
                 if new_level.is_empty() {
                     break;
