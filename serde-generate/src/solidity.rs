@@ -27,12 +27,16 @@ struct SolEmitter<'a, T> {
     generator: &'a CodeGenerator<'a>,
 }
 
-
-fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>, key_name: &str, code_name: &str, need_memory: bool) -> Result<()> {
-    let data_location = match need_memory {
+fn get_data_location(need_memory: bool) -> String {
+    match need_memory {
         true => " memory".to_string(),
         false => "".to_string(),
-    };
+    }
+}
+
+
+fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>, key_name: &str, code_name: &str, need_memory: bool) -> Result<()> {
+    let data_location = get_data_location(need_memory);
     writeln!(out, "function bcs_deserialize_{key_name}(bytes memory input) internal pure returns ({code_name}{data_location}) {{")?;
     writeln!(out, "  uint64 new_pos;")?;
     writeln!(out, "  {code_name}{data_location} value;")?;
@@ -347,10 +351,7 @@ impl SolFormat
                 let key_name = format.key_name();
                 let code_name = format.code_name();
                 let full_name = format!("opt_{}", key_name);
-                let data_location = match need_memory(&format, sol_registry) {
-                    true => " memory".to_string(),
-                    false => "".to_string(),
-                };
+                let data_location = data_location(&format, sol_registry);
                 writeln!(out, "struct {full_name} {{")?;
                 writeln!(out, "  bool has_value;")?;
                 writeln!(out, "  {code_name} value;")?;
@@ -446,10 +447,7 @@ impl SolFormat
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint64 pos, bytes memory input) internal pure returns (uint64, {name} memory) {{")?;
                 writeln!(out, "  uint64 new_pos = pos;")?;
                 for named_format in formats {
-                    let data_location = match need_memory(&named_format.value, sol_registry) {
-                        true => " memory".to_string(),
-                        false => "".to_string(),
-                    };
+                    let data_location = data_location(&named_format.value, sol_registry);
                     writeln!(out, "  {}{} {};", named_format.value.code_name(), data_location, safe_variable(&named_format.name))?;
                     writeln!(out, "  (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", safe_variable(&named_format.name), named_format.value.key_name())?;
                 }
@@ -496,10 +494,7 @@ impl SolFormat
                 let mut entries = Vec::new();
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
-                        let data_location = match need_memory(format, sol_registry) {
-                            true => " memory".to_string(),
-                            false => "".to_string(),
-                        };
+                        let data_location = data_location(format, sol_registry);
                         writeln!(out, "  {}{} {};", format.code_name(), data_location, named_format.name.to_snake_case())?;
                         writeln!(out, "  if (choice == {idx}) {{")?;
                         writeln!(out, "    (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", named_format.name.to_snake_case(), format.key_name())?;
@@ -557,6 +552,9 @@ fn need_memory(sol_format: &SolFormat, sol_registry: &SolRegistry) -> bool {
     }
 }
 
+fn data_location(sol_format: &SolFormat, sol_registry: &SolRegistry) -> String {
+    get_data_location(need_memory(sol_format, sol_registry))
+}
 
 
 
