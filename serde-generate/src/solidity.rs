@@ -399,6 +399,7 @@ impl SolFormat
                 let inner_code_name = format.code_name();
                 let code_name = format!("{}[]", format.code_name());
                 let key_name = format!("seq_{}", format.key_name());
+                let data_location = data_location(format, sol_registry);
                 writeln!(out, "function bcs_serialize_{key_name}({code_name} memory input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  uint256 len = input.length;")?;
                 writeln!(out, "  bytes memory result = bcs_serialize_len(len);")?;
@@ -409,9 +410,9 @@ impl SolFormat
                 writeln!(out, "}}")?;
                 writeln!(out, "function bcs_deserialize_offset_{key_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {code_name} memory) {{")?;
                 writeln!(out, "  uint64 new_pos;")?;
-                writeln!(out, "  uint64 len;")?;
+                writeln!(out, "  uint256 len;")?;
                 writeln!(out, "  {code_name} memory result;")?;
-                writeln!(out, "  {inner_code_name} memory value;")?;
+                writeln!(out, "  {inner_code_name}{data_location} value;")?;
                 writeln!(out, "  (new_pos, len) = bcs_deserialize_offset_len(pos, input);")?;
                 writeln!(out, "  for (uint256 i=0; i<len; i++) {{")?;
                 writeln!(out, "    (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);")?;
@@ -811,9 +812,9 @@ where
         writeln!(self.out, "function bcs_serialize_len(uint256 pos) pure returns (bytes memory) {{")?;
         writeln!(self.out, "  return abi.encodePacked(pos);")?;
         writeln!(self.out, "}}")?;
-        writeln!(self.out, "function bcs_deserialize_len(uint64 pos, bytes memory input) pure returns (uint64, uint256) {{")?;
+        writeln!(self.out, "function bcs_deserialize_offset_len(uint64 pos, bytes memory input) pure returns (uint64, uint256) {{")?;
         writeln!(self.out, "  bytes memory input_red = slice_bytes(input, pos, 32);")?;
-        writeln!(self.out, "  uint256 value = abi.decode(input_red, (uin256));")?;
+        writeln!(self.out, "  uint256 value = abi.decode(input_red, (uint256));")?;
         writeln!(self.out, "  return (pos + 32, value);")?;
         writeln!(self.out, "}}")?;
         Ok(())
