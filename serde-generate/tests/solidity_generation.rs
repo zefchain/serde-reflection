@@ -52,7 +52,7 @@ pub fn get_solidity_registry() -> serde_reflection::Result<Registry> {
 }
 
 
-fn write_compilation_json(path: &Path, file_name: &str) {
+pub fn write_compilation_json(path: &Path, file_name: &str) {
     let mut source = File::create(&path).unwrap();
     writeln!(
         source,
