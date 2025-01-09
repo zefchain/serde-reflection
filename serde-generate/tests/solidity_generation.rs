@@ -84,20 +84,22 @@ fn test_solidity_compilation() {
     let config = CodeGeneratorConfig::new(name);
     let registry = get_solidity_registry().unwrap();
     let dir = tempdir().unwrap();
-    let test_path = dir.path().join("test.sol");
+    let path = dir.path();
+    let test_path = path.join("test.sol");
     let mut test_file = File::create(&test_path).unwrap();
 
     let generator = solidity::CodeGenerator::new(&config);
     generator.output(&mut test_file, &registry).unwrap();
 
-    let config_path = dir.path().join("config.json");
+    let config_path = path.join("config.json");
     write_compilation_json(&config_path, "test.sol");
     let config_file = File::open(config_path).unwrap();
 
-    let output_path = dir.path().join("result.json");
-    let output_file = File::open(output_path).unwrap();
+    let output_path = path.join("result.json");
+    let output_file = File::create(output_path).unwrap();
 
     let status = Command::new("solc")
+        .current_dir(path)
         .arg("--standard-json")
         .stdin(Stdio::from(config_file))
         .stdout(Stdio::from(output_file))
