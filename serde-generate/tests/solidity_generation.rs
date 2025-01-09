@@ -1,9 +1,16 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use serde_generate::{cpp, CodeGeneratorConfig, Encoding};
-use std::{collections::BTreeMap, fs::File, io::Write, process::Command};
+use crate::test_utils::{NewTypeStruct, OtherTypes, Struct, TupleStruct};
+use serde_generate::{solidity, CodeGeneratorConfig, Encoding};
+use std::{collections::BTreeMap, fs::File, io::Write, process::{Command, Stdio}};
+use serde_reflection::Samples;
+use std::path::Path;
 use tempfile::{tempdir, TempDir};
+use serde::{Deserialize, Serialize};
+use serde_reflection::{Registry, Tracer, TracerConfig};
+
+
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum SerdeData {
@@ -17,8 +24,6 @@ pub enum SerdeData {
 	f2: Struct,
     },
     TupleArray([u32; 3]),
-    SimpleList(SimpleList),
-    CStyleEnum(CStyleEnum),
     ComplexMap(BTreeMap<([u32; 2], [u8; 4]), ()>),
 }
 
@@ -52,41 +57,41 @@ fn write_compilation_json(path: &Path, file_name: &str) {
     writeln!(
         source,
         r#"
-{
+{{
   "language": "Solidity",
-  "sources": {
-    "{file_name}": {
+  "sources": {{
+    "{file_name}": {{
       "urls": ["./{file_name}"]
-    }
-  },
-  "settings": {
-    "outputSelection": {
-      "*": {
+    }}
+  }},
+  "settings": {{
+    "outputSelection": {{
+      "*": {{
         "*": ["evm.bytecode"]
-      }
-    }
-  }
-}
+      }}
+    }}
+  }}
+}}
 "#
     )
     .unwrap();
 
 }
 
-
-fn test_solidity_compilation(
-    config: &CodeGeneratorConfig,
-) {
+#[test]
+fn test_solidity_compilation() {
+    let name = "test".to_string();
+    let config = CodeGeneratorConfig::new(name);
     let registry = get_solidity_registry().unwrap();
     let dir = tempdir().unwrap();
     let test_path = dir.path().join("test.sol");
     let mut test_file = File::create(&test_path).unwrap();
 
-    let generator = cpp::CodeGenerator::new(config);
+    let generator = solidity::CodeGenerator::new(&config);
     generator.output(&mut test_file, &registry).unwrap();
 
     let config_path = dir.path().join("config.json");
-    write_compilation_json(&config_path);
+    write_compilation_json(&config_path, "test.sol");
     let config_file = File::open(config_path).unwrap();
 
     let output_path = dir.path().join("result.json");

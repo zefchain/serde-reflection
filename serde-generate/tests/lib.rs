@@ -31,6 +31,8 @@ mod python_runtime;
 mod rust_generation;
 #[cfg(feature = "rust")]
 mod rust_runtime;
+#[cfg(feature = "solidity")]
+mod solidity_generation;
 #[cfg(feature = "swift")]
 mod swift_generation;
 #[cfg(feature = "swift")]
