@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::test_utils::{NewTypeStruct, OtherTypes, Struct, TupleStruct};
-use serde_generate::{solidity, CodeGeneratorConfig, Encoding};
+use serde_generate::{solidity, CodeGeneratorConfig};
 use std::{collections::BTreeMap, fs::File, io::Write, process::{Command, Stdio}};
 use serde_reflection::Samples;
 use std::path::Path;
-use tempfile::{tempdir, TempDir};
+use tempfile::tempdir;
 use serde::{Deserialize, Serialize};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use revm::primitives::Bytes;
