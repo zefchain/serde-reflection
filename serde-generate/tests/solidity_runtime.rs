@@ -1,15 +1,15 @@
 use crate::solidity_generation::get_bytecode;
 use alloy_sol_types::sol;
-use serde_generate::{solidity, CodeGeneratorConfig, Encoding};
-use std::{fs::File, io::Write, process::{Command, Stdio}};
+use serde_generate::{solidity, CodeGeneratorConfig};
+use std::{fs::File, io::Write};
 use serde_reflection::Samples;
-use std::path::Path;
-use tempfile::{tempdir, TempDir};
+use tempfile::tempdir;
 use serde::{Deserialize, Serialize};
-use serde_reflection::{Registry, Tracer, TracerConfig};
+use serde_reflection::{Tracer, TracerConfig};
 use alloy_sol_types::SolValue as _;
+use revm::db::InMemoryDB;
 use revm::{
-    primitives::{Address, Bytecode, ExecutionResult, TxKind, U256, Output, Bytes},
+    primitives::{Address, ExecutionResult, TxKind, Output, Bytes},
     Evm,
 };
 
@@ -19,9 +19,10 @@ fn test_contract_instantiation(bytecode: Bytes, encoded_args: Vec<u8>) {
     vec.extend_from_slice(&encoded_args);
     let tx_data = Bytes::copy_from_slice(&vec);
 
-    let address1 = Address::random();
+    let database = InMemoryDB::default();
+    let address1 = Address::ZERO;
     let mut evm : Evm<'_, (), _> = Evm::builder()
-        .with_ref_db(eth_database)
+        .with_ref_db(database)
         .modify_tx_env(|tx| {
             tx.clear();
             tx.caller = address1;
@@ -32,7 +33,7 @@ fn test_contract_instantiation(bytecode: Bytes, encoded_args: Vec<u8>) {
 
     let result : ExecutionResult = evm.transact_commit().unwrap();
 
-    let ExecutionResult::Success { reason, gas_used, gas_refunded, logs, output } = result else {
+    let ExecutionResult::Success { reason: _, gas_used: _, gas_refunded: _, logs: _, output } = result else {
         panic!("The execution failed to be done");
     };
     let Output::Create(_, address) = output else {
@@ -81,10 +82,11 @@ contract ExampleCode {{
 
     constructor(bytes memory input) {{
        TestVec t = bcs_deserialize_TestVec(input);
-       require(t.vec.length == 3, "The length is incorrect");
+       require(t.vec.length == {len}, "The length is incorrect");
        require(t.vec[0] == 42, "incorrect value");
        require(t.vec[1] == 5, "incorrect value");
        require(t.vec[2] == 360, "incorrect value");
+       require(t.vec[{len} - 1] == 0, "incorrect value");
     }}
 
 }}
@@ -97,7 +99,10 @@ contract ExampleCode {{
 
 
     // Building the test entry
-    let vec = vec![42 as u32, 5 as u32, 360 as u32];
+    let mut vec = vec![0 as u32; len];
+    vec[0] = 42;
+    vec[1] = 5;
+    vec[2] = 360;
     let t = TestVec { vec };
     let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
 
@@ -119,8 +124,9 @@ contract ExampleCode {{
 
 #[test]
 fn test_vector_serialization() {
-    test_vector_serialization_len(10);
-    test_vector_serialization_len(130);
+    for len in [30, 130] {
+        test_vector_serialization_len(len).expect("successful run");
+    }
 }
 
 
