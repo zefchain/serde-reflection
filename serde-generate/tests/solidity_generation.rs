@@ -120,7 +120,6 @@ fn test_solidity_compilation() {
 
     let generator = solidity::CodeGenerator::new(&config);
     generator.output(&mut test_file, &registry).unwrap();
-    
 
     let bytecode = get_bytecode(path, "test.sol").expect("bytecode");
     println!("bytecode={:?}", bytecode);
