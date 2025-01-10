@@ -27,6 +27,7 @@ phf = { version = "0.10", features = ["macros"], optional = true }
 serde-reflection = { path = "../serde-reflection", version = "0.5.0" }
 
 [dev-dependencies]
+alloy-sol-types = "0.8.18"
 hex = "0.4.3"
 lazy_static = "1.4.0"
 regex = "1.5.5"
