@@ -134,7 +134,7 @@ impl Primitive {
                 writeln!(out, "  int8 val;")?;
                 writeln!(out, "}}")?;
                 writeln!(out, "function bcs_serialize_empty_struct(empty_struct memory input) internal pure returns (bytes memory) {{")?;
-                writeln!(out, "  bytes result;")?;
+                writeln!(out, "  bytes memory result;")?;
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
                 writeln!(out, "function bcs_deserialize_offset_empty_struct(uint64 pos, bytes memory input) internal pure returns (uint64, empty_struct memory) {{")?;
@@ -265,12 +265,13 @@ impl Primitive {
                 writeln!(out)?;
             },
             Char => {
-                writeln!(out, "function bcs_serialize_bytes1(bytes1 memory input) internal pure returns (bytes memory) {{")?;
-                writeln!(out, "  return input;")?;
+                writeln!(out, "function bcs_serialize_bytes1(bytes1 input) internal pure returns (bytes memory) {{")?;
+                writeln!(out, "  bytes memory result = abi.encodePacked(input);")?;
+                writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_bytes1(uint64 pos, bytes memory input) internal pure returns (uint64, bytes1 memory) {{")?;
-                writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 1);")?;
-                writeln!(out, "  return (pos + 16, input_red);")?;
+                writeln!(out, "function bcs_deserialize_offset_bytes1(uint64 pos, bytes memory input) internal pure returns (uint64, bytes1) {{")?;
+                writeln!(out, "  bytes1 result = bytes1(input[pos]);")?;
+                writeln!(out, "  return (pos + 1, result);")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
             },
@@ -411,7 +412,8 @@ impl SolFormat
                 writeln!(out, "function bcs_deserialize_offset_{key_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {code_name} memory) {{")?;
                 writeln!(out, "  uint64 new_pos;")?;
                 writeln!(out, "  uint256 len;")?;
-                writeln!(out, "  {code_name} memory result;")?;
+                writeln!(out, "  {inner_code_name}[] memory result;")?;
+                writeln!(out, "  result = new {inner_code_name}[](len);")?;
                 writeln!(out, "  {inner_code_name}{data_location} value;")?;
                 writeln!(out, "  (new_pos, len) = bcs_deserialize_offset_len(pos, input);")?;
                 writeln!(out, "  for (uint256 i=0; i<len; i++) {{")?;
@@ -440,6 +442,7 @@ impl SolFormat
                 writeln!(out, "  uint64 new_pos = pos;")?;
                 writeln!(out, "  {inner_code_name} value;")?;
                 writeln!(out, "  {inner_code_name}[] memory values;")?;
+                writeln!(out, "  values = new {inner_code_name}[]({size});")?;
                 writeln!(out, "  for (uint i=0; i<{size}; i++) {{")?;
                 writeln!(out, "    (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);")?;
                 writeln!(out, "    values[i] = value;")?;
@@ -597,6 +600,7 @@ fn need_memory(sol_format: &SolFormat, sol_registry: &SolRegistry) -> bool {
         Primitive(primitive) => {
             use crate::solidity::Primitive;
             match primitive {
+                Primitive::Unit => true,
                 Primitive::Bytes => true,
                 Primitive::Str => true,
                 _ => false,
