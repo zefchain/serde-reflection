@@ -9,7 +9,7 @@ use std::path::Path;
 use tempfile::{tempdir, TempDir};
 use serde::{Deserialize, Serialize};
 use serde_reflection::{Registry, Tracer, TracerConfig};
-
+use revm::primitives::Bytes;
 
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -78,6 +78,36 @@ pub fn write_compilation_json(path: &Path, file_name: &str) {
 
 }
 
+pub fn get_bytecode(path: &Path, file_name: &str) -> anyhow::Result<Bytes> {
+    let config_path = path.join("config.json");
+    write_compilation_json(&config_path, file_name);
+    let config_file = File::open(config_path)?;
+
+    let output_path = path.join("result.json");
+    let output_file = File::create(output_path.clone())?;
+
+    let status = Command::new("solc")
+        .current_dir(path)
+        .arg("--standard-json")
+        .stdin(Stdio::from(config_file))
+        .stdout(Stdio::from(output_file))
+        .status()?;
+    assert!(status.success());
+
+    let contents = std::fs::read_to_string(output_path)?;
+    let json_data : serde_json::Value = serde_json::from_str(&contents)?;
+    let contracts = json_data.get("contracts").ok_or(anyhow::anyhow!("failed to get contract"))?;
+    let file_name_contract = contracts.get(file_name).ok_or(anyhow::anyhow!("failed to get {file_name}"))?;
+    let test_data = file_name_contract.get("test").ok_or(anyhow::anyhow!("failed to get test"))?;
+    let evm_data = test_data.get("evm").ok_or(anyhow::anyhow!("failed to get evm"))?;
+    let bytecode = evm_data.get("bytecode").ok_or(anyhow::anyhow!("failed to get bytecode"))?;
+    let object = bytecode.get("object").ok_or(anyhow::anyhow!("failed to get object"))?;
+    let object = object.to_string();
+    let object = object.trim_matches(|c| c == '"').to_string();
+    let object = hex::decode(&object)?;
+    Ok(Bytes::copy_from_slice(&object))
+}
+
 #[test]
 fn test_solidity_compilation() {
     let name = "test".to_string();
@@ -90,20 +120,8 @@ fn test_solidity_compilation() {
 
     let generator = solidity::CodeGenerator::new(&config);
     generator.output(&mut test_file, &registry).unwrap();
+    
 
-    let config_path = path.join("config.json");
-    write_compilation_json(&config_path, "test.sol");
-    let config_file = File::open(config_path).unwrap();
-
-    let output_path = path.join("result.json");
-    let output_file = File::create(output_path).unwrap();
-
-    let status = Command::new("solc")
-        .current_dir(path)
-        .arg("--standard-json")
-        .stdin(Stdio::from(config_file))
-        .stdout(Stdio::from(output_file))
-        .status()
-        .unwrap();
-    assert!(status.success());
+    let bytecode = get_bytecode(path, "test.sol").expect("bytecode");
+    println!("bytecode={:?}", bytecode);
 }
