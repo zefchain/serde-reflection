@@ -38,7 +38,7 @@ fn get_data_location(need_memory: bool) -> String {
 fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>, key_name: &str, code_name: &str, need_memory: bool) -> Result<()> {
     let data_location = get_data_location(need_memory);
     writeln!(out, "function bcs_deserialize_{key_name}(bytes memory input) internal pure returns ({code_name}{data_location}) {{")?;
-    writeln!(out, "  uint64 new_pos;")?;
+    writeln!(out, "  uint256 new_pos;")?;
     writeln!(out, "  {code_name}{data_location} value;")?;
     writeln!(out, "  (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);")?;
     writeln!(out, "  require(new_pos == input.length, \"incomplete deserialization\");")?;
@@ -137,7 +137,7 @@ impl Primitive {
                 writeln!(out, "  bytes memory result;")?;
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_empty_struct(uint64 pos, bytes memory input) internal pure returns (uint64, empty_struct memory) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_empty_struct(uint256 pos, bytes memory input) internal pure returns (uint256, empty_struct memory) {{")?;
                 writeln!(out, "  int8 val = 0;")?;
                 writeln!(out, "  return (pos, empty_struct(val));")?;
                 writeln!(out, "}}")?;
@@ -147,7 +147,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_bool(bool input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_bool(uint64 pos, bytes memory input) internal pure returns (uint64, bool) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_bool(uint256 pos, bytes memory input) internal pure returns (uint256, bool) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 1);")?;
                 writeln!(out, "  bool value = abi.decode(input_red, (bool));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
@@ -158,7 +158,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_int8(int8 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_int8(uint64 pos, bytes memory input) internal pure returns (uint64, int8) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_int8(uint256 pos, bytes memory input) internal pure returns (uint256, int8) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 1);")?;
                 writeln!(out, "  int8 value = abi.decode(input_red, (int8));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
@@ -169,7 +169,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_int16(int16 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_int16(uint64 pos, bytes memory input) internal pure returns (uint64, int16) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_int16(uint256 pos, bytes memory input) internal pure returns (uint256, int16) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 2);")?;
                 writeln!(out, "  int16 value = abi.decode(input_red, (int16));")?;
                 writeln!(out, "  return (pos + 2, value);")?;
@@ -180,7 +180,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_int32(int32 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_int32(uint64 pos, bytes memory input) internal pure returns (uint64, int32) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_int32(uint256 pos, bytes memory input) internal pure returns (uint256, int32) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 4);")?;
                 writeln!(out, "  int32 value = abi.decode(input_red, (int32));")?;
                 writeln!(out, "  return (pos + 4, value);")?;
@@ -191,7 +191,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_int64(int64 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_int64(uint64 pos, bytes memory input) internal pure returns (uint64, int64) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_int64(uint256 pos, bytes memory input) internal pure returns (uint256, int64) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 8);")?;
                 writeln!(out, "  int64 value = abi.decode(input_red, (int64));")?;
                 writeln!(out, "  return (pos + 8, value);")?;
@@ -202,7 +202,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_int128(int128 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_int128(uint64 pos, bytes memory input) internal pure returns (uint64, int128) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_int128(uint256 pos, bytes memory input) internal pure returns (uint256, int128) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 16);")?;
                 writeln!(out, "  int128 value = abi.decode(input_red, (int128));")?;
                 writeln!(out, "  return (pos+8, value);")?;
@@ -213,7 +213,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_uint8(uint8 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_uint8(uint64 pos, bytes memory input) internal pure returns (uint64, uint8) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_uint8(uint256 pos, bytes memory input) internal pure returns (uint256, uint8) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 1);")?;
                 writeln!(out, "  uint8 value = abi.decode(input_red, (uint8));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
@@ -224,7 +224,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_uint16(uint16 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_uint16(uint64 pos, bytes memory input) internal pure returns (uint64, uint16) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_uint16(uint256 pos, bytes memory input) internal pure returns (uint256, uint16) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 2);")?;
                 writeln!(out, "  uint16 value = abi.decode(input_red, (uint16));")?;
                 writeln!(out, "  return (pos + 2, value);")?;
@@ -235,7 +235,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_uint32(uint32 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_uint32(uint64 pos, bytes memory input) internal pure returns (uint64, uint32) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_uint32(uint256 pos, bytes memory input) internal pure returns (uint256, uint32) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 4);")?;
                 writeln!(out, "  uint32 value = abi.decode(input_red, (uint32));")?;
                 writeln!(out, "  return (pos + 4, value);")?;
@@ -246,7 +246,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_uint64(uint64 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_uint64(uint64 pos, bytes memory input) internal pure returns (uint64, uint64) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_uint64(uint256 pos, bytes memory input) internal pure returns (uint256, uint64) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 8);")?;
                 writeln!(out, "  uint64 value = abi.decode(input_red, (uint64));")?;
                 writeln!(out, "  return (pos + 8, value);")?;
@@ -257,7 +257,7 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_uint128(uint128 input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_uint128(uint64 pos, bytes memory input) internal pure returns (uint64, uint128) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_uint128(uint256 pos, bytes memory input) internal pure returns (uint256, uint128) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 16);")?;
                 writeln!(out, "  uint128 value = abi.decode(input_red, (uint128));")?;
                 writeln!(out, "  return (pos + 16, value);")?;
@@ -269,7 +269,7 @@ impl Primitive {
                 writeln!(out, "  bytes memory result = abi.encodePacked(input);")?;
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_bytes1(uint64 pos, bytes memory input) internal pure returns (uint64, bytes1) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_bytes1(uint256 pos, bytes memory input) internal pure returns (uint256, bytes1) {{")?;
                 writeln!(out, "  bytes1 result = bytes1(input[pos]);")?;
                 writeln!(out, "  return (pos + 1, result);")?;
                 writeln!(out, "}}")?;
@@ -279,11 +279,10 @@ impl Primitive {
                 writeln!(out, "function bcs_serialize_string(string memory input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_string(uint64 pos, bytes memory input) internal pure returns (uint64, string memory) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_string(uint256 pos, bytes memory input) internal pure returns (uint256, string memory) {{")?;
                 writeln!(out, "  string memory value = abi.decode(input, (string));")?;
                 writeln!(out, "  uint256 len = bytes(value).length;")?;
-                writeln!(out, "  require(len <= type(uint64).max, \"length exceeds uint64 range\");")?;
-                writeln!(out, "  uint64 new_pos = pos + 8 + uint64(len);")?;
+                writeln!(out, "  uint256 new_pos = pos + 8 + len;")?;
                 writeln!(out, "  return (new_pos, value);")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
@@ -293,10 +292,10 @@ impl Primitive {
                 writeln!(out, "  bytes memory block1 = abi.encodePacked(input.length);")?;
                 writeln!(out, "  return abi.encodePacked(block1, input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_bytes(uint64 pos, bytes memory input) internal pure returns (uint64, bytes memory) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input) internal pure returns (uint256, bytes memory) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 8);")?;
                 writeln!(out, "  uint64 len = abi.decode(input_red, (uint64));")?;
-                writeln!(out, "  bytes memory value = slice_bytes(input, pos+8, len);")?;
+                writeln!(out, "  bytes memory value = slice_bytes(input, pos + 8, len);")?;
                 writeln!(out, "  return (pos + 8 + len, value);")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
@@ -383,8 +382,8 @@ impl SolFormat
                 writeln!(out, "    return block1;")?;
                 writeln!(out, "  }}")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{full_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {full_name} memory) {{")?;
-                writeln!(out, "  uint64 new_pos;")?;
+                writeln!(out, "function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input) internal pure returns (uint256, {full_name} memory) {{")?;
+                writeln!(out, "  uint256 new_pos;")?;
                 writeln!(out, "  bool has_value;")?;
                 writeln!(out, "  (new_pos, has_value) = bcs_deserialize_offset_bool(pos, input);")?;
                 writeln!(out, "  {code_name}{data_location} value;")?;
@@ -409,8 +408,8 @@ impl SolFormat
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{key_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {code_name} memory) {{")?;
-                writeln!(out, "  uint64 new_pos;")?;
+                writeln!(out, "function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input) internal pure returns (uint256, {code_name} memory) {{")?;
+                writeln!(out, "  uint256 new_pos;")?;
                 writeln!(out, "  uint256 len;")?;
                 writeln!(out, "  {inner_code_name}[] memory result;")?;
                 writeln!(out, "  result = new {inner_code_name}[](len);")?;
@@ -438,8 +437,8 @@ impl SolFormat
                 writeln!(out, "  }}")?;
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{struct_name}(uint64 pos, bytes memory input) internal pure returns (uint64, {struct_name} memory) {{")?;
-                writeln!(out, "  uint64 new_pos = pos;")?;
+                writeln!(out, "function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input) internal pure returns (uint256, {struct_name} memory) {{")?;
+                writeln!(out, "  uint256 new_pos = pos;")?;
                 writeln!(out, "  {inner_code_name} value;")?;
                 writeln!(out, "  {inner_code_name}[] memory values;")?;
                 writeln!(out, "  values = new {inner_code_name}[]({size});")?;
@@ -464,8 +463,8 @@ impl SolFormat
                 }
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{name}(uint64 pos, bytes memory input) internal pure returns (uint64, {name} memory) {{")?;
-                writeln!(out, "  uint64 new_pos = pos;")?;
+                writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal pure returns (uint256, {name} memory) {{")?;
+                writeln!(out, "  uint256 new_pos = pos;")?;
                 for named_format in formats {
                     let data_location = data_location(&named_format.value, sol_registry);
                     writeln!(out, "  {}{} {};", named_format.value.code_name(), data_location, safe_variable(&named_format.name))?;
@@ -480,7 +479,7 @@ impl SolFormat
                 writeln!(out, "function bcs_serialize_{name}({name} input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{name}(uint64 pos, bytes memory input) internal pure returns (uint64, {name}) {{")?;
+                writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal pure returns (uint256, {name}) {{")?;
                 writeln!(out, "  bytes memory input_red = slice_bytes(input, pos, 1);")?;
                 writeln!(out, "  {name} value = abi.decode(input_red, ({name}));")?;
                 writeln!(out, "  return (pos + 1, value);")?;
@@ -507,8 +506,8 @@ impl SolFormat
                 }
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "function bcs_deserialize_offset_{name}(uint64 pos, bytes memory input) internal pure returns (uint64, {name} memory) {{")?;
-                writeln!(out, "  uint64 new_pos;")?;
+                writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal pure returns (uint256, {name} memory) {{")?;
+                writeln!(out, "  uint256 new_pos;")?;
                 writeln!(out, "  uint64 choice;")?;
                 writeln!(out, "  (new_pos, choice) = bcs_deserialize_offset_uint64(pos, input);")?;
                 let mut entries = Vec::new();
@@ -805,21 +804,60 @@ where
             self.out,
             r#"pragma solidity ^0.8.0;"#
         )?;
-        writeln!(self.out, "function slice_bytes(bytes memory input, uint64 pos, uint64 len) pure returns (bytes memory) {{")?;
+        writeln!(self.out, "function slice_bytes(bytes memory input, uint256 pos, uint256 len) pure returns (bytes memory) {{")?;
         writeln!(self.out, "  bytes memory result = new bytes(len);")?;
-        writeln!(self.out, "  for (uint64 u=0; u<len; u++) {{")?;
+        writeln!(self.out, "  for (uint256 u=0; u<len; u++) {{")?;
         writeln!(self.out, "    result[u] = input[pos + u];")?;
         writeln!(self.out, "  }}")?;
         writeln!(self.out, "  return result;")?;
         writeln!(self.out, "}}")?;
         writeln!(self.out)?;
-        writeln!(self.out, "function bcs_serialize_len(uint256 pos) pure returns (bytes memory) {{")?;
-        writeln!(self.out, "  return abi.encodePacked(pos);")?;
+        writeln!(self.out, "// CODE adapted from")?;
+        writeln!(self.out, "// https://github.com/Shungy/leb128-nooffset")?;
+        writeln!(self.out, "function bcs_serialize_len(uint256 x) pure returns (bytes memory) {{")?;
+        writeln!(self.out, "  if (x == 0) return result = new bytes(1);")?;
+        writeln!(self.out, "  assembly {{")?;
+        writeln!(self.out, "      result := mload(0x40)")?;
+        writeln!(self.out, "      let offset := add(result, 32)")?;
+        writeln!(self.out, "      let i := offset")?;
+        writeln!(self.out, "      for {{}} 1 {{}} {{")?;
+        writeln!(self.out, "          let nextByte := and(x, 0x7f)")?;
+        writeln!(self.out, "          x := shr(7, x)")?;
+        writeln!(self.out, "          if x {{")?;
+        writeln!(self.out, "              nextByte := or(nextByte, 0x80)")?;
+        writeln!(self.out, "              mstore8(i, nextByte)")?;
+        writeln!(self.out, "              i := add(i, 1)")?;
+        writeln!(self.out, "              continue")?;
+        writeln!(self.out, "          }}")?;
+        writeln!(self.out, "          mstore8(i, nextByte)")?;
+        writeln!(self.out, "          i := add(i, 1)")?;
+        writeln!(self.out, "          break")?;
+        writeln!(self.out, "      }}")?;
+        writeln!(self.out, "      mstore(result, sub(i, offset))")?;
+        writeln!(self.out, "      mstore(0x40, i)")?;
+        writeln!(self.out, "  }}")?;
         writeln!(self.out, "}}")?;
-        writeln!(self.out, "function bcs_deserialize_offset_len(uint64 pos, bytes memory input) pure returns (uint64, uint256) {{")?;
-        writeln!(self.out, "  bytes memory input_red = slice_bytes(input, pos, 32);")?;
-        writeln!(self.out, "  uint256 value = abi.decode(input_red, (uint256));")?;
-        writeln!(self.out, "  return (pos + 32, value);")?;
+        writeln!(self.out, "function rawDecodeUint(uint256 ptr) internal pure returns (uint256 result, uint256 increment) {{")?;
+        writeln!(self.out, "  assembly {{")?;
+        writeln!(self.out, "      increment := 0")?;
+        writeln!(self.out, "      for {{ let shift := 0 }} 1 {{ shift := add(shift, 7) }} {{")?;
+        writeln!(self.out, "          let nextByte := byte(0, calldataload(ptr))")?;
+        writeln!(self.out, "          result := or(result, shl(shift, and(nextByte, 0x7f)))")?;
+        writeln!(self.out, "          ptr := add(ptr, 1)")?;
+        writeln!(self.out, "          increment := add(increment, 1)")?;
+        writeln!(self.out, "          if shr(7, nextByte) {{ continue }}")?;
+        writeln!(self.out, "          break")?;
+        writeln!(self.out, "      }}")?;
+        writeln!(self.out, "  }}")?;
+        writeln!(self.out, "}}")?;
+        writeln!(self.out, "function bcs_deserialize_offset_len(uint256 pos, bytes memory input) pure returns (uint256 new_pos, uint256 result) {{")?;
+        writeln!(self.out, "  uint256 ptr;")?;
+        writeln!(self.out, "  assembly {{")?;
+        writeln!(self.out, "      ptr := add(data.offset, pos)")?;
+        writeln!(self.out, "  }}")?;
+        writeln!(self.out, "  uint256 increment;")?;
+        writeln!(self.out, "  (result, increment) = rawDecodeUint(ptr);")?;
+        writeln!(self.out, "  new_pos = pos + increment;")?;
         writeln!(self.out, "}}")?;
         Ok(())
     }
