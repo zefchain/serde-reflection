@@ -37,7 +37,7 @@ fn get_data_location(need_memory: bool) -> String {
 
 fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>, key_name: &str, code_name: &str, need_memory: bool) -> Result<()> {
     let data_location = get_data_location(need_memory);
-    writeln!(out, "function bcs_deserialize_{key_name}(bytes calldata input) internal pure returns ({code_name}{data_location}) {{")?;
+    writeln!(out, "function bcs_deserialize_{key_name}(bytes calldata input) public pure returns ({code_name}{data_location}) {{")?;
     writeln!(out, "  uint256 new_pos;")?;
     writeln!(out, "  {code_name}{data_location} value;")?;
     writeln!(out, "  (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);")?;
@@ -808,7 +808,7 @@ impl<'a> CodeGenerator<'a> {
         };
 
         emitter.output_preamble()?;
-        emitter.output_open_contract()?;
+        emitter.output_open_library()?;
 
         let mut sol_registry = SolRegistry::default();
         for (key, container_format) in registry {
@@ -822,7 +822,7 @@ impl<'a> CodeGenerator<'a> {
             sol_format.output(&mut emitter.out, &sol_registry)?;
         }
 
-        emitter.output_close_contract()?;
+        emitter.output_close_library()?;
         writeln!(emitter.out)?;
         Ok(())
     }
@@ -888,21 +888,21 @@ where
         Ok(())
     }
 
-    fn output_open_contract(&mut self) -> Result<()> {
+    fn output_open_library(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "\ncontract {} {{",
+            "\nlibrary {} {{",
             self.generator.config.module_name
         )?;
         self.out.indent();
         Ok(())
     }
 
-    fn output_close_contract(&mut self) -> Result<()> {
+    fn output_close_library(&mut self) -> Result<()> {
         self.out.unindent();
         writeln!(
             self.out,
-            "\n}} // end of contract {}",
+            "\n}} // end of library {}",
             self.generator.config.module_name
         )?;
         Ok(())

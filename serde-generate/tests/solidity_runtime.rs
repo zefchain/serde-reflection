@@ -52,50 +52,70 @@ pub struct TestVec {
 
 
 fn test_vector_serialization_len(len: usize) -> anyhow::Result<()> {
+    use crate::solidity_generation::print_file_content;
+    println!("test_vector_serialization_len, step 1");
     // Indexing the types
     let mut tracer = Tracer::new(TracerConfig::default());
     let samples = Samples::new();
     tracer.trace_type::<TestVec>(&samples).expect("a tracer entry");
     let registry = tracer.registry().expect("A registry");
+    println!("test_vector_serialization_len, step 2");
 
     // The directories
     let dir = tempdir().unwrap();
     let path = dir.path();
+    println!("path={}", path.display());
 
     // The generated code
     let generated_code_path = path.join("generated_code.sol");
-    let mut generated_code_file = File::create(&generated_code_path)?;
-    let name = "generated_test".to_string();
-    let config = CodeGeneratorConfig::new(name);
-    let generator = solidity::CodeGenerator::new(&config);
-    generator.output(&mut generated_code_file, &registry).unwrap();
+    {
+        let mut generated_code_file = File::create(&generated_code_path)?;
+        println!("test_vector_serialization_len, step 3");
+        let name = "generated_code".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut generated_code_file, &registry).unwrap();
+        println!("test_vector_serialization_len, step 4");
+    }
+    print_file_content(&generated_code_path);
 
     // The code for testing whether
     let test_code_path = path.join("test_code.sol");
-    let mut source = File::create(&test_code_path)?;
-    writeln!(
-        source,
-        r#"
-include generated_code from "./generated_code.sol";
+    {
+        let mut source = File::create(&test_code_path)?;
+        println!("test_vector_serialization_len, step 5");
+        writeln!(
+            source,
+            r#"
+/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+import "./generated_code.sol";
 
 contract ExampleCode {{
 
     constructor(bytes memory input) {{
-       TestVec t = bcs_deserialize_TestVec(input);
-       require(t.vec.length == {len}, "The length is incorrect");
-       require(t.vec[0] == 42, "incorrect value");
-       require(t.vec[1] == 5, "incorrect value");
-       require(t.vec[2] == 360, "incorrect value");
-       require(t.vec[{len} - 1] == 0, "incorrect value");
+      generated_code.TestVec memory t = generated_code.bcs_deserialize_TestVec(input);
     }}
 
 }}
 
 "#
-    )?;
+        )?;
+    }
+    print_file_content(&test_code_path);
+
+//       TestVec t = bcs_deserialize_TestVec(input);
+//       require(t.vec.length == {len}, "The length is incorrect");
+//       require(t.vec[0] == 42, "incorrect value");
+//       require(t.vec[1] == 5, "incorrect value");
+//       require(t.vec[2] == 360, "incorrect value");
+//       require(t.vec[{len} - 1] == 0, "incorrect value");
+
 
     // Compiling the code and reading it.
+    println!("test_vector_serialization_len, step 6");
     let bytecode = get_bytecode(path, "test_code.sol")?;
+    println!("bytecode={}", bytecode);
 
 
     // Building the test entry
