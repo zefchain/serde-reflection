@@ -103,7 +103,7 @@ fn test_vector_serialization_len(len: usize) -> anyhow::Result<()> {
 
 contract ExampleCode is ExampleCodeBase {{
 
-    constructor(bytes memory input) {{
+    constructor() {{
     }}
 
     function test_deserialization(bytes calldata input) external {{
