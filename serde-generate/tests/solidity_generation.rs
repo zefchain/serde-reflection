@@ -84,7 +84,7 @@ pub fn write_compilation_json(path: &Path, file_name: &str) {
 
 }
 
-pub fn get_bytecode(path: &Path, file_name: &str) -> anyhow::Result<Bytes> {
+pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow::Result<Bytes> {
     println!("get_bytecode, step 1");
     let config_path = path.join("config.json");
     write_compilation_json(&config_path, file_name);
@@ -114,18 +114,21 @@ pub fn get_bytecode(path: &Path, file_name: &str) -> anyhow::Result<Bytes> {
     println!("get_bytecode, step 8");
     let file_name_contract = contracts.get(file_name).ok_or(anyhow::anyhow!("failed to get {file_name}"))?;
     println!("get_bytecode, step 9");
-    let test_data = file_name_contract.get("test").ok_or(anyhow::anyhow!("failed to get test"))?;
+    let test_data = file_name_contract.get(contract_name).ok_or(anyhow::anyhow!("failed to get test"))?;
     println!("get_bytecode, step 10");
     let evm_data = test_data.get("evm").ok_or(anyhow::anyhow!("failed to get evm"))?;
     println!("get_bytecode, step 11");
     let bytecode = evm_data.get("bytecode").ok_or(anyhow::anyhow!("failed to get bytecode"))?;
     println!("get_bytecode, step 12");
+//    println!("bytecode={}", bytecode);
     let object = bytecode.get("object").ok_or(anyhow::anyhow!("failed to get object"))?;
     println!("get_bytecode, step 13");
+//    println!("object={}", object);
     let object = object.to_string();
     println!("get_bytecode, step 14");
     let object = object.trim_matches(|c| c == '"').to_string();
     println!("get_bytecode, step 15");
+    println!("object={}", object);
     let object = hex::decode(&object)?;
     println!("get_bytecode, step 16");
     Ok(Bytes::copy_from_slice(&object))
@@ -144,6 +147,6 @@ fn test_solidity_compilation() {
     let generator = solidity::CodeGenerator::new(&config);
     generator.output(&mut test_file, &registry).unwrap();
 
-    let bytecode = get_bytecode(path, "test.sol").expect("bytecode");
+    let bytecode = get_bytecode(path, "test.sol", "test").expect("bytecode");
     println!("bytecode={:?}", bytecode);
 }
