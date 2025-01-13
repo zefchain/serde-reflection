@@ -891,7 +891,7 @@ where
     fn output_open_library(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "\nlibrary {} {{",
+            "\ncontract {} {{",
             self.generator.config.module_name
         )?;
         self.out.indent();
@@ -902,7 +902,7 @@ where
         self.out.unindent();
         writeln!(
             self.out,
-            "\n}} // end of library {}",
+            "\n}} // end of contract {}",
             self.generator.config.module_name
         )?;
         Ok(())
