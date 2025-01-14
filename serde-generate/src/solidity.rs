@@ -979,7 +979,7 @@ function bcs_serialize_len(uint256 x) pure returns (bytes memory) {{
       return result;
     }} else {{
       uint256 xb = x >> 7;
-      uint256 remainder = x - (x << 7);
+      uint256 remainder = x - (xb << 7);
       require(remainder < 128);
       entry = bytes1(uint8(remainder) + 128);
       result = abi.encodePacked(result, entry);
