@@ -65,7 +65,7 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct TestVec {
-    pub vec: Vec<u64>,
+    pub vec: Vec<u16>,
 }
 
 
@@ -106,9 +106,15 @@ contract ExampleCode is ExampleCodeBase {{
     }}
 
     function test_deserialization(bytes calldata input) external {{
-      TestVec memory t = bcs_deserialize_TestVec(input);
+      bytes memory input1 = input;
+      TestVec memory t = bcs_deserialize_TestVec(input1);
       require(t.vec.length == {len}, "The length is incorrect");
       require(t.vec[0] == 42, "incorrect value");
+      bytes memory input_rev = bcs_serialize_TestVec(t);
+      require(input1.length == input_rev.length);
+      for (uint256 i=0; i<input1.length; i++) {{
+        require(input1[i] == input_rev[i]);
+      }}
 //      uint8 valueb = abi.decodePacked(b, (uint8));
 //      require(value == valueb);
 //      uint8 value_c = abi.decode(input, (uint8));
@@ -142,7 +148,7 @@ contract ExampleCode is ExampleCodeBase {{
 
 
     // Building the test entry
-    let mut vec = vec![0 as u64; len];
+    let mut vec = vec![0 as u16; len];
     vec[0] = 42;
     vec[1] = 5;
     vec[2] = 360;
