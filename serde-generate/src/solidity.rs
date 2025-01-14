@@ -515,7 +515,7 @@ impl SolFormat
                 let key_name = format.key_name();
                 let code_name = format.code_name();
                 let full_name = format!("opt_{}", key_name);
-                let data_location = data_location(&format, sol_registry);
+                let data_location = data_location(format, sol_registry);
                 writeln!(out, r#"
 struct {full_name} {{
   bool has_value;
@@ -626,9 +626,9 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input) i
                     writeln!(out, "  {code_name}{data_location} {safe_name};")?;
                     writeln!(out, "  (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
                 }
-                writeln!(out, "  return (new_pos, {name}({}));", formats.into_iter().map(|named_format| safe_variable(&named_format.name)).collect::<Vec<_>>().join(", "))?;
+                writeln!(out, "  return (new_pos, {name}({}));", formats.iter().map(|named_format| safe_variable(&named_format.name)).collect::<Vec<_>>().join(", "))?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &name, &name, true)?;
+                output_generic_bcs_deserialize(out, name, name, true)?;
             },
             SimpleEnum { name, names } => {
                 let names_join = names.join(", ");
@@ -649,12 +649,14 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
                 writeln!(out, r#"
   require(choice < {number_names});
 }}"#)?;
-                output_generic_bcs_deserialize(out, &name, &name, false)?;
+                output_generic_bcs_deserialize(out, name, name, false)?;
             },
             Enum { name, formats } => {
                 writeln!(out, "struct {name} {{")?;
                 writeln!(out, "  uint8 choice;")?;
-                for named_format in formats {
+                for (idx, named_format) in formats.iter().enumerate() {
+                    let name = named_format.name.clone();
+                    writeln!(out, "  // choice={idx} corresponds to {name}")?;
                     if let Some(format) = &named_format.value {
                         let code_name = format.code_name();
                         let snake_name = named_format.name.to_snake_case();
@@ -695,7 +697,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
                 }
                 writeln!(out, "  return (new_pos, {name}(choice, {}));", entries.join(", "))?;
                 writeln!(out, "}}")?;
-                output_generic_bcs_deserialize(out, &name, &name, true)?;
+                output_generic_bcs_deserialize(out, name, name, true)?;
             },
         }
         Ok(())
@@ -714,10 +716,10 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
             Option(format) => vec![format.key_name()],
             TupleArray { format, size: _ } => vec![format.key_name()],
             Enum { name: _, formats } => {
-                formats.iter().map(|format| match &format.value {
+                formats.iter().flat_map(|format| match &format.value {
                     None => vec![],
                     Some(format) => vec![format.key_name()]
-                }).flatten().collect()
+                }).collect()
             },
         }
     }
@@ -785,12 +787,7 @@ fn need_memory(sol_format: &SolFormat, sol_registry: &SolRegistry) -> bool {
     match sol_format {
         Primitive(primitive) => {
             use crate::solidity::Primitive;
-            match primitive {
-                Primitive::Unit => true,
-                Primitive::Bytes => true,
-                Primitive::Str => true,
-                _ => false,
-            }
+            matches!(primitive, Primitive::Unit | Primitive::Bytes | Primitive::Str)
         },
         TypeName(name) => {
             let mesg = format!("to find a matching entry for name={name}");
@@ -906,7 +903,7 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
             assert!(map.len() < 256, "The enum should have at most 256 entries");
             let is_trivial = map.iter().all(|(_,v)| matches!(v.value, VariantFormat::Unit));
             if is_trivial {
-                let names = map.into_iter().map(|(_,named_format)| named_format.name).collect();
+                let names = map.into_values().map(|named_format| named_format.name).collect();
                 SolFormat::SimpleEnum { name, names }
             } else {
                 let choice_sol_format = SolFormat::Primitive(Primitive::U8);

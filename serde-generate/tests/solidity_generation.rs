@@ -51,15 +51,8 @@ pub fn get_solidity_registry() -> serde_reflection::Result<Registry> {
     tracer.registry()
 }
 
-pub fn print_file_content(file_path: &Path) {
-    let content = std::fs::read_to_string(file_path).expect("an existing file");
-    println!("file_path={} content={}", file_path.display(), content);
-}
-
-
-
 pub fn write_compilation_json(path: &Path, file_name: &str) {
-    let mut source = File::create(&path).unwrap();
+    let mut source = File::create(path).unwrap();
     writeln!(
         source,
         r#"
@@ -102,7 +95,6 @@ pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow
 
     let contents = std::fs::read_to_string(output_path)?;
     let json_data : serde_json::Value = serde_json::from_str(&contents)?;
-    println!("json_data={}", json_data);
     let contracts = json_data.get("contracts").ok_or(anyhow::anyhow!("failed to get contract"))?;
     let file_name_contract = contracts.get(file_name).ok_or(anyhow::anyhow!("failed to get {file_name}"))?;
     let test_data = file_name_contract.get(contract_name).ok_or(anyhow::anyhow!("failed to get test"))?;
