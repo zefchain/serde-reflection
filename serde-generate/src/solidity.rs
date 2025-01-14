@@ -149,9 +149,12 @@ function bcs_serialize_bool(bool input) internal pure returns (bytes memory) {{
   return abi.encodePacked(input);
 }}
 function bcs_deserialize_offset_bool(uint256 pos, bytes memory input) internal pure returns (uint256, bool) {{
-  bytes memory input_red = input[pos:];
-  bool value = abi.decode(input_red, (bool));
-  return (pos + 1, value);
+  uint8 val = uint8(input[pos]);
+  bool result = false;
+  if (val == 1) {{
+    result = true;
+  }}
+  return (pos + 1, result);
 }}"#)?;
             },
             I8 => {

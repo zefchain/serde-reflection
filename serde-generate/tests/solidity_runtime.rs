@@ -229,3 +229,65 @@ contract ExampleCode is ExampleCodeBase {{
     test_contract(bytecode, fct_args);
     Ok(())
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct StructBoolString {
+    a: bool,
+    b: String,
+}
+
+#[test]
+fn test_struct_bool_string() -> anyhow::Result<()> {
+    let registry = get_registry_from_type::<StructBoolString>();
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    // The generated code
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+        let name = "ExampleCodeBase".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_code_file, &registry).unwrap();
+
+        writeln!(
+            test_code_file,
+            r#"
+contract ExampleCode is ExampleCodeBase {{
+
+    function test_deserialization(bytes calldata input) external {{
+      StructBoolString memory t = bcs_deserialize_StructBoolString(input);
+
+//      bytes memory input_rev = bcs_serialize_StructBoolString(t);
+//      require(input.length == input_rev.length);
+//      for (uint256 i=0; i<input.length; i++) {{
+//        require(input[i] == input_rev[i]);
+//      }}
+    }}
+
+}}
+"#
+        )?;
+
+    }
+    print_file_content(&test_code_path);
+
+    // Compiling the code and reading it.
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    // Building the test entry
+    let t = StructBoolString { a: false, b: "abc".to_string() };
+    let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
+
+    // Building the input to the smart contract
+    sol! {
+      function test_deserialization(bytes calldata input);
+    }
+    let input = Bytes::copy_from_slice(&expected_input);
+    let fct_args = test_deserializationCall { input };
+    let fct_args = fct_args.abi_encode().into();
+
+    test_contract(bytecode, fct_args);
+    Ok(())
+}
