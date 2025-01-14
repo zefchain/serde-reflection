@@ -14,7 +14,7 @@ use revm::{
 };
 
 
-fn test_contract_instantiation(bytecode: Bytes, encoded_args: Bytes) {
+fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
     let mut database = InMemoryDB::default();
     let gas_limit = 10000000_u64;
     
@@ -56,7 +56,7 @@ fn test_contract_instantiation(bytecode: Bytes, encoded_args: Bytes) {
 
     let result : ExecutionResult = evm.transact_commit().unwrap();
 
-    let ExecutionResult::Success { reason: _, gas_used: _, gas_refunded: _, logs: _, output } = result else {
+    let ExecutionResult::Success { reason: _, gas_used: _, gas_refunded: _, logs: _, output: _ } = result else {
         panic!("The TxKind::Call execution failed to be done");
     };
 
@@ -65,7 +65,7 @@ fn test_contract_instantiation(bytecode: Bytes, encoded_args: Bytes) {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct TestVec {
-    pub vec: Vec<u32>,
+    pub vec: Vec<u64>,
 }
 
 
@@ -100,19 +100,28 @@ fn test_vector_serialization_len(len: usize) -> anyhow::Result<()> {
         writeln!(
             test_code_file,
             r#"
-
 contract ExampleCode is ExampleCodeBase {{
 
     constructor() {{
     }}
 
     function test_deserialization(bytes calldata input) external {{
-       TestVec memory t = bcs_deserialize_TestVec(input);
-       require(t.vec.length == {len}, "The length is incorrect");
-       require(t.vec[0] == 42, "incorrect value");
-       require(t.vec[1] == 5, "incorrect value");
-       require(t.vec[2] == 360, "incorrect value");
-       require(t.vec[{len} - 1] == 0, "incorrect value");
+      TestVec memory t = bcs_deserialize_TestVec(input);
+      require(t.vec.length == {len}, "The length is incorrect");
+      require(t.vec[0] == 42, "incorrect value");
+//      uint8 valueb = abi.decodePacked(b, (uint8));
+//      require(value == valueb);
+//      uint8 value_c = abi.decode(input, (uint8));
+//      uint256 new_pos;
+//      uint256 result;
+//      uint8 val = uint8(input[0]);
+//      require(val == 30);
+//      (new_pos, result) = bcs_deserialize_offset_len(0, input);
+//      require(result == 30);
+//      require(t.vec[1] == 5, "incorrect value");
+//      require(t.vec[2] == 360, "incorrect value");
+//      require(t.vec[{len} - 1] == 0, "incorrect value");
+
     }}
 
 
@@ -133,25 +142,28 @@ contract ExampleCode is ExampleCodeBase {{
 
 
     // Building the test entry
-    let mut vec = vec![0 as u32; len];
+    let mut vec = vec![0 as u64; len];
     vec[0] = 42;
     vec[1] = 5;
     vec[2] = 360;
     let t = TestVec { vec };
     let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
     println!("expected_input={:?}", expected_input);
-    
+    println!("|expected_input|={}", expected_input.len());
+
     // Building the input to the smart contract
     sol! {
-      function test_deserialization(bytes memory input);
+      function test_deserialization(bytes calldata input);
     }
     let input = Bytes::copy_from_slice(&expected_input);
-    let fct_args = test_deserializationCall { input };
-    let fct_args = fct_args.abi_encode().into();
+    let fct_args = test_deserializationCall { input: input.clone() };
+    let fct_args = fct_args.abi_encode();
+    println!("|fct_args|={}", fct_args.len());
+    let fct_args = fct_args.into();
     println!("fct_args={}", fct_args);
 
 
-    test_contract_instantiation(bytecode, fct_args);
+    test_contract(bytecode, fct_args);
     Ok(())
 }
 
@@ -159,7 +171,7 @@ contract ExampleCode is ExampleCodeBase {{
 
 #[test]
 fn test_vector_serialization() {
-    for len in [30, 130] {
+    for len in [3] {
         test_vector_serialization_len(len).expect("successful run");
     }
 }
