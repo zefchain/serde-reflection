@@ -2,15 +2,22 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::test_utils::{NewTypeStruct, OtherTypes, Struct, TupleStruct};
-use serde_generate::{solidity, CodeGeneratorConfig};
-use std::{collections::BTreeMap, fs::File, io::Write, process::{Command, Stdio}};
-use serde_reflection::Samples;
-use std::path::Path;
-use tempfile::tempdir;
-use serde::{de::DeserializeOwned, {Deserialize, Serialize}};
-use serde_reflection::{Registry, Tracer, TracerConfig};
 use revm::primitives::Bytes;
-
+use serde::{
+    de::DeserializeOwned,
+    {Deserialize, Serialize},
+};
+use serde_generate::{solidity, CodeGeneratorConfig};
+use serde_reflection::Samples;
+use serde_reflection::{Registry, Tracer, TracerConfig};
+use std::path::Path;
+use std::{
+    collections::BTreeMap,
+    fs::File,
+    io::Write,
+    process::{Command, Stdio},
+};
+use tempfile::tempdir;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum SerdeData {
@@ -21,7 +28,7 @@ pub enum SerdeData {
     StructVariant {
         f0: NewTypeStruct,
         f1: TupleStruct,
-	f2: Struct,
+        f2: Struct,
     },
     TupleArray([u32; 3]),
     ComplexMap(BTreeMap<([u32; 2], [u8; 4]), ()>),
@@ -74,7 +81,6 @@ pub fn write_compilation_json(path: &Path, file_name: &str) {
 "#
     )
     .unwrap();
-
 }
 
 pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow::Result<Bytes> {
@@ -94,13 +100,25 @@ pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow
     assert!(status.success());
 
     let contents = std::fs::read_to_string(output_path)?;
-    let json_data : serde_json::Value = serde_json::from_str(&contents)?;
-    let contracts = json_data.get("contracts").ok_or(anyhow::anyhow!("failed to get contract"))?;
-    let file_name_contract = contracts.get(file_name).ok_or(anyhow::anyhow!("failed to get {file_name}"))?;
-    let test_data = file_name_contract.get(contract_name).ok_or(anyhow::anyhow!("failed to get test"))?;
-    let evm_data = test_data.get("evm").ok_or(anyhow::anyhow!("failed to get evm"))?;
-    let bytecode = evm_data.get("bytecode").ok_or(anyhow::anyhow!("failed to get bytecode"))?;
-    let object = bytecode.get("object").ok_or(anyhow::anyhow!("failed to get object"))?;
+    let json_data: serde_json::Value = serde_json::from_str(&contents)?;
+    let contracts = json_data
+        .get("contracts")
+        .ok_or(anyhow::anyhow!("failed to get contract"))?;
+    let file_name_contract = contracts
+        .get(file_name)
+        .ok_or(anyhow::anyhow!("failed to get {file_name}"))?;
+    let test_data = file_name_contract
+        .get(contract_name)
+        .ok_or(anyhow::anyhow!("failed to get test"))?;
+    let evm_data = test_data
+        .get("evm")
+        .ok_or(anyhow::anyhow!("failed to get evm"))?;
+    let bytecode = evm_data
+        .get("bytecode")
+        .ok_or(anyhow::anyhow!("failed to get bytecode"))?;
+    let object = bytecode
+        .get("object")
+        .ok_or(anyhow::anyhow!("failed to get object"))?;
     let object = object.to_string();
     let object = object.trim_matches(|c| c == '"').to_string();
     let object = hex::decode(&object)?;

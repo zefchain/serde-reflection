@@ -140,9 +140,6 @@ pub mod analyzer;
 /// Utility function to generate indented text
 pub mod indent;
 
-/// Support for code-generation in solidity
-#[cfg(feature = "solidity")]
-pub mod solidity;
 /// Support for code-generation in C++
 #[cfg(feature = "cpp")]
 pub mod cpp;
@@ -167,6 +164,9 @@ pub mod python3;
 /// Support for code-generation in Rust
 #[cfg(feature = "rust")]
 pub mod rust;
+/// Support for code-generation in solidity
+#[cfg(feature = "solidity")]
+pub mod solidity;
 /// Support for code-generation in Swift
 #[cfg(feature = "swift")]
 pub mod swift;
