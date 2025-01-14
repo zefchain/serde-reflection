@@ -1,11 +1,9 @@
-use crate::solidity_generation::get_bytecode;
+use crate::solidity_generation::{get_registry_from_type, get_bytecode};
 use alloy_sol_types::sol;
 use serde_generate::{solidity, CodeGeneratorConfig};
 use std::{fmt::Display, fs::File, io::Write};
-use serde_reflection::Samples;
 use tempfile::tempdir;
 use serde::{de::DeserializeOwned, {Deserialize, Serialize}};
-use serde_reflection::{Tracer, TracerConfig};
 use alloy_sol_types::SolCall as _;
 use revm::db::InMemoryDB;
 use revm::{
@@ -60,17 +58,8 @@ pub struct TestVec<T> {
     pub vec: Vec<T>,
 }
 
-
-
-
 fn test_vector_serialization<T: Serialize + DeserializeOwned + Display>(t: TestVec<T>) -> anyhow::Result<()> {
-    // Indexing the types
-    let mut tracer = Tracer::new(TracerConfig::default());
-    let samples = Samples::new();
-    tracer.trace_type::<TestVec<T>>(&samples).expect("a tracer entry");
-    let registry = tracer.registry().expect("A registry");
-
-    // The directories
+    let registry = get_registry_from_type::<TestVec<T>>();
     let dir = tempdir().unwrap();
     let path = dir.path();
 
@@ -127,8 +116,7 @@ contract ExampleCode is ExampleCodeBase {{
     }
     let input = Bytes::copy_from_slice(&expected_input);
     let fct_args = test_deserializationCall { input };
-    let fct_args = fct_args.abi_encode();
-    let fct_args = fct_args.into();
+    let fct_args = fct_args.abi_encode().into();
 
     test_contract(bytecode, fct_args);
     Ok(())
@@ -183,4 +171,12 @@ fn test_vector_serialization_group() {
 }
 
 
+
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum EnumTestType {
+    ChoiceA,
+    ChoiceB,
+    ChoiceC,
+}
 
