@@ -1,10 +1,10 @@
 use crate::solidity_generation::get_bytecode;
 use alloy_sol_types::sol;
 use serde_generate::{solidity, CodeGeneratorConfig};
-use std::{fs::File, io::Write};
+use std::{fmt::Display, fs::File, io::Write};
 use serde_reflection::Samples;
 use tempfile::tempdir;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, {Deserialize, Serialize}};
 use serde_reflection::{Tracer, TracerConfig};
 use alloy_sol_types::SolCall as _;
 use revm::db::InMemoryDB;
@@ -63,21 +63,21 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
 }
 
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct TestVec {
-    pub vec: Vec<u16>,
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct TestVec<T> {
+    pub vec: Vec<T>,
 }
 
 
 
 
-fn test_vector_serialization_len(len: usize) -> anyhow::Result<()> {
+fn test_vector_serialization<T: Serialize + DeserializeOwned + Display>(t: TestVec<T>) -> anyhow::Result<()> {
     use crate::solidity_generation::print_file_content;
     println!("test_vector_serialization_len, step 1");
     // Indexing the types
     let mut tracer = Tracer::new(TracerConfig::default());
     let samples = Samples::new();
-    tracer.trace_type::<TestVec>(&samples).expect("a tracer entry");
+    tracer.trace_type::<TestVec<T>>(&samples).expect("a tracer entry");
     let registry = tracer.registry().expect("A registry");
     println!("test_vector_serialization_len, step 2");
 
@@ -97,6 +97,8 @@ fn test_vector_serialization_len(len: usize) -> anyhow::Result<()> {
         generator.output(&mut test_code_file, &registry).unwrap();
         println!("test_vector_serialization_len, step 4");
 
+        let len = t.vec.len();
+        let first_val = &t.vec[0];
         writeln!(
             test_code_file,
             r#"
@@ -109,24 +111,13 @@ contract ExampleCode is ExampleCodeBase {{
       bytes memory input1 = input;
       TestVec memory t = bcs_deserialize_TestVec(input1);
       require(t.vec.length == {len}, "The length is incorrect");
-      require(t.vec[0] == 42, "incorrect value");
+      require(t.vec[0] == {first_val}, "incorrect value");
+
       bytes memory input_rev = bcs_serialize_TestVec(t);
       require(input1.length == input_rev.length);
       for (uint256 i=0; i<input1.length; i++) {{
         require(input1[i] == input_rev[i]);
       }}
-//      uint8 valueb = abi.decodePacked(b, (uint8));
-//      require(value == valueb);
-//      uint8 value_c = abi.decode(input, (uint8));
-//      uint256 new_pos;
-//      uint256 result;
-//      uint8 val = uint8(input[0]);
-//      require(val == 30);
-//      (new_pos, result) = bcs_deserialize_offset_len(0, input);
-//      require(result == 30);
-//      require(t.vec[1] == 5, "incorrect value");
-//      require(t.vec[2] == 360, "incorrect value");
-//      require(t.vec[{len} - 1] == 0, "incorrect value");
 
     }}
 
@@ -148,11 +139,6 @@ contract ExampleCode is ExampleCodeBase {{
 
 
     // Building the test entry
-    let mut vec = vec![0 as u16; len];
-    vec[0] = 42;
-    vec[1] = 5;
-    vec[2] = 360;
-    let t = TestVec { vec };
     let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
     println!("expected_input={:?}", expected_input);
     println!("|expected_input|={}", expected_input.len());
@@ -162,7 +148,7 @@ contract ExampleCode is ExampleCodeBase {{
       function test_deserialization(bytes calldata input);
     }
     let input = Bytes::copy_from_slice(&expected_input);
-    let fct_args = test_deserializationCall { input: input.clone() };
+    let fct_args = test_deserializationCall { input };
     let fct_args = fct_args.abi_encode();
     println!("|fct_args|={}", fct_args.len());
     let fct_args = fct_args.into();
@@ -176,10 +162,49 @@ contract ExampleCode is ExampleCodeBase {{
 
 
 #[test]
-fn test_vector_serialization() {
-    for len in [3] {
-        test_vector_serialization_len(len).expect("successful run");
-    }
+fn test_vector_serialization_group() {
+    let mut vec = vec![0 as u16; 3];
+    vec[0] = 42;
+    vec[1] = 5;
+    vec[2] = 360;
+    let t = TestVec { vec };
+    test_vector_serialization(t).expect("successful run");
+
+    let mut vec = vec![0 as u8; 2];
+    vec[0] = 42;
+    vec[1] = 5;
+    let t = TestVec { vec };
+    test_vector_serialization(t).expect("successful run");
+
+    let mut vec = vec![0 as u32; 2];
+    vec[0] = 42;
+    vec[1] = 5;
+    let t = TestVec { vec };
+    test_vector_serialization(t).expect("successful run");
+
+    let mut vec = vec![0 as i8; 2];
+    vec[0] = -42;
+    vec[1] = 76;
+    let t = TestVec { vec };
+    test_vector_serialization(t).expect("successful run");
+
+    let mut vec = vec![0 as i16; 2];
+    vec[0] = -4200;
+    vec[1] = 7600;
+    let t = TestVec { vec };
+    test_vector_serialization(t).expect("successful run");
+
+    let mut vec = vec![0 as i32; 2];
+    vec[0] = -4200;
+    vec[1] = 7600;
+    let t = TestVec { vec };
+    test_vector_serialization(t).expect("successful run");
+
+    let mut vec = vec![0 as i64; 120];
+    vec[0] = -4200;
+    vec[1] = 7600;
+    let t = TestVec { vec };
+    test_vector_serialization(t).expect("successful run");
 }
 
 
