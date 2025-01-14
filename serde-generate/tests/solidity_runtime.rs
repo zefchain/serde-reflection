@@ -12,6 +12,7 @@ use revm::{
     primitives::{ExecutionResult, TxKind, Output, Bytes},
     Evm,
 };
+use crate::solidity_generation::print_file_content;
 
 
 fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
@@ -63,7 +64,6 @@ pub struct TestVec<T> {
 
 
 fn test_vector_serialization<T: Serialize + DeserializeOwned + Display>(t: TestVec<T>) -> anyhow::Result<()> {
-    use crate::solidity_generation::print_file_content;
     // Indexing the types
     let mut tracer = Tracer::new(TracerConfig::default());
     let samples = Samples::new();
@@ -107,7 +107,6 @@ contract ExampleCode is ExampleCodeBase {{
     }}
 
 }}
-
 "#
         )?;
 
@@ -121,8 +120,6 @@ contract ExampleCode is ExampleCodeBase {{
 
     // Building the test entry
     let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
-    println!("expected_input={:?}", expected_input);
-    println!("|expected_input|={}", expected_input.len());
 
     // Building the input to the smart contract
     sol! {
@@ -132,7 +129,6 @@ contract ExampleCode is ExampleCodeBase {{
     let fct_args = test_deserializationCall { input };
     let fct_args = fct_args.abi_encode();
     let fct_args = fct_args.into();
-
 
     test_contract(bytecode, fct_args);
     Ok(())
@@ -179,7 +175,7 @@ fn test_vector_serialization_group() {
     let t = TestVec { vec };
     test_vector_serialization(t).expect("successful run");
 
-    let mut vec = vec![0 as i64; 120];
+    let mut vec = vec![0 as i64; 140];
     vec[0] = -4200;
     vec[1] = 7600;
     let t = TestVec { vec };
