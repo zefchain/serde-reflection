@@ -9,31 +9,25 @@ use serde_reflection::{Tracer, TracerConfig};
 use alloy_sol_types::SolCall as _;
 use revm::db::InMemoryDB;
 use revm::{
-    primitives::{Address, ExecutionResult, TxKind, Output, Bytes, U256},
+    primitives::{ExecutionResult, TxKind, Output, Bytes},
     Evm,
 };
 
 
 fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
     let mut database = InMemoryDB::default();
-    let gas_limit = 10000000_u64;
-    
-    let address1 = Address::ZERO;
     let contract_address = {
         let mut evm : Evm<'_, (), _> = Evm::builder()
             .with_ref_db(&mut database)
             .modify_tx_env(|tx| {
                 tx.clear();
-                tx.caller = address1;
                 tx.transact_to = TxKind::Create;
-                tx.gas_limit = gas_limit;
                 tx.data = bytecode;
             })
             .build();
 
         let result : ExecutionResult = evm.transact_commit().unwrap();
 
-        println!("result={:?}", result);
         let ExecutionResult::Success { reason: _, gas_used: _, gas_refunded: _, logs: _, output } = result else {
             panic!("The TxKind::Create execution failed to be done");
         };
@@ -46,10 +40,7 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
     let mut evm : Evm<'_, (), _> = Evm::builder()
         .with_ref_db(&mut database)
         .modify_tx_env(|tx| {
-            tx.caller = address1;
             tx.transact_to = TxKind::Call(contract_address);
-            tx.value = U256::from(0);
-            tx.gas_limit = gas_limit;
             tx.data = encoded_args;
         })
         .build();
@@ -73,29 +64,24 @@ pub struct TestVec<T> {
 
 fn test_vector_serialization<T: Serialize + DeserializeOwned + Display>(t: TestVec<T>) -> anyhow::Result<()> {
     use crate::solidity_generation::print_file_content;
-    println!("test_vector_serialization_len, step 1");
     // Indexing the types
     let mut tracer = Tracer::new(TracerConfig::default());
     let samples = Samples::new();
     tracer.trace_type::<TestVec<T>>(&samples).expect("a tracer entry");
     let registry = tracer.registry().expect("A registry");
-    println!("test_vector_serialization_len, step 2");
 
     // The directories
     let dir = tempdir().unwrap();
     let path = dir.path();
-    println!("path={}", path.display());
 
     // The generated code
     let test_code_path = path.join("test_code.sol");
     {
         let mut test_code_file = File::create(&test_code_path)?;
-        println!("test_vector_serialization_len, step 3");
         let name = "ExampleCodeBase".to_string();
         let config = CodeGeneratorConfig::new(name);
         let generator = solidity::CodeGenerator::new(&config);
         generator.output(&mut test_code_file, &registry).unwrap();
-        println!("test_vector_serialization_len, step 4");
 
         let len = t.vec.len();
         let first_val = &t.vec[0];
@@ -118,10 +104,7 @@ contract ExampleCode is ExampleCodeBase {{
       for (uint256 i=0; i<input1.length; i++) {{
         require(input1[i] == input_rev[i]);
       }}
-
     }}
-
-
 
 }}
 
@@ -133,9 +116,7 @@ contract ExampleCode is ExampleCodeBase {{
 
 
     // Compiling the code and reading it.
-    println!("test_vector_serialization_len, step 6");
     let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
-    println!("bytecode={}", bytecode);
 
 
     // Building the test entry
@@ -150,9 +131,7 @@ contract ExampleCode is ExampleCodeBase {{
     let input = Bytes::copy_from_slice(&expected_input);
     let fct_args = test_deserializationCall { input };
     let fct_args = fct_args.abi_encode();
-    println!("|fct_args|={}", fct_args.len());
     let fct_args = fct_args.into();
-    println!("fct_args={}", fct_args);
 
 
     test_contract(bytecode, fct_args);
