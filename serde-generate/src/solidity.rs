@@ -623,16 +623,23 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input) i
                 output_generic_bcs_deserialize(out, &name, &name, true)?;
             },
             SimpleEnum { name, names } => {
-                let names = names.join(", ");
+                let names_join = names.join(", ");
+                let number_names = names.len();
                 writeln!(out, r#"
-enum {name} {{ {names} }}
+enum {name} {{ {names_join} }}
 function bcs_serialize_{name}({name} input) internal pure returns (bytes memory) {{
   return abi.encodePacked(input);
 }}
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal pure returns (uint256, {name}) {{
-  bytes memory input_red = input[pos:];
-  {name} value = abi.decode(input_red, ({name}));
-  return (pos + 1, value);
+  uint8 choice = uint8(input[pos]);"#)?;
+                for (idx, name_choice) in names.iter().enumerate() {
+                    writeln!(out, r#"
+  if (choice == {idx}) {{
+    return (pos + 1, {name}.{name_choice});
+  }}"#)?;
+                }
+                writeln!(out, r#"
+  require(choice < {number_names});
 }}"#)?;
                 output_generic_bcs_deserialize(out, &name, &name, false)?;
             },
