@@ -10,7 +10,6 @@ use revm::{
     primitives::{ExecutionResult, TxKind, Output, Bytes},
     Evm,
 };
-use crate::solidity_generation::print_file_content;
 
 
 fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
@@ -96,7 +95,6 @@ contract ExampleCode is ExampleCodeBase {{
         )?;
 
     }
-    print_file_content(&test_code_path);
 
     // Compiling the code and reading it.
     let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
@@ -120,44 +118,44 @@ contract ExampleCode is ExampleCodeBase {{
 
 #[test]
 fn test_vector_serialization_types() {
-    let mut vec = vec![0 as u16; 3];
+    let mut vec = vec![0_u16; 3];
     vec[0] = 42;
     vec[1] = 5;
     vec[2] = 360;
     let t = TestVec { vec };
     test_vector_serialization(t).expect("successful run");
 
-    let mut vec = vec![0 as u8; 2];
+    let mut vec = vec![0_u8; 2];
     vec[0] = 42;
     vec[1] = 5;
     let t = TestVec { vec };
     test_vector_serialization(t).expect("successful run");
 
-    let mut vec = vec![0 as u32; 2];
+    let mut vec = vec![0_u32; 2];
     vec[0] = 42;
     vec[1] = 5;
     let t = TestVec { vec };
     test_vector_serialization(t).expect("successful run");
 
-    let mut vec = vec![0 as i8; 2];
+    let mut vec = vec![0_i8; 2];
     vec[0] = -42;
     vec[1] = 76;
     let t = TestVec { vec };
     test_vector_serialization(t).expect("successful run");
 
-    let mut vec = vec![0 as i16; 2];
+    let mut vec = vec![0_i16; 2];
     vec[0] = -4200;
     vec[1] = 7600;
     let t = TestVec { vec };
     test_vector_serialization(t).expect("successful run");
 
-    let mut vec = vec![0 as i32; 2];
+    let mut vec = vec![0_i32; 2];
     vec[0] = -4200;
     vec[1] = 7600;
     let t = TestVec { vec };
     test_vector_serialization(t).expect("successful run");
 
-    let mut vec = vec![0 as i64; 140];
+    let mut vec = vec![0_i64; 140];
     vec[0] = -4200;
     vec[1] = 7600;
     let t = TestVec { vec };
@@ -206,7 +204,6 @@ contract ExampleCode is ExampleCodeBase {{
         )?;
 
     }
-    print_file_content(&test_code_path);
 
     // Compiling the code and reading it.
     let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
@@ -268,7 +265,6 @@ contract ExampleCode is ExampleCodeBase {{
         )?;
 
     }
-    print_file_content(&test_code_path);
 
     // Compiling the code and reading it.
     let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
@@ -331,7 +327,6 @@ contract ExampleCode is ExampleCodeBase {{
         )?;
 
     }
-    print_file_content(&test_code_path);
 
     // Compiling the code and reading it.
     let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
