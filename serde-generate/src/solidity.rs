@@ -34,36 +34,121 @@ fn get_data_location(need_memory: bool) -> String {
     }
 }
 
-
-fn output_generic_bcs_deserialize<T: std::io::Write>(out: &mut IndentedWriter<T>, key_name: &str, code_name: &str, need_memory: bool) -> Result<()> {
+fn output_generic_bcs_deserialize<T: std::io::Write>(
+    out: &mut IndentedWriter<T>,
+    key_name: &str,
+    code_name: &str,
+    need_memory: bool,
+) -> Result<()> {
     let data_location = get_data_location(need_memory);
-    writeln!(out, r#"
+    writeln!(
+        out,
+        r#"
 function bcs_deserialize_{key_name}(bytes memory input) public pure returns ({code_name}{data_location}) {{
   uint256 new_pos;
   {code_name}{data_location} value;
   (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);
   require(new_pos == input.length, "incomplete deserialization");
   return value;
-}}"#)?;
+}}"#
+    )?;
     Ok(())
 }
 
-
 fn get_keywords() -> HashSet<String> {
     let v = vec![
-        "abstract", "after", "alias", "anonymous", "as", "assembly", "break",
-        "catch", "constant", "continue", "constructor", "contract", "delete",
-        "do", "else", "emit", "enum", "error", "event", "external", "fallback",
-        "for", "function", "if", "immutable", "import", "indexed", "interface",
-        "internal", "is", "library", "mapping", "memory", "modifier", "new",
-        "override", "payable", "pragma", "private", "public", "pure", "receive",
-        "return", "returns", "revert", "storage", "struct", "throw", "try",
-        "type", "unchecked", "using", "virtual", "view", "while", "addmod",
-        "blockhash", "ecrecover", "keccak256", "mulmod", "sha256", "ripemd160",
-        "block", "msg", "tx", "balance", "transfer", "send", "call", "delegatecall",
-        "staticcall", "this", "super", "gwei", "finney", "szabo", "ether", "seconds",
-        "minutes", "hours", "days", "weeks", "years", "wei", "hex", "address",
-        "bool", "bytes", "string", "mapping", "int"];
+        "abstract",
+        "after",
+        "alias",
+        "anonymous",
+        "as",
+        "assembly",
+        "break",
+        "catch",
+        "constant",
+        "continue",
+        "constructor",
+        "contract",
+        "delete",
+        "do",
+        "else",
+        "emit",
+        "enum",
+        "error",
+        "event",
+        "external",
+        "fallback",
+        "for",
+        "function",
+        "if",
+        "immutable",
+        "import",
+        "indexed",
+        "interface",
+        "internal",
+        "is",
+        "library",
+        "mapping",
+        "memory",
+        "modifier",
+        "new",
+        "override",
+        "payable",
+        "pragma",
+        "private",
+        "public",
+        "pure",
+        "receive",
+        "return",
+        "returns",
+        "revert",
+        "storage",
+        "struct",
+        "throw",
+        "try",
+        "type",
+        "unchecked",
+        "using",
+        "virtual",
+        "view",
+        "while",
+        "addmod",
+        "blockhash",
+        "ecrecover",
+        "keccak256",
+        "mulmod",
+        "sha256",
+        "ripemd160",
+        "block",
+        "msg",
+        "tx",
+        "balance",
+        "transfer",
+        "send",
+        "call",
+        "delegatecall",
+        "staticcall",
+        "this",
+        "super",
+        "gwei",
+        "finney",
+        "szabo",
+        "ether",
+        "seconds",
+        "minutes",
+        "hours",
+        "days",
+        "weeks",
+        "years",
+        "wei",
+        "hex",
+        "address",
+        "bool",
+        "bytes",
+        "string",
+        "mapping",
+        "int",
+    ];
     let mut v = v.into_iter().map(|x| x.to_string()).collect::<Vec<_>>();
     for length in [8, 16, 32, 64, 128, 256] {
         v.push(format!("int{}", length));
@@ -83,7 +168,6 @@ fn safe_variable(s: &str) -> String {
         s.to_string()
     }
 }
-
 
 #[derive(Clone, Debug)]
 enum Primitive {
@@ -129,8 +213,9 @@ impl Primitive {
     pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
         use Primitive::*;
         match self {
-            Unit => {
-                writeln!(out, r#"
+            Unit => writeln!(
+                out,
+                r#"
 struct empty_struct {{
   int8 val;
 }}
@@ -141,10 +226,12 @@ function bcs_serialize_empty_struct(empty_struct memory input) internal pure ret
 function bcs_deserialize_offset_empty_struct(uint256 pos, bytes memory input) internal pure returns (uint256, empty_struct memory) {{
   int8 val = 0;
   return (pos, empty_struct(val));
-}}"#)?
-            },
+}}"#
+            )?,
             Bool => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_bool(bool input) internal pure returns (bytes memory) {{
   return abi.encodePacked(input);
 }}
@@ -155,10 +242,13 @@ function bcs_deserialize_offset_bool(uint256 pos, bytes memory input) internal p
     result = true;
   }}
   return (pos + 1, result);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             I8 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_int8(int8 input) internal pure returns (bytes memory) {{
   return abi.encodePacked(input);
 }}
@@ -169,10 +259,12 @@ function bcs_deserialize_offset_int8(uint256 pos, bytes memory input) internal p
   }} else {{
     return (pos + 1, int8(val - 256));
   }}
-}}"#)?;
-            },
-            I16 => {
-                writeln!(out, r#"
+}}"#
+                )?;
+            }
+            I16 => writeln!(
+                out,
+                r#"
 function bcs_serialize_int16(int16 input) internal pure returns (bytes memory) {{
   bytes memory result = new bytes(2);
   uint16 uinput;
@@ -197,10 +289,12 @@ function bcs_deserialize_offset_int16(uint256 pos, bytes memory input) internal 
     result = int16(result_32);
   }}
   return (new_pos, result);
-}}"#)?
-            },
+}}"#
+            )?,
             I32 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_int32(int32 input) internal pure returns (bytes memory) {{
   bytes memory result = new bytes(4);
   uint32 uinput;
@@ -225,10 +319,13 @@ function bcs_deserialize_offset_int32(uint256 pos, bytes memory input) internal 
     result = int32(result_64);
   }}
   return (new_pos, result);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             I64 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_int64(int64 input) internal pure returns (bytes memory) {{
   bytes memory result = new bytes(8);
   uint64 uinput;
@@ -253,10 +350,13 @@ function bcs_deserialize_offset_int64(uint256 pos, bytes memory input) internal 
     result = int64(result_128);
   }}
   return (new_pos, result);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             I128 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_int128(int128 input) internal pure returns (bytes memory) {{
   bytes memory result = new bytes(16);
   uint128 uinput;
@@ -281,10 +381,13 @@ function bcs_deserialize_offset_int128(uint256 pos, bytes memory input) internal
     result = int128(result_256);
   }}
   return (new_pos, result);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             U8 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_uint8(uint8 input) internal pure returns (bytes memory) {{
   return abi.encodePacked(input);
 }}
@@ -292,10 +395,13 @@ function bcs_deserialize_offset_uint8(uint256 pos, bytes memory input) internal 
   require(pos < input.length, "Position out of bound");
   uint8 value = uint8(input[pos]);
   return (pos + 1, value);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             U16 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_uint16(uint16 input) internal pure returns (bytes memory) {{
   bytes memory result = new bytes(2);
   uint16 value = input;
@@ -310,10 +416,13 @@ function bcs_deserialize_offset_uint16(uint256 pos, bytes memory input) internal
   value = value << 8;
   value += uint8(input[pos]);
   return (pos + 2, value);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             U32 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_uint32(uint32 input) internal pure returns (bytes memory) {{
   bytes memory result = new bytes(4);
   uint32 value = input;
@@ -332,10 +441,13 @@ function bcs_deserialize_offset_uint32(uint256 pos, bytes memory input) internal
     value += uint8(input[pos + 2 - i]);
   }}
   return (pos + 4, value);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             U64 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_uint64(uint64 input) internal pure returns (bytes memory) {{
   bytes memory result = new bytes(8);
   uint64 value = input;
@@ -354,10 +466,13 @@ function bcs_deserialize_offset_uint64(uint256 pos, bytes memory input) internal
     value += uint8(input[pos + 6 - i]);
   }}
   return (pos + 8, value);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             U128 => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_uint128(uint128 input) internal pure returns (bytes memory) {{
   bytes memory result = new bytes(16);
   uint128 value = input;
@@ -376,10 +491,13 @@ function bcs_deserialize_offset_uint128(uint256 pos, bytes memory input) interna
     value += uint8(input[pos + 14 - i]);
   }}
   return (pos + 16, value);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             Char => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_bytes1(bytes1 input) internal pure returns (bytes memory) {{
   bytes memory result = abi.encodePacked(input);
   return result;
@@ -387,10 +505,13 @@ function bcs_serialize_bytes1(bytes1 input) internal pure returns (bytes memory)
 function bcs_deserialize_offset_bytes1(uint256 pos, bytes memory input) internal pure returns (uint256, bytes1) {{
   bytes1 result = bytes1(input[pos]);
   return (pos + 1, result);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             Str => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_string(string memory input) internal pure returns (bytes memory) {{
   bytes memory input_bytes = bytes(input);
   uint256 number_bytes = input_bytes.length;
@@ -428,10 +549,13 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input) internal
   }}
   string memory result = string(result_bytes);
   return (new_pos + shift, result);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
             Bytes => {
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_bytes(bytes memory input) internal pure returns (bytes memory) {{
   uint256 len = input.length;
   bytes memory result = bcs_serialize_len(len);
@@ -446,13 +570,13 @@ function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input) internal 
     result[u] = input[new_pos + u];
   }}
   return (new_pos + len, result);
-}}"#)?;
-            },
+}}"#
+                )?;
+            }
         }
         Ok(())
     }
 }
-
 
 #[derive(Clone, Debug)]
 enum SolFormat {
@@ -465,17 +589,22 @@ enum SolFormat {
     /// A simple solidity enum
     SimpleEnum { name: String, names: Vec<String> },
     /// A solidity struct. Used also to encapsulates Map and Tuple
-    Struct { name: String, formats: Vec<Named<SolFormat>> },
+    Struct {
+        name: String,
+        formats: Vec<Named<SolFormat>>,
+    },
     /// An option encapsulated as a solidity struct.
     Option(Box<SolFormat>),
     /// A Tuplearray encapsulated as a solidity struct.
     TupleArray { format: Box<SolFormat>, size: usize },
     /// A complex enum encapsulated as a solidity struct.
-    Enum { name: String, formats: Vec<Named<Option<SolFormat>>> },
+    Enum {
+        name: String,
+        formats: Vec<Named<Option<SolFormat>>>,
+    },
 }
 
-impl SolFormat
-{
+impl SolFormat {
     pub fn code_name(&self) -> String {
         use SolFormat::*;
         if let Seq(format) = self {
@@ -492,31 +621,31 @@ impl SolFormat
             Option(format) => format!("opt_{}", format.key_name()),
             Seq(format) => format!("seq_{}", format.key_name()),
             TupleArray { format, size } => format!("tuplearray{}_{}", size, format.key_name()),
-            Struct { name, formats: _ } => {
-                name.to_string()
-            },
-            SimpleEnum { name, names: _ } => {
-                name.to_string()
-            },
-            Enum { name, formats: _ } => {
-                name.to_string()
-            }
+            Struct { name, formats: _ } => name.to_string(),
+            SimpleEnum { name, names: _ } => name.to_string(),
+            Enum { name, formats: _ } => name.to_string(),
         }
     }
 
-    pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>, sol_registry: &SolRegistry) -> Result<()> {
+    pub fn output<T: std::io::Write>(
+        &self,
+        out: &mut IndentedWriter<T>,
+        sol_registry: &SolRegistry,
+    ) -> Result<()> {
         use SolFormat::*;
         match self {
             Primitive(primitive) => primitive.output(out)?,
             TypeName(_) => {
                 // by definition for TypeName the code already exists
-            },
+            }
             Option(format) => {
                 let key_name = format.key_name();
                 let code_name = format.code_name();
                 let full_name = format!("opt_{}", key_name);
                 let data_location = data_location(format, sol_registry);
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 struct {full_name} {{
   bool has_value;
   {code_name} value;
@@ -540,16 +669,19 @@ function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input) int
     (new_pos, value) = bcs_deserialize_offset_{key_name}(new_pos, input);
   }}
   return (new_pos, {full_name}(true, value));
-}}"#)?;
+}}"#
+                )?;
                 output_generic_bcs_deserialize(out, &full_name, &full_name, true)?;
-            },
+            }
             Seq(format) => {
                 let inner_key_name = format.key_name();
                 let inner_code_name = format.code_name();
                 let code_name = format!("{}[]", format.code_name());
                 let key_name = format!("seq_{}", format.key_name());
                 let data_location = data_location(format, sol_registry);
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 function bcs_serialize_{key_name}({code_name} memory input) internal pure returns (bytes memory) {{
   uint256 len = input.length;
   bytes memory result = bcs_serialize_len(len);
@@ -570,14 +702,17 @@ function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input) inte
     result[i] = value;
   }}
   return (new_pos, result);
-}}"#)?;
+}}"#
+                )?;
                 output_generic_bcs_deserialize(out, &key_name, &code_name, true)?;
             }
             TupleArray { format, size } => {
                 let inner_key_name = format.key_name();
                 let inner_code_name = format.code_name();
                 let struct_name = format!("tuplearray{}_{}", size, inner_key_name);
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 struct {struct_name} {{
   {inner_code_name}[] values;
 }}
@@ -598,17 +733,28 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input) i
     values[i] = value;
   }}
   return (new_pos, {struct_name}(values));
-}}"#)?;
+}}"#
+                )?;
                 output_generic_bcs_deserialize(out, &struct_name, &struct_name, true)?;
             }
             Struct { name, formats } => {
                 writeln!(out, "struct {name} {{")?;
                 for named_format in formats {
-                    writeln!(out, "  {} {};", named_format.value.code_name(), safe_variable(&named_format.name))?;
+                    writeln!(
+                        out,
+                        "  {} {};",
+                        named_format.value.code_name(),
+                        safe_variable(&named_format.name)
+                    )?;
                 }
                 writeln!(out, "}}")?;
                 writeln!(out, "function bcs_serialize_{name}({name} memory input) internal pure returns (bytes memory) {{")?;
-                writeln!(out, "  bytes memory result = bcs_serialize_{}(input.{});", &formats[0].value.key_name(), safe_variable(&formats[0].name))?;
+                writeln!(
+                    out,
+                    "  bytes memory result = bcs_serialize_{}(input.{});",
+                    &formats[0].value.key_name(),
+                    safe_variable(&formats[0].name)
+                )?;
                 for named_format in &formats[1..] {
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
@@ -626,31 +772,48 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input) i
                     writeln!(out, "  {code_name}{data_location} {safe_name};")?;
                     writeln!(out, "  (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
                 }
-                writeln!(out, "  return (new_pos, {name}({}));", formats.iter().map(|named_format| safe_variable(&named_format.name)).collect::<Vec<_>>().join(", "))?;
+                writeln!(
+                    out,
+                    "  return (new_pos, {name}({}));",
+                    formats
+                        .iter()
+                        .map(|named_format| safe_variable(&named_format.name))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )?;
                 writeln!(out, "}}")?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
-            },
+            }
             SimpleEnum { name, names } => {
                 let names_join = names.join(", ");
                 let number_names = names.len();
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 enum {name} {{ {names_join} }}
 function bcs_serialize_{name}({name} input) internal pure returns (bytes memory) {{
   return abi.encodePacked(input);
 }}
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal pure returns (uint256, {name}) {{
-  uint8 choice = uint8(input[pos]);"#)?;
+  uint8 choice = uint8(input[pos]);"#
+                )?;
                 for (idx, name_choice) in names.iter().enumerate() {
-                    writeln!(out, r#"
+                    writeln!(
+                        out,
+                        r#"
   if (choice == {idx}) {{
     return (pos + 1, {name}.{name_choice});
-  }}"#)?;
+  }}"#
+                    )?;
                 }
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
   require(choice < {number_names});
-}}"#)?;
+}}"#
+                )?;
                 output_generic_bcs_deserialize(out, name, name, false)?;
-            },
+            }
             Enum { name, formats } => {
                 writeln!(out, "struct {name} {{")?;
                 writeln!(out, "  uint8 choice;")?;
@@ -665,7 +828,10 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
                 }
                 writeln!(out, "}}")?;
                 writeln!(out, "function bcs_serialize_{name}({name} memory input) internal pure returns (bytes memory) {{")?;
-                writeln!(out, "  bytes memory result = abi.encodePacked(input.choice);")?;
+                writeln!(
+                    out,
+                    "  bytes memory result = abi.encodePacked(input.choice);"
+                )?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
                         let key_name = format.key_name();
@@ -680,7 +846,10 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal pure returns (uint256, {name} memory) {{")?;
                 writeln!(out, "  uint256 new_pos;")?;
                 writeln!(out, "  uint8 choice;")?;
-                writeln!(out, "  (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);")?;
+                writeln!(
+                    out,
+                    "  (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);"
+                )?;
                 let mut entries = Vec::new();
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
@@ -695,10 +864,14 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
                         entries.push(snake_name);
                     }
                 }
-                writeln!(out, "  return (new_pos, {name}(choice, {}));", entries.join(", "))?;
+                writeln!(
+                    out,
+                    "  return (new_pos, {name}(choice, {}));",
+                    entries.join(", ")
+                )?;
                 writeln!(out, "}}")?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
-            },
+            }
         }
         Ok(())
     }
@@ -710,17 +883,19 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
             TypeName(name) => vec![name.to_string()],
             Seq(format) => vec![format.key_name()],
             SimpleEnum { name: _, names: _ } => vec![],
-            Struct { name: _, formats } => {
-                formats.iter().map(|format| format.value.key_name()).collect()
-            },
+            Struct { name: _, formats } => formats
+                .iter()
+                .map(|format| format.value.key_name())
+                .collect(),
             Option(format) => vec![format.key_name()],
             TupleArray { format, size: _ } => vec![format.key_name()],
-            Enum { name: _, formats } => {
-                formats.iter().flat_map(|format| match &format.value {
+            Enum { name: _, formats } => formats
+                .iter()
+                .flat_map(|format| match &format.value {
                     None => vec![],
-                    Some(format) => vec![format.key_name()]
-                }).collect()
-            },
+                    Some(format) => vec![format.key_name()],
+                })
+                .collect(),
         }
     }
 }
@@ -734,19 +909,24 @@ impl SolRegistry {
     fn insert(&mut self, sol_format: SolFormat) {
         let key_name = sol_format.key_name();
         if matches!(sol_format, SolFormat::Primitive(Primitive::I8)) {
-            self.names.insert("uint8".to_string(), SolFormat::Primitive(Primitive::U8));
+            self.names
+                .insert("uint8".to_string(), SolFormat::Primitive(Primitive::U8));
         }
         if matches!(sol_format, SolFormat::Primitive(Primitive::I16)) {
-            self.names.insert("uint16".to_string(), SolFormat::Primitive(Primitive::U16));
+            self.names
+                .insert("uint16".to_string(), SolFormat::Primitive(Primitive::U16));
         }
         if matches!(sol_format, SolFormat::Primitive(Primitive::I32)) {
-            self.names.insert("uint32".to_string(), SolFormat::Primitive(Primitive::U32));
+            self.names
+                .insert("uint32".to_string(), SolFormat::Primitive(Primitive::U32));
         }
         if matches!(sol_format, SolFormat::Primitive(Primitive::I64)) {
-            self.names.insert("uint64".to_string(), SolFormat::Primitive(Primitive::U64));
+            self.names
+                .insert("uint64".to_string(), SolFormat::Primitive(Primitive::U64));
         }
         if matches!(sol_format, SolFormat::Primitive(Primitive::I128)) {
-            self.names.insert("uint128".to_string(), SolFormat::Primitive(Primitive::U128));
+            self.names
+                .insert("uint128".to_string(), SolFormat::Primitive(Primitive::U128));
         }
         if !matches!(sol_format, SolFormat::TypeName(_)) {
             self.names.insert(key_name, sol_format);
@@ -781,33 +961,39 @@ impl SolRegistry {
     }
 }
 
-
 fn need_memory(sol_format: &SolFormat, sol_registry: &SolRegistry) -> bool {
     use SolFormat::*;
     match sol_format {
         Primitive(primitive) => {
             use crate::solidity::Primitive;
-            matches!(primitive, Primitive::Unit | Primitive::Bytes | Primitive::Str)
-        },
+            matches!(
+                primitive,
+                Primitive::Unit | Primitive::Bytes | Primitive::Str
+            )
+        }
         TypeName(name) => {
             let mesg = format!("to find a matching entry for name={name}");
             let sol_format = sol_registry.names.get(name).expect(&mesg);
             need_memory(sol_format, sol_registry)
-        },
+        }
         Option(_) => true,
         Seq(_) => true,
         TupleArray { format: _, size: _ } => true,
-        Struct { name: _, formats: _ } => true,
+        Struct {
+            name: _,
+            formats: _,
+        } => true,
         SimpleEnum { name: _, names: _ } => false,
-        Enum { name: _, formats: _ } => true,
+        Enum {
+            name: _,
+            formats: _,
+        } => true,
     }
 }
 
 fn data_location(sol_format: &SolFormat, sol_registry: &SolRegistry) -> String {
     get_data_location(need_memory(sol_format, sol_registry))
 }
-
-
 
 fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
     use Format::*;
@@ -834,43 +1020,72 @@ fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
         Option(format) => {
             let format = parse_format(registry, *format);
             SolFormat::Option(Box::new(format))
-        },
+        }
         Seq(format) => {
             let format = parse_format(registry, *format);
             SolFormat::Seq(Box::new(format))
-        },
+        }
         Map { key, value } => {
             let key = parse_format(registry, *key);
             let value = parse_format(registry, *value);
             let name = format!("key_values_{}_{}", key.key_name(), value.key_name());
-            let formats = vec![Named { name: "key".into(), value: key }, Named { name: "value".into(), value }];
+            let formats = vec![
+                Named {
+                    name: "key".into(),
+                    value: key,
+                },
+                Named {
+                    name: "value".into(),
+                    value,
+                },
+            ];
             let sol_format = SolFormat::Struct { name, formats };
             registry.insert(sol_format.clone());
             SolFormat::Seq(Box::new(sol_format))
         }
         Tuple(formats) => {
-            let formats = formats.into_iter()
+            let formats = formats
+                .into_iter()
                 .map(|format| parse_format(registry, format))
                 .collect::<Vec<_>>();
-            let name = format!("tuple_{}", formats.iter()
-                               .map(|format| format.key_name()).collect::<Vec<_>>().join("_"));
-            let formats = formats.into_iter().enumerate()
-                .map(|(idx, format)| Named { name: format!("entry{idx}"), value: format })
+            let name = format!(
+                "tuple_{}",
+                formats
+                    .iter()
+                    .map(|format| format.key_name())
+                    .collect::<Vec<_>>()
+                    .join("_")
+            );
+            let formats = formats
+                .into_iter()
+                .enumerate()
+                .map(|(idx, format)| Named {
+                    name: format!("entry{idx}"),
+                    value: format,
+                })
                 .collect();
             SolFormat::Struct { name, formats }
-        },
-        TupleArray { content, size } => {
-            SolFormat::TupleArray { format: Box::new(parse_format(registry, *content)), size }
+        }
+        TupleArray { content, size } => SolFormat::TupleArray {
+            format: Box::new(parse_format(registry, *content)),
+            size,
         },
     };
     registry.insert(sol_format.clone());
     sol_format
 }
 
-
-fn parse_struct_format(registry: &mut SolRegistry, name: String, formats: Vec<Named<Format>>) -> SolFormat {
-    let formats = formats.into_iter()
-        .map(|named_format| Named { name: named_format.name, value: parse_format(registry, named_format.value) })
+fn parse_struct_format(
+    registry: &mut SolRegistry,
+    name: String,
+    formats: Vec<Named<Format>>,
+) -> SolFormat {
+    let formats = formats
+        .into_iter()
+        .map(|named_format| Named {
+            name: named_format.name,
+            value: parse_format(registry, named_format.value),
+        })
         .collect();
     let sol_format = SolFormat::Struct { name, formats };
     registry.insert(sol_format.clone());
@@ -883,27 +1098,49 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
     let sol_format = match container_format.value {
         UnitStruct => panic!("UnitStruct is not supported in solidity"),
         NewTypeStruct(format) => {
-            let format = Named { name: "value".to_string(), value: *format };
+            let format = Named {
+                name: "value".to_string(),
+                value: *format,
+            };
             let formats = vec![format];
             parse_struct_format(registry, name, formats)
-        },
+        }
         TupleStruct(formats) => {
-            assert!(!formats.is_empty(), "The TupleStruct should be non-trivial in solidity");
-            let formats = formats.into_iter().enumerate()
-                .map(|(idx, value)| Named { name: format!("entry{idx}"), value })
+            assert!(
+                !formats.is_empty(),
+                "The TupleStruct should be non-trivial in solidity"
+            );
+            let formats = formats
+                .into_iter()
+                .enumerate()
+                .map(|(idx, value)| Named {
+                    name: format!("entry{idx}"),
+                    value,
+                })
                 .collect();
             parse_struct_format(registry, name, formats)
-        },
+        }
         Struct(formats) => {
-            assert!(!formats.is_empty(), "The struct should be non-trivial in solidity");
+            assert!(
+                !formats.is_empty(),
+                "The struct should be non-trivial in solidity"
+            );
             parse_struct_format(registry, name, formats)
-        },
+        }
         Enum(map) => {
-            assert!(!map.is_empty(), "The enum should be non-trivial in solidity");
+            assert!(
+                !map.is_empty(),
+                "The enum should be non-trivial in solidity"
+            );
             assert!(map.len() < 256, "The enum should have at most 256 entries");
-            let is_trivial = map.iter().all(|(_,v)| matches!(v.value, VariantFormat::Unit));
+            let is_trivial = map
+                .iter()
+                .all(|(_, v)| matches!(v.value, VariantFormat::Unit));
             if is_trivial {
-                let names = map.into_values().map(|named_format| named_format.name).collect();
+                let names = map
+                    .into_values()
+                    .map(|named_format| named_format.name)
+                    .collect();
                 SolFormat::SimpleEnum { name, names }
             } else {
                 let choice_sol_format = SolFormat::Primitive(Primitive::U8);
@@ -917,22 +1154,30 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
                         VariantFormat::Unit => None,
                         NewType(format) => Some(parse_format(registry, *format)),
                         Tuple(formats) => {
-                            let formats = formats.into_iter().enumerate()
-                                .map(|(idx, value)| Named { name: format!("entry{idx}"), value })
+                            let formats = formats
+                                .into_iter()
+                                .enumerate()
+                                .map(|(idx, value)| Named {
+                                    name: format!("entry{idx}"),
+                                    value,
+                                })
                                 .collect::<Vec<_>>();
                             Some(parse_struct_format(registry, concat_name, formats))
                         }
                         Struct(formats) => {
                             Some(parse_struct_format(registry, concat_name, formats))
                         }
-                        Variable(_) => panic!("Variable is not supported for solidity")
+                        Variable(_) => panic!("Variable is not supported for solidity"),
                     };
-                    let format = Named { name: name_red, value: entry };
+                    let format = Named {
+                        name: name_red,
+                        value: entry,
+                    };
                     formats.push(format);
                 }
                 SolFormat::Enum { name, formats }
             }
-        },
+        }
     };
     registry.insert(sol_format);
 }
@@ -943,9 +1188,7 @@ impl<'a> CodeGenerator<'a> {
         if config.c_style_enums {
             panic!("Solidity does not support generating c-style enums");
         }
-        Self {
-            config,
-        }
+        Self { config }
     }
 
     pub fn output(
@@ -963,7 +1206,10 @@ impl<'a> CodeGenerator<'a> {
 
         let mut sol_registry = SolRegistry::default();
         for (key, container_format) in registry {
-            let container_format = Named { name: key.to_string(), value: container_format.clone() };
+            let container_format = Named {
+                name: key.to_string(),
+                value: container_format.clone(),
+            };
             parse_container_format(&mut sol_registry, container_format);
         }
         if sol_registry.has_circular_dependency() {
@@ -984,7 +1230,9 @@ where
     T: std::io::Write,
 {
     fn output_preamble(&mut self) -> Result<()> {
-        writeln!(self.out, r#"
+        writeln!(
+            self.out,
+            r#"
 /// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 function bcs_serialize_len(uint256 x) pure returns (bytes memory) {{
@@ -1023,7 +1271,8 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input) pure return
     }}
     idx += 1;
   }}
-}}"#)?;
+}}"#
+        )?;
         Ok(())
     }
 
@@ -1046,8 +1295,6 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input) pure return
         )?;
         Ok(())
     }
-
-
 }
 
 /// Installer for generated source files in solidity

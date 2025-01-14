@@ -1,21 +1,23 @@
-use crate::solidity_generation::{get_registry_from_type, get_bytecode};
+use crate::solidity_generation::{get_bytecode, get_registry_from_type};
 use alloy_sol_types::sol;
-use serde_generate::{solidity, CodeGeneratorConfig};
-use std::{fmt::Display, fs::File, io::Write};
-use tempfile::tempdir;
-use serde::{de::DeserializeOwned, {Deserialize, Serialize}};
 use alloy_sol_types::SolCall as _;
 use revm::db::InMemoryDB;
 use revm::{
-    primitives::{ExecutionResult, TxKind, Output, Bytes},
+    primitives::{Bytes, ExecutionResult, Output, TxKind},
     Evm,
 };
-
+use serde::{
+    de::DeserializeOwned,
+    {Deserialize, Serialize},
+};
+use serde_generate::{solidity, CodeGeneratorConfig};
+use std::{fmt::Display, fs::File, io::Write};
+use tempfile::tempdir;
 
 fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
     let mut database = InMemoryDB::default();
     let contract_address = {
-        let mut evm : Evm<'_, (), _> = Evm::builder()
+        let mut evm: Evm<'_, (), _> = Evm::builder()
             .with_ref_db(&mut database)
             .modify_tx_env(|tx| {
                 tx.clear();
@@ -24,9 +26,16 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
             })
             .build();
 
-        let result : ExecutionResult = evm.transact_commit().unwrap();
+        let result: ExecutionResult = evm.transact_commit().unwrap();
 
-        let ExecutionResult::Success { reason: _, gas_used: _, gas_refunded: _, logs: _, output } = result else {
+        let ExecutionResult::Success {
+            reason: _,
+            gas_used: _,
+            gas_refunded: _,
+            logs: _,
+            output,
+        } = result
+        else {
             panic!("The TxKind::Create execution failed to be done");
         };
         let Output::Create(_, Some(contract_address)) = output else {
@@ -35,7 +44,7 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
         contract_address
     };
 
-    let mut evm : Evm<'_, (), _> = Evm::builder()
+    let mut evm: Evm<'_, (), _> = Evm::builder()
         .with_ref_db(&mut database)
         .modify_tx_env(|tx| {
             tx.transact_to = TxKind::Call(contract_address);
@@ -43,21 +52,28 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
         })
         .build();
 
-    let result : ExecutionResult = evm.transact_commit().unwrap();
+    let result: ExecutionResult = evm.transact_commit().unwrap();
 
-    let ExecutionResult::Success { reason: _, gas_used: _, gas_refunded: _, logs: _, output: _ } = result else {
+    let ExecutionResult::Success {
+        reason: _,
+        gas_used: _,
+        gas_refunded: _,
+        logs: _,
+        output: _,
+    } = result
+    else {
         panic!("The TxKind::Call execution failed to be done");
     };
-
 }
-
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TestVec<T> {
     pub vec: Vec<T>,
 }
 
-fn test_vector_serialization<T: Serialize + DeserializeOwned + Display>(t: TestVec<T>) -> anyhow::Result<()> {
+fn test_vector_serialization<T: Serialize + DeserializeOwned + Display>(
+    t: TestVec<T>,
+) -> anyhow::Result<()> {
     let registry = get_registry_from_type::<TestVec<T>>();
     let dir = tempdir().unwrap();
     let path = dir.path();
@@ -93,7 +109,6 @@ contract ExampleCode is ExampleCodeBase {{
 }}
 "#
         )?;
-
     }
 
     // Compiling the code and reading it.
@@ -113,8 +128,6 @@ contract ExampleCode is ExampleCodeBase {{
     test_contract(bytecode, fct_args);
     Ok(())
 }
-
-
 
 #[test]
 fn test_vector_serialization_types() {
@@ -202,7 +215,6 @@ contract ExampleCode is ExampleCodeBase {{
 }}
 "#
         )?;
-
     }
 
     // Compiling the code and reading it.
@@ -263,14 +275,16 @@ contract ExampleCode is ExampleCodeBase {{
 }}
 "#
         )?;
-
     }
 
     // Compiling the code and reading it.
     let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
 
     // Building the test entry
-    let t = StructBoolString { a: false, b: "abc".to_string() };
+    let t = StructBoolString {
+        a: false,
+        b: "abc".to_string(),
+    };
     let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
 
     // Building the input to the smart contract
@@ -325,7 +339,6 @@ contract ExampleCode is ExampleCodeBase {{
 }}
 "#
         )?;
-
     }
 
     // Compiling the code and reading it.
