@@ -427,7 +427,7 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input) internal
     result_bytes[i] = input[new_pos + i];
   }}
   string memory result = string(result_bytes);
-  return (new_pos, result);
+  return (new_pos + shift, result);
 }}"#)?;
             },
             Bytes => {

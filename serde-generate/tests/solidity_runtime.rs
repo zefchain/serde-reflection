@@ -259,11 +259,11 @@ contract ExampleCode is ExampleCodeBase {{
     function test_deserialization(bytes calldata input) external {{
       StructBoolString memory t = bcs_deserialize_StructBoolString(input);
 
-//      bytes memory input_rev = bcs_serialize_StructBoolString(t);
-//      require(input.length == input_rev.length);
-//      for (uint256 i=0; i<input.length; i++) {{
-//        require(input[i] == input_rev[i]);
-//      }}
+      bytes memory input_rev = bcs_serialize_StructBoolString(t);
+      require(input.length == input_rev.length);
+      for (uint256 i=0; i<input.length; i++) {{
+        require(input[i] == input_rev[i]);
+      }}
     }}
 
 }}
