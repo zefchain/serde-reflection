@@ -13,13 +13,13 @@ use std::{
     path::PathBuf,
 };
 
-/// Main configuration object for code-generation in C++.
+/// Main configuration object for code-generation in solidity
 pub struct CodeGenerator<'a> {
     /// Language-independent configuration.
     config: &'a CodeGeneratorConfig,
 }
 
-/// Shared state for the code generation of a C++ source file.
+/// Shared state for the code generation of a solidity source file.
 struct SolEmitter<'a, T> {
     /// Writer.
     out: IndentedWriter<T>,
@@ -610,7 +610,9 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input) i
                 writeln!(out, "function bcs_serialize_{name}({name} memory input) internal pure returns (bytes memory) {{")?;
                 writeln!(out, "  bytes memory result = bcs_serialize_{}(input.{});", &formats[0].value.key_name(), safe_variable(&formats[0].name))?;
                 for named_format in &formats[1..] {
-                    writeln!(out, "  result = abi.encodePacked(result, bcs_serialize_{}(input.{}));", named_format.value.key_name(), safe_variable(&named_format.name))?;
+                    let key_name = named_format.value.key_name();
+                    let safe_name = safe_variable(&named_format.name);
+                    writeln!(out, "  result = abi.encodePacked(result, bcs_serialize_{key_name}(input.{safe_name}));")?;
                 }
                 writeln!(out, "  return result;")?;
                 writeln!(out, "}}")?;
@@ -618,8 +620,11 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input) i
                 writeln!(out, "  uint256 new_pos = pos;")?;
                 for named_format in formats {
                     let data_location = data_location(&named_format.value, sol_registry);
-                    writeln!(out, "  {}{} {};", named_format.value.code_name(), data_location, safe_variable(&named_format.name))?;
-                    writeln!(out, "  (new_pos, {}) = bcs_deserialize_offset_{}(new_pos, input);", safe_variable(&named_format.name), named_format.value.key_name())?;
+                    let code_name = named_format.value.code_name();
+                    let key_name = named_format.value.key_name();
+                    let safe_name = safe_variable(&named_format.name);
+                    writeln!(out, "  {code_name}{data_location} {safe_name};")?;
+                    writeln!(out, "  (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
                 }
                 writeln!(out, "  return (new_pos, {name}({}));", formats.into_iter().map(|named_format| safe_variable(&named_format.name)).collect::<Vec<_>>().join(", "))?;
                 writeln!(out, "}}")?;
@@ -648,10 +653,12 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
             },
             Enum { name, formats } => {
                 writeln!(out, "struct {name} {{")?;
-                writeln!(out, "  uint64 choice;")?;
+                writeln!(out, "  uint8 choice;")?;
                 for named_format in formats {
                     if let Some(format) = &named_format.value {
-                        writeln!(out, "  {} {};", format.code_name(), named_format.name.to_snake_case())?;
+                        let code_name = format.code_name();
+                        let snake_name = named_format.name.to_snake_case();
+                        writeln!(out, "  {code_name} {snake_name};")?;
                     }
                 }
                 writeln!(out, "}}")?;
@@ -659,8 +666,10 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
                 writeln!(out, "  bytes memory result = abi.encodePacked(input.choice);")?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
+                        let key_name = format.key_name();
+                        let snake_name = named_format.name.to_snake_case();
                         writeln!(out, "  if (input.choice == {idx}) {{")?;
-                        writeln!(out, "    return abi.encodePacked(result, bcs_serialize_{}(input.{}));", format.key_name(), named_format.name.to_snake_case())?;
+                        writeln!(out, "    return abi.encodePacked(result, bcs_serialize_{key_name}(input.{snake_name}));")?;
                         writeln!(out, "  }}")?;
                     }
                 }
@@ -668,8 +677,8 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
                 writeln!(out, "}}")?;
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal pure returns (uint256, {name} memory) {{")?;
                 writeln!(out, "  uint256 new_pos;")?;
-                writeln!(out, "  uint64 choice;")?;
-                writeln!(out, "  (new_pos, choice) = bcs_deserialize_offset_uint64(pos, input);")?;
+                writeln!(out, "  uint8 choice;")?;
+                writeln!(out, "  (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);")?;
                 let mut entries = Vec::new();
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
@@ -894,11 +903,14 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
         },
         Enum(map) => {
             assert!(!map.is_empty(), "The enum should be non-trivial in solidity");
+            assert!(map.len() < 256, "The enum should have at most 256 entries");
             let is_trivial = map.iter().all(|(_,v)| matches!(v.value, VariantFormat::Unit));
             if is_trivial {
                 let names = map.into_iter().map(|(_,named_format)| named_format.name).collect();
                 SolFormat::SimpleEnum { name, names }
             } else {
+                let choice_sol_format = SolFormat::Primitive(Primitive::U8);
+                registry.insert(choice_sol_format);
                 let mut formats = Vec::new();
                 for (_key, value) in map {
                     use VariantFormat::*;
@@ -929,10 +941,10 @@ fn parse_container_format(registry: &mut SolRegistry, container_format: Named<Co
 }
 
 impl<'a> CodeGenerator<'a> {
-    /// Create a C++ code generator for the given config.
+    /// Create a solidity code generator for the given config.
     pub fn new(config: &'a CodeGeneratorConfig) -> Self {
         if config.c_style_enums {
-            panic!("C++ does not support generating c-style enums");
+            panic!("Solidity does not support generating c-style enums");
         }
         Self {
             config,
@@ -1041,7 +1053,7 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input) pure return
 
 }
 
-/// Installer for generated source files in C++.
+/// Installer for generated source files in solidity
 pub struct Installer {
     install_dir: PathBuf,
 }
