@@ -7,7 +7,7 @@ use std::{collections::BTreeMap, fs::File, io::Write, process::{Command, Stdio}}
 use serde_reflection::Samples;
 use std::path::Path;
 use tempfile::tempdir;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, {Deserialize, Serialize}};
 use serde_reflection::{Registry, Tracer, TracerConfig};
 use revm::primitives::Bytes;
 
@@ -113,6 +113,13 @@ pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow
     let object = object.trim_matches(|c| c == '"').to_string();
     let object = hex::decode(&object)?;
     Ok(Bytes::copy_from_slice(&object))
+}
+
+pub fn get_registry_from_type<T: Serialize + DeserializeOwned>() -> Registry {
+    let mut tracer = Tracer::new(TracerConfig::default());
+    let samples = Samples::new();
+    tracer.trace_type::<T>(&samples).expect("a tracer entry");
+    tracer.registry().expect("A registry")
 }
 
 #[test]
