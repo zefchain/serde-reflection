@@ -85,15 +85,12 @@ pub fn write_compilation_json(path: &Path, file_name: &str) {
 }
 
 pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow::Result<Bytes> {
-    println!("get_bytecode, step 1");
     let config_path = path.join("config.json");
     write_compilation_json(&config_path, file_name);
     let config_file = File::open(config_path)?;
-    println!("get_bytecode, step 2");
 
     let output_path = path.join("result.json");
     let output_file = File::create(output_path.clone())?;
-    println!("get_bytecode, step 3");
 
     let status = Command::new("solc")
         .current_dir(path)
@@ -101,36 +98,20 @@ pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow
         .stdin(Stdio::from(config_file))
         .stdout(Stdio::from(output_file))
         .status()?;
-    println!("get_bytecode, step 4");
     assert!(status.success());
-    println!("get_bytecode, step 5");
 
     let contents = std::fs::read_to_string(output_path)?;
-    println!("get_bytecode, step 6");
     let json_data : serde_json::Value = serde_json::from_str(&contents)?;
-    println!("get_bytecode, step 7");
     println!("json_data={}", json_data);
     let contracts = json_data.get("contracts").ok_or(anyhow::anyhow!("failed to get contract"))?;
-    println!("get_bytecode, step 8");
     let file_name_contract = contracts.get(file_name).ok_or(anyhow::anyhow!("failed to get {file_name}"))?;
-    println!("get_bytecode, step 9");
     let test_data = file_name_contract.get(contract_name).ok_or(anyhow::anyhow!("failed to get test"))?;
-    println!("get_bytecode, step 10");
     let evm_data = test_data.get("evm").ok_or(anyhow::anyhow!("failed to get evm"))?;
-    println!("get_bytecode, step 11");
     let bytecode = evm_data.get("bytecode").ok_or(anyhow::anyhow!("failed to get bytecode"))?;
-    println!("get_bytecode, step 12");
-//    println!("bytecode={}", bytecode);
     let object = bytecode.get("object").ok_or(anyhow::anyhow!("failed to get object"))?;
-    println!("get_bytecode, step 13");
-//    println!("object={}", object);
     let object = object.to_string();
-    println!("get_bytecode, step 14");
     let object = object.trim_matches(|c| c == '"').to_string();
-    println!("get_bytecode, step 15");
-    println!("object={}", object);
     let object = hex::decode(&object)?;
-    println!("get_bytecode, step 16");
     Ok(Bytes::copy_from_slice(&object))
 }
 
