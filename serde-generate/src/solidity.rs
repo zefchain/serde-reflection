@@ -241,7 +241,14 @@ function bcs_deserialize_offset_uint16(uint256 pos, bytes memory input) internal
             U32 => {
                 writeln!(out, r#"
 function bcs_serialize_uint32(uint32 input) internal pure returns (bytes memory) {{
-  return abi.encodePacked(input);
+  bytes memory result = new bytes(4);
+  uint16 value = input;
+  result[0] = bytes1(uint8(value));
+  for (uint i=1; i<4; i++) {{
+    value = value >> 8;
+    result[i] = bytes1(uint8(value));
+  }}
+  return result;
 }}
 function bcs_deserialize_offset_uint32(uint256 pos, bytes memory input) internal pure returns (uint256, uint32) {{
   require(pos + 3 < input.length, "Position out of bound");
@@ -256,7 +263,14 @@ function bcs_deserialize_offset_uint32(uint256 pos, bytes memory input) internal
             U64 => {
                 writeln!(out, r#"
 function bcs_serialize_uint64(uint64 input) internal pure returns (bytes memory) {{
-  return abi.encodePacked(input);
+  bytes memory result = new bytes(8);
+  uint16 value = input;
+  result[0] = bytes1(uint8(value));
+  for (uint i=1; i<8; i++) {{
+    value = value >> 8;
+    result[i] = bytes1(uint8(value));
+  }}
+  return result;
 }}
 function bcs_deserialize_offset_uint64(uint256 pos, bytes memory input) internal pure returns (uint256, uint64) {{
   require(pos + 7 < input.length, "Position out of bound");
@@ -271,7 +285,14 @@ function bcs_deserialize_offset_uint64(uint256 pos, bytes memory input) internal
             U128 => {
                 writeln!(out, r#"
 function bcs_serialize_uint128(uint128 input) internal pure returns (bytes memory) {{
-  return abi.encodePacked(input);
+  bytes memory result = new bytes(16);
+  uint16 value = input;
+  result[0] = bytes1(uint8(value));
+  for (uint i=1; i<16; i++) {{
+    value = value >> 8;
+    result[i] = bytes1(uint8(value));
+  }}
+  return result;
 }}
 function bcs_deserialize_offset_uint128(uint256 pos, bytes memory input) internal pure returns (uint256, uint128) {{
   require(pos + 15 < input.length, "Position out of bound");
