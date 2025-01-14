@@ -164,9 +164,6 @@ fn test_vector_serialization_types() {
     test_vector_serialization(t).expect("successful run");
 }
 
-
-
-
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum SimpleEnumTestType {
     ChoiceA,
@@ -289,5 +286,72 @@ contract ExampleCode is ExampleCodeBase {{
     let fct_args = fct_args.abi_encode().into();
 
     test_contract(bytecode, fct_args);
+    Ok(())
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum ComplexEnumTestType {
+    ChoiceA,
+    Name(String),
+    Age(i32),
+}
+
+#[test]
+fn test_complex_enum_test() -> anyhow::Result<()> {
+    let registry = get_registry_from_type::<ComplexEnumTestType>();
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    // The generated code
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+        let name = "ExampleCodeBase".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_code_file, &registry).unwrap();
+
+        writeln!(
+            test_code_file,
+            r#"
+contract ExampleCode is ExampleCodeBase {{
+
+    function test_deserialization(bytes calldata input) external {{
+      ComplexEnumTestType memory t = bcs_deserialize_ComplexEnumTestType(input);
+
+      bytes memory input_rev = bcs_serialize_ComplexEnumTestType(t);
+      require(input.length == input_rev.length);
+      for (uint256 i=0; i<input.length; i++) {{
+        require(input[i] == input_rev[i]);
+      }}
+    }}
+
+}}
+"#
+        )?;
+
+    }
+    print_file_content(&test_code_path);
+
+    // Compiling the code and reading it.
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    // Building the test entry
+    let t1 = ComplexEnumTestType::ChoiceA;
+    let t2 = ComplexEnumTestType::Name("joe".to_string());
+    let t3 = ComplexEnumTestType::Age(43);
+    for t in [t1, t2, t3] {
+        let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
+
+        // Building the input to the smart contract
+        sol! {
+            function test_deserialization(bytes calldata input);
+        }
+        let input = Bytes::copy_from_slice(&expected_input);
+        let fct_args = test_deserializationCall { input };
+        let fct_args = fct_args.abi_encode().into();
+
+        test_contract(bytecode.clone(), fct_args);
+    }
     Ok(())
 }
