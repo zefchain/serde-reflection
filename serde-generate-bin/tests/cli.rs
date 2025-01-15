@@ -251,8 +251,8 @@ fn test_that_installed_rust_code_compiles() {
 fn create_test_yaml() {
     let registry = test_utils::get_registry().unwrap();
     let dir = tempdir().unwrap();
-    let yaml_path = "test.yaml";
-    std::fs::write(yaml_path.clone(), serde_yaml::to_string(&registry).unwrap()).unwrap();
+    let yaml_path = dir.path().join("test.yaml");
+    std::fs::write(yaml_path, serde_yaml::to_string(&registry).unwrap()).unwrap();
 }
 
 #[test]
