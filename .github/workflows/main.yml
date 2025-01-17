@@ -16,6 +16,8 @@ env:
   RUST_BACKTRACE: short
   RUSTFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
+  # https://stackoverflow.com/questions/59119904/process-terminated-couldnt-find-a-valid-icu-package-installed-on-the-system-in
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
 
 jobs:
   lint:
@@ -71,11 +73,9 @@ jobs:
           echo '/github/home/.local/bin' >> $GITHUB_PATH
 
       - name: Setup Additional Languages (.Net)
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            2.1.x
-            3.1.x
+          dotnet-version: '6.0.x'
 
       - name: Setup Additional Languages (golang)
         uses: actions/setup-go@v3
@@ -99,10 +99,10 @@ jobs:
         uses: swift-actions/setup-swift@bb83339d1e8577741bdc6c65ba551ce7dc0fb854
         with:
           # older swift versions are having gpg issues https://github.com/swift-actions/setup-swift/issues/520
-          swift-version: "5.7"
+          swift-version: "5.10.1"
 
       - name: Setup Additional Languages (ocaml)
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5.0
           opam-disable-sandboxing: true
