@@ -102,7 +102,7 @@ jobs:
           swift-version: "5.10.1"
 
       - name: Setup Additional Languages (ocaml)
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 5.0
           opam-disable-sandboxing: true
