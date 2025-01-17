@@ -99,7 +99,7 @@ jobs:
         uses: swift-actions/setup-swift@bb83339d1e8577741bdc6c65ba551ce7dc0fb854
         with:
           # older swift versions are having gpg issues https://github.com/swift-actions/setup-swift/issues/520
-          swift-version: "5.7"
+          swift-version: "5.10.1"
 
       - name: Setup Additional Languages (ocaml)
         uses: ocaml/setup-ocaml@v2
