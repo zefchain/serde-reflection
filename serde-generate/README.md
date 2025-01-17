@@ -19,7 +19,7 @@ The following programming languages are fully supported as target languages:
 * Python 3 (requires numpy >= 1.20.1)
 * Rust 2018
 * Go >= 1.14
-* C# (NetCoreApp >= 2.1)
+* C# (NetCoreApp >= 3.1)
 * Swift 5.3
 * OCaml
 * Dart >= 3
