@@ -126,7 +126,7 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-impl<'a, T> JavaEmitter<'a, T>
+impl<T> JavaEmitter<'_, T>
 where
     T: Write,
 {

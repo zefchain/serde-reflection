@@ -18,7 +18,7 @@ exclude = [
 
 [dependencies]
 thiserror = "1.0.25"
-serde = { version = "1.0.126", features = ["derive"] }
+serde = { version = "1.0.216", features = ["derive"] }
 
 [dev-dependencies]
 serde-reflection = { path = "../serde-reflection", version = "0.5.0" }

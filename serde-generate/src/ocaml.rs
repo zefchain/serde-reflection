@@ -90,7 +90,7 @@ static KEYWORDS: phf::Set<&str> = phf_set! {
     "int32", "int64"
 };
 
-impl<'a, T> OCamlEmitter<'a, T>
+impl<T> OCamlEmitter<'_, T>
 where
     T: Write,
 {

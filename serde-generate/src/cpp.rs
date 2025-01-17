@@ -103,7 +103,7 @@ impl<'a> CodeGenerator<'a> {
     }
 }
 
-impl<'a, T> CppEmitter<'a, T>
+impl<T> CppEmitter<'_, T>
 where
     T: std::io::Write,
 {
