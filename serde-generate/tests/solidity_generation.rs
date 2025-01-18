@@ -71,6 +71,7 @@ pub fn write_compilation_json(path: &Path, file_name: &str) {
     }}
   }},
   "settings": {{
+    "viaIR": true,
     "outputSelection": {{
       "*": {{
         "*": ["evm.bytecode"]
@@ -101,6 +102,7 @@ pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow
 
     let contents = std::fs::read_to_string(output_path)?;
     let json_data: serde_json::Value = serde_json::from_str(&contents)?;
+    println!("json_data={}", json_data);
     let contracts = json_data
         .get("contracts")
         .ok_or(anyhow::anyhow!("failed to get contract"))?;
@@ -128,8 +130,8 @@ pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow
 pub fn get_registry_from_type<T: Serialize + DeserializeOwned>() -> Registry {
     let mut tracer = Tracer::new(TracerConfig::default());
     let samples = Samples::new();
-    tracer.trace_type::<T>(&samples).expect("a tracer entry");
-    tracer.registry().expect("A registry")
+    tracer.trace_type::<T>(&samples).unwrap();
+    tracer.registry().unwrap()
 }
 
 #[test]
@@ -140,11 +142,11 @@ fn test_solidity_compilation() {
     let dir = tempdir().unwrap();
     let path = dir.path();
     let test_path = path.join("test.sol");
-    let mut test_file = File::create(&test_path).unwrap();
+    {
+        let mut test_file = File::create(&test_path).unwrap();
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_file, &registry).unwrap();
+    }
 
-    let generator = solidity::CodeGenerator::new(&config);
-    generator.output(&mut test_file, &registry).unwrap();
-
-    let bytecode = get_bytecode(path, "test.sol", "test").expect("bytecode");
-    println!("bytecode={:?}", bytecode);
+    let _bytecode = get_bytecode(path, "test.sol", "test").unwrap();
 }
