@@ -966,18 +966,14 @@ impl SolRegistry {
         sol_format
     }
 
-    fn parse_struct_format(
-        &mut self,
-        name: String,
-        formats: Vec<Named<Format>>,
-    ) -> SolFormat {
+    fn parse_struct_format(&mut self, name: String, formats: Vec<Named<Format>>) -> SolFormat {
         let formats = formats
             .into_iter()
             .map(|named_format| Named {
                 name: named_format.name,
                 value: self.parse_format(named_format.value),
             })
-        .collect();
+            .collect();
         let sol_format = SolFormat::Struct { name, formats };
         self.insert(sol_format.clone());
         sol_format
@@ -1023,7 +1019,7 @@ impl SolRegistry {
                     !map.is_empty(),
                     "The enum should be non-trivial in solidity"
                 );
-            assert!(map.len() < 256, "The enum should have at most 256 entries");
+                assert!(map.len() < 256, "The enum should have at most 256 entries");
                 let is_trivial = map
                     .iter()
                     .all(|(_, v)| matches!(v.value, VariantFormat::Unit));
@@ -1055,9 +1051,7 @@ impl SolRegistry {
                                     .collect::<Vec<_>>();
                                 Some(self.parse_struct_format(concat_name, formats))
                             }
-                            Struct(formats) => {
-                                Some(self.parse_struct_format(concat_name, formats))
-                            }
+                            Struct(formats) => Some(self.parse_struct_format(concat_name, formats)),
                             Variable(_) => panic!("Variable is not supported for solidity"),
                         };
                         let format = Named {
@@ -1106,7 +1100,6 @@ impl SolRegistry {
     fn data_location(&self, sol_format: &SolFormat) -> String {
         get_data_location(self.need_memory(sol_format))
     }
-
 }
 
 impl<'a> CodeGenerator<'a> {
