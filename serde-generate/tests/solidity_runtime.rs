@@ -115,7 +115,7 @@ contract ExampleCode is ExampleCodeBase {{
     let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
 
     // Building the test entry
-    let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
+    let expected_input = bcs::to_bytes(&t).unwrap();
 
     // Building the input to the smart contract
     sol! {
@@ -136,43 +136,43 @@ fn test_vector_serialization_types() {
     vec[1] = 5;
     vec[2] = 360;
     let t = TestVec { vec };
-    test_vector_serialization(t).expect("successful run");
+    test_vector_serialization(t).unwrap();
 
     let mut vec = vec![0_u8; 2];
     vec[0] = 42;
     vec[1] = 5;
     let t = TestVec { vec };
-    test_vector_serialization(t).expect("successful run");
+    test_vector_serialization(t).unwrap();
 
     let mut vec = vec![0_u32; 2];
     vec[0] = 42;
     vec[1] = 5;
     let t = TestVec { vec };
-    test_vector_serialization(t).expect("successful run");
+    test_vector_serialization(t).unwrap();
 
     let mut vec = vec![0_i8; 2];
     vec[0] = -42;
     vec[1] = 76;
     let t = TestVec { vec };
-    test_vector_serialization(t).expect("successful run");
+    test_vector_serialization(t).unwrap();
 
     let mut vec = vec![0_i16; 2];
     vec[0] = -4200;
     vec[1] = 7600;
     let t = TestVec { vec };
-    test_vector_serialization(t).expect("successful run");
+    test_vector_serialization(t).unwrap();
 
     let mut vec = vec![0_i32; 2];
     vec[0] = -4200;
     vec[1] = 7600;
     let t = TestVec { vec };
-    test_vector_serialization(t).expect("successful run");
+    test_vector_serialization(t).unwrap();
 
     let mut vec = vec![0_i64; 140];
     vec[0] = -4200;
     vec[1] = 7600;
     let t = TestVec { vec };
-    test_vector_serialization(t).expect("successful run");
+    test_vector_serialization(t).unwrap();
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -222,7 +222,7 @@ contract ExampleCode is ExampleCodeBase {{
 
     // Building the test entry
     let t = SimpleEnumTestType::ChoiceB;
-    let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
+    let expected_input = bcs::to_bytes(&t).unwrap();
 
     // Building the input to the smart contract
     sol! {
@@ -285,7 +285,7 @@ contract ExampleCode is ExampleCodeBase {{
         a: false,
         b: "abc".to_string(),
     };
-    let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
+    let expected_input = bcs::to_bytes(&t).unwrap();
 
     // Building the input to the smart contract
     sol! {
@@ -349,7 +349,7 @@ contract ExampleCode is ExampleCodeBase {{
     let t2 = ComplexEnumTestType::Name("joe".to_string());
     let t3 = ComplexEnumTestType::Age(43);
     for t in [t1, t2, t3] {
-        let expected_input = bcs::to_bytes(&t).expect("Failed serialization");
+        let expected_input = bcs::to_bytes(&t).unwrap();
 
         // Building the input to the smart contract
         sol! {
