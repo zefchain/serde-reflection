@@ -568,7 +568,7 @@ impl SolFormat {
                 let key_name = format.key_name();
                 let code_name = format.code_name();
                 let full_name = format!("opt_{}", key_name);
-                let data_location = data_location(format, sol_registry);
+                let data_location = sol_registry.data_location(format);
                 writeln!(
                     out,
                     r#"
@@ -604,7 +604,7 @@ function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input) int
                 let inner_code_name = format.code_name();
                 let code_name = format!("{}[]", format.code_name());
                 let key_name = format!("seq_{}", format.key_name());
-                let data_location = data_location(format, sol_registry);
+                let data_location = sol_registry.data_location(format);
                 writeln!(
                     out,
                     r#"
@@ -691,7 +691,7 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input) i
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal pure returns (uint256, {name} memory) {{")?;
                 writeln!(out, "  uint256 new_pos = pos;")?;
                 for named_format in formats {
-                    let data_location = data_location(&named_format.value, sol_registry);
+                    let data_location = sol_registry.data_location(&named_format.value);
                     let code_name = named_format.value.code_name();
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
@@ -779,7 +779,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input) internal
                 let mut entries = Vec::new();
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
-                        let data_location = data_location(format, sol_registry);
+                        let data_location = sol_registry.data_location(format);
                         let snake_name = named_format.name.to_snake_case();
                         let code_name = format.code_name();
                         let key_name = format.key_name();
@@ -885,227 +885,228 @@ impl SolRegistry {
         }
         false
     }
-}
 
-fn need_memory(sol_format: &SolFormat, sol_registry: &SolRegistry) -> bool {
-    use SolFormat::*;
-    match sol_format {
-        Primitive(primitive) => {
-            use crate::solidity::Primitive;
-            matches!(
-                primitive,
-                Primitive::Unit | Primitive::Bytes | Primitive::Str
-            )
-        }
-        TypeName(name) => {
-            let mesg = format!("to find a matching entry for name={name}");
-            let sol_format = sol_registry.names.get(name).expect(&mesg);
-            need_memory(sol_format, sol_registry)
-        }
-        Option(_) => true,
-        Seq(_) => true,
-        TupleArray { format: _, size: _ } => true,
-        Struct {
-            name: _,
-            formats: _,
-        } => true,
-        SimpleEnum { name: _, names: _ } => false,
-        Enum {
-            name: _,
-            formats: _,
-        } => true,
-    }
-}
-
-fn data_location(sol_format: &SolFormat, sol_registry: &SolRegistry) -> String {
-    get_data_location(need_memory(sol_format, sol_registry))
-}
-
-fn parse_format(registry: &mut SolRegistry, format: Format) -> SolFormat {
-    use Format::*;
-    let sol_format = match format {
-        Variable(_) => panic!("variable is not supported in solidity"),
-        TypeName(name) => SolFormat::TypeName(name),
-        Unit => SolFormat::Primitive(Primitive::Unit),
-        Bool => SolFormat::Primitive(Primitive::Bool),
-        I8 => SolFormat::Primitive(Primitive::I8),
-        I16 => SolFormat::Primitive(Primitive::I16),
-        I32 => SolFormat::Primitive(Primitive::I32),
-        I64 => SolFormat::Primitive(Primitive::I64),
-        I128 => SolFormat::Primitive(Primitive::I128),
-        U8 => SolFormat::Primitive(Primitive::U8),
-        U16 => SolFormat::Primitive(Primitive::U16),
-        U32 => SolFormat::Primitive(Primitive::U32),
-        U64 => SolFormat::Primitive(Primitive::U64),
-        U128 => SolFormat::Primitive(Primitive::U128),
-        F32 => panic!("floating point is not supported in solidity"),
-        F64 => panic!("floating point is not supported in solidity"),
-        Char => SolFormat::Primitive(Primitive::Char),
-        Str => SolFormat::Primitive(Primitive::Str),
-        Bytes => SolFormat::Primitive(Primitive::Bytes),
-        Option(format) => {
-            let format = parse_format(registry, *format);
-            SolFormat::Option(Box::new(format))
-        }
-        Seq(format) => {
-            let format = parse_format(registry, *format);
-            SolFormat::Seq(Box::new(format))
-        }
-        Map { key, value } => {
-            let key = parse_format(registry, *key);
-            let value = parse_format(registry, *value);
-            let name = format!("key_values_{}_{}", key.key_name(), value.key_name());
-            let formats = vec![
-                Named {
-                    name: "key".into(),
-                    value: key,
-                },
-                Named {
-                    name: "value".into(),
-                    value,
-                },
-            ];
-            let sol_format = SolFormat::Struct { name, formats };
-            registry.insert(sol_format.clone());
-            SolFormat::Seq(Box::new(sol_format))
-        }
-        Tuple(formats) => {
-            let formats = formats
-                .into_iter()
-                .map(|format| parse_format(registry, format))
-                .collect::<Vec<_>>();
-            let name = format!(
-                "tuple_{}",
-                formats
-                    .iter()
-                    .map(|format| format.key_name())
-                    .collect::<Vec<_>>()
-                    .join("_")
-            );
-            let formats = formats
-                .into_iter()
-                .enumerate()
-                .map(|(idx, format)| Named {
-                    name: format!("entry{idx}"),
-                    value: format,
-                })
-                .collect();
-            SolFormat::Struct { name, formats }
-        }
-        TupleArray { content, size } => SolFormat::TupleArray {
-            format: Box::new(parse_format(registry, *content)),
-            size,
-        },
-    };
-    registry.insert(sol_format.clone());
-    sol_format
-}
-
-fn parse_struct_format(
-    registry: &mut SolRegistry,
-    name: String,
-    formats: Vec<Named<Format>>,
-) -> SolFormat {
-    let formats = formats
-        .into_iter()
-        .map(|named_format| Named {
-            name: named_format.name,
-            value: parse_format(registry, named_format.value),
-        })
-        .collect();
-    let sol_format = SolFormat::Struct { name, formats };
-    registry.insert(sol_format.clone());
-    sol_format
-}
-
-fn parse_container_format(registry: &mut SolRegistry, container_format: Named<ContainerFormat>) {
-    use ContainerFormat::*;
-    let name = container_format.name;
-    let sol_format = match container_format.value {
-        UnitStruct => panic!("UnitStruct is not supported in solidity"),
-        NewTypeStruct(format) => {
-            let format = Named {
-                name: "value".to_string(),
-                value: *format,
-            };
-            let formats = vec![format];
-            parse_struct_format(registry, name, formats)
-        }
-        TupleStruct(formats) => {
-            assert!(
-                !formats.is_empty(),
-                "The TupleStruct should be non-trivial in solidity"
-            );
-            let formats = formats
-                .into_iter()
-                .enumerate()
-                .map(|(idx, value)| Named {
-                    name: format!("entry{idx}"),
-                    value,
-                })
-                .collect();
-            parse_struct_format(registry, name, formats)
-        }
-        Struct(formats) => {
-            assert!(
-                !formats.is_empty(),
-                "The struct should be non-trivial in solidity"
-            );
-            parse_struct_format(registry, name, formats)
-        }
-        Enum(map) => {
-            assert!(
-                !map.is_empty(),
-                "The enum should be non-trivial in solidity"
-            );
-            assert!(map.len() < 256, "The enum should have at most 256 entries");
-            let is_trivial = map
-                .iter()
-                .all(|(_, v)| matches!(v.value, VariantFormat::Unit));
-            if is_trivial {
-                let names = map
-                    .into_values()
-                    .map(|named_format| named_format.name)
-                    .collect();
-                SolFormat::SimpleEnum { name, names }
-            } else {
-                let choice_sol_format = SolFormat::Primitive(Primitive::U8);
-                registry.insert(choice_sol_format);
-                let mut formats = Vec::new();
-                for (_key, value) in map {
-                    use VariantFormat::*;
-                    let name_red = value.name;
-                    let concat_name = format!("{}_{}", name, name_red);
-                    let entry = match value.value {
-                        VariantFormat::Unit => None,
-                        NewType(format) => Some(parse_format(registry, *format)),
-                        Tuple(formats) => {
-                            let formats = formats
-                                .into_iter()
-                                .enumerate()
-                                .map(|(idx, value)| Named {
-                                    name: format!("entry{idx}"),
-                                    value,
-                                })
-                                .collect::<Vec<_>>();
-                            Some(parse_struct_format(registry, concat_name, formats))
-                        }
-                        Struct(formats) => {
-                            Some(parse_struct_format(registry, concat_name, formats))
-                        }
-                        Variable(_) => panic!("Variable is not supported for solidity"),
-                    };
-                    let format = Named {
-                        name: name_red,
-                        value: entry,
-                    };
-                    formats.push(format);
-                }
-                SolFormat::Enum { name, formats }
+    fn parse_format(&mut self, format: Format) -> SolFormat {
+        use Format::*;
+        let sol_format = match format {
+            Variable(_) => panic!("variable is not supported in solidity"),
+            TypeName(name) => SolFormat::TypeName(name),
+            Unit => SolFormat::Primitive(Primitive::Unit),
+            Bool => SolFormat::Primitive(Primitive::Bool),
+            I8 => SolFormat::Primitive(Primitive::I8),
+            I16 => SolFormat::Primitive(Primitive::I16),
+            I32 => SolFormat::Primitive(Primitive::I32),
+            I64 => SolFormat::Primitive(Primitive::I64),
+            I128 => SolFormat::Primitive(Primitive::I128),
+            U8 => SolFormat::Primitive(Primitive::U8),
+            U16 => SolFormat::Primitive(Primitive::U16),
+            U32 => SolFormat::Primitive(Primitive::U32),
+            U64 => SolFormat::Primitive(Primitive::U64),
+            U128 => SolFormat::Primitive(Primitive::U128),
+            F32 => panic!("floating point is not supported in solidity"),
+            F64 => panic!("floating point is not supported in solidity"),
+            Char => SolFormat::Primitive(Primitive::Char),
+            Str => SolFormat::Primitive(Primitive::Str),
+            Bytes => SolFormat::Primitive(Primitive::Bytes),
+            Option(format) => {
+                let format = self.parse_format(*format);
+                SolFormat::Option(Box::new(format))
             }
+            Seq(format) => {
+                let format = self.parse_format(*format);
+                SolFormat::Seq(Box::new(format))
+            }
+            Map { key, value } => {
+                let key = self.parse_format(*key);
+                let value = self.parse_format(*value);
+                let name = format!("key_values_{}_{}", key.key_name(), value.key_name());
+                let formats = vec![
+                    Named {
+                        name: "key".into(),
+                        value: key,
+                    },
+                    Named {
+                        name: "value".into(),
+                        value,
+                    },
+                ];
+                let sol_format = SolFormat::Struct { name, formats };
+                self.insert(sol_format.clone());
+                SolFormat::Seq(Box::new(sol_format))
+            }
+            Tuple(formats) => {
+                let formats = formats
+                    .into_iter()
+                    .map(|format| self.parse_format(format))
+                    .collect::<Vec<_>>();
+                let name = format!(
+                    "tuple_{}",
+                    formats
+                        .iter()
+                        .map(|format| format.key_name())
+                        .collect::<Vec<_>>()
+                        .join("_")
+                );
+                let formats = formats
+                    .into_iter()
+                    .enumerate()
+                    .map(|(idx, format)| Named {
+                        name: format!("entry{idx}"),
+                        value: format,
+                    })
+                    .collect();
+                SolFormat::Struct { name, formats }
+            }
+            TupleArray { content, size } => SolFormat::TupleArray {
+                format: Box::new(self.parse_format(*content)),
+                size,
+            },
+        };
+        self.insert(sol_format.clone());
+        sol_format
+    }
+
+    fn parse_struct_format(
+        &mut self,
+        name: String,
+        formats: Vec<Named<Format>>,
+    ) -> SolFormat {
+        let formats = formats
+            .into_iter()
+            .map(|named_format| Named {
+                name: named_format.name,
+                value: self.parse_format(named_format.value),
+            })
+        .collect();
+        let sol_format = SolFormat::Struct { name, formats };
+        self.insert(sol_format.clone());
+        sol_format
+    }
+
+    fn parse_container_format(&mut self, container_format: Named<ContainerFormat>) {
+        use ContainerFormat::*;
+        let name = container_format.name;
+        let sol_format = match container_format.value {
+            UnitStruct => panic!("UnitStruct is not supported in solidity"),
+            NewTypeStruct(format) => {
+                let format = Named {
+                    name: "value".to_string(),
+                    value: *format,
+                };
+                let formats = vec![format];
+                self.parse_struct_format(name, formats)
+            }
+            TupleStruct(formats) => {
+                assert!(
+                    !formats.is_empty(),
+                    "The TupleStruct should be non-trivial in solidity"
+                );
+                let formats = formats
+                    .into_iter()
+                    .enumerate()
+                    .map(|(idx, value)| Named {
+                        name: format!("entry{idx}"),
+                        value,
+                    })
+                    .collect();
+                self.parse_struct_format(name, formats)
+            }
+            Struct(formats) => {
+                assert!(
+                    !formats.is_empty(),
+                    "The struct should be non-trivial in solidity"
+                );
+                self.parse_struct_format(name, formats)
+            }
+            Enum(map) => {
+                assert!(
+                    !map.is_empty(),
+                    "The enum should be non-trivial in solidity"
+                );
+            assert!(map.len() < 256, "The enum should have at most 256 entries");
+                let is_trivial = map
+                    .iter()
+                    .all(|(_, v)| matches!(v.value, VariantFormat::Unit));
+                if is_trivial {
+                    let names = map
+                        .into_values()
+                        .map(|named_format| named_format.name)
+                        .collect();
+                    SolFormat::SimpleEnum { name, names }
+                } else {
+                    let choice_sol_format = SolFormat::Primitive(Primitive::U8);
+                    self.insert(choice_sol_format);
+                    let mut formats = Vec::new();
+                    for (_key, value) in map {
+                        use VariantFormat::*;
+                        let name_red = value.name;
+                        let concat_name = format!("{}_{}", name, name_red);
+                        let entry = match value.value {
+                            VariantFormat::Unit => None,
+                            NewType(format) => Some(self.parse_format(*format)),
+                            Tuple(formats) => {
+                                let formats = formats
+                                    .into_iter()
+                                    .enumerate()
+                                    .map(|(idx, value)| Named {
+                                        name: format!("entry{idx}"),
+                                        value,
+                                    })
+                                    .collect::<Vec<_>>();
+                                Some(self.parse_struct_format(concat_name, formats))
+                            }
+                            Struct(formats) => {
+                                Some(self.parse_struct_format(concat_name, formats))
+                            }
+                            Variable(_) => panic!("Variable is not supported for solidity"),
+                        };
+                        let format = Named {
+                            name: name_red,
+                            value: entry,
+                        };
+                        formats.push(format);
+                    }
+                    SolFormat::Enum { name, formats }
+                }
+            }
+        };
+        self.insert(sol_format);
+    }
+
+    fn need_memory(&self, sol_format: &SolFormat) -> bool {
+        use SolFormat::*;
+        match sol_format {
+            Primitive(primitive) => {
+                use crate::solidity::Primitive;
+                matches!(
+                    primitive,
+                    Primitive::Unit | Primitive::Bytes | Primitive::Str
+                )
+            }
+            TypeName(name) => {
+                let mesg = format!("to find a matching entry for name={name}");
+                let sol_format = self.names.get(name).expect(&mesg);
+                self.need_memory(sol_format)
+            }
+            Option(_) => true,
+            Seq(_) => true,
+            TupleArray { format: _, size: _ } => true,
+            Struct {
+                name: _,
+                formats: _,
+            } => true,
+            SimpleEnum { name: _, names: _ } => false,
+            Enum {
+                name: _,
+                formats: _,
+            } => true,
         }
-    };
-    registry.insert(sol_format);
+    }
+
+    fn data_location(&self, sol_format: &SolFormat) -> String {
+        get_data_location(self.need_memory(sol_format))
+    }
+
 }
 
 impl<'a> CodeGenerator<'a> {
@@ -1136,7 +1137,7 @@ impl<'a> CodeGenerator<'a> {
                 name: key.to_string(),
                 value: container_format.clone(),
             };
-            parse_container_format(&mut sol_registry, container_format);
+            sol_registry.parse_container_format(container_format);
         }
         if sol_registry.has_circular_dependency() {
             panic!("solidity does not allow for circular dependencies");
