@@ -6,6 +6,7 @@ use crate::{
     CodeGeneratorConfig,
 };
 use heck::SnakeCase;
+use phf::phf_set;
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
     collections::{HashMap, HashSet},
@@ -55,114 +56,39 @@ function bcs_deserialize_{key_name}(bytes memory input) public pure returns ({co
     Ok(())
 }
 
-fn get_keywords() -> HashSet<String> {
-    let v = vec![
-        "abstract",
-        "after",
-        "alias",
-        "anonymous",
-        "as",
-        "assembly",
-        "break",
-        "catch",
-        "constant",
-        "continue",
-        "constructor",
-        "contract",
-        "delete",
-        "do",
-        "else",
-        "emit",
-        "enum",
-        "error",
-        "event",
-        "external",
-        "fallback",
-        "for",
-        "function",
-        "if",
-        "immutable",
-        "import",
-        "indexed",
-        "interface",
-        "internal",
-        "is",
-        "library",
-        "mapping",
-        "memory",
-        "modifier",
-        "new",
-        "override",
-        "payable",
-        "pragma",
-        "private",
-        "public",
-        "pure",
-        "receive",
-        "return",
-        "returns",
-        "revert",
-        "storage",
-        "struct",
-        "throw",
-        "try",
-        "type",
-        "unchecked",
-        "using",
-        "virtual",
-        "view",
-        "while",
-        "addmod",
-        "blockhash",
-        "ecrecover",
-        "keccak256",
-        "mulmod",
-        "sha256",
-        "ripemd160",
-        "block",
-        "msg",
-        "tx",
-        "balance",
-        "transfer",
-        "send",
-        "call",
-        "delegatecall",
-        "staticcall",
-        "this",
-        "super",
-        "gwei",
-        "finney",
-        "szabo",
-        "ether",
-        "seconds",
-        "minutes",
-        "hours",
-        "days",
-        "weeks",
-        "years",
-        "wei",
-        "hex",
-        "address",
-        "bool",
-        "bytes",
-        "string",
-        "mapping",
-        "int",
-    ];
-    let mut v = v.into_iter().map(|x| x.to_string()).collect::<Vec<_>>();
-    for length in [8, 16, 32, 64, 128, 256] {
-        v.push(format!("int{}", length));
-        v.push(format!("uint{}", length));
-    }
-    for length in 1..=32 {
-        v.push(format!("int{}", length));
-    }
-    v.into_iter().collect::<HashSet<_>>()
-}
+static KEYWORDS: phf::Set<&str> = phf_set! {
+    "abstract", "after", "alias", "anonymous",
+    "as", "assembly", "break", "catch", "constant",
+    "continue", "constructor", "contract", "delete",
+    "do", "else", "emit", "enum", "error", "event",
+    "external", "fallback", "for", "function", "if",
+    "immutable", "import", "indexed", "interface",
+    "internal", "is", "library", "mapping", "memory",
+    "modifier", "new", "override", "payable", "pragma",
+    "private", "public", "pure", "receive", "return",
+    "returns", "revert", "storage", "struct", "throw",
+    "try", "type", "unchecked", "using", "virtual",
+    "view", "while", "addmod", "blockhash", "ecrecover",
+    "keccak256", "mulmod", "sha256", "ripemd160",
+    "block", "msg", "tx", "balance", "transfer", "send",
+    "call", "delegatecall", "staticcall", "this",
+    "super", "gwei", "finney", "szabo", "ether",
+    "seconds", "minutes", "hours", "days", "weeks",
+    "years", "wei", "hex", "address", "bool", "bytes",
+    "string", "int", "int8", "int16", "int32", "int64",
+    "int128", "int256", "uint", "uint8", "uint16",
+    "uint32", "uint64", "uint128", "uint256",
+    "bytes1", "bytes2", "bytes3", "bytes4", "bytes5",
+    "bytes6", "bytes7", "bytes8", "bytes9", "bytes10",
+    "bytes11", "bytes12", "bytes13", "bytes14", "bytes15",
+    "bytes16", "bytes17", "bytes18", "bytes19", "bytes20",
+    "bytes21", "bytes22", "bytes23", "bytes24", "bytes25",
+    "bytes26", "bytes27", "bytes28", "bytes29", "bytes30",
+    "bytes31", "bytes32"
+};
 
 fn safe_variable(s: &str) -> String {
-    let keywords = get_keywords();
-    if keywords.contains(s) {
+    if KEYWORDS.contains(s) {
         s.to_owned() + "_"
     } else {
         s.to_string()
