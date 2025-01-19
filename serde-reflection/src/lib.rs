@@ -8,10 +8,10 @@
 //!
 //! Format descriptions are useful in several ways:
 //! * Stored under version control, formats can be tested to prevent unintended modifications
-//!   of binary serialization formats (e.g. by changing variant order).
+//! of binary serialization formats (e.g. by changing variant order).
 //! * Formats can be passed to [`serde-generate`](https://docs.rs/serde-generate)
-//!   in order to generate class definitions and provide Serde-compatible binary
-//!   serialization in other languages (C++, python, Java, etc).
+//! in order to generate class definitions and provide Serde-compatible binary
+//! serialization in other languages (C++, python, Java, etc).
 //!
 //! # Quick Start
 //!
@@ -79,41 +79,41 @@
 //! ## Supported features
 //!
 //! * Plain derived implementations obtained with `#[derive(Serialize, Deserialize)]` for
-//!   Rust containers in the Serde [data model](https://serde.rs/data-model.html)
+//! Rust containers in the Serde [data model](https://serde.rs/data-model.html)
 //!
 //! * Customized derived implementations using Serde attributes that are compatible with
-//!   binary serialization formats, such as `#[serde(rename = "Name")]`.
+//! binary serialization formats, such as `#[serde(rename = "Name")]`.
 //!
 //! * Hand-written implementations of `Deserialize` that are more restrictive than the
-//!   derived ones, provided that `trace_value` is used during tracing to provide sample
-//!   values for all such constrained types (see the detailed example below).
+//! derived ones, provided that `trace_value` is used during tracing to provide sample
+//! values for all such constrained types (see the detailed example below).
 //!
 //! * Mutually recursive types provided that the first variant of each enum is
-//!   recursion-free. (For instance, `enum List { None, Some(Box<List>)}`.) Note that each
-//!   enum must be traced separately with `trace_type` to discover all the variants.
+//! recursion-free. (For instance, `enum List { None, Some(Box<List>)}`.) Note that each
+//! enum must be traced separately with `trace_type` to discover all the variants.
 //!
 //! ## Unsupported idioms
 //!
 //! * Containers sharing the same base name (e.g. `Foo`) but from different modules. (Work
-//!   around: use `#[serde(rename = ..)]`)
+//! around: use `#[serde(rename = ..)]`)
 //!
 //! * Generic types instantiated multiple times in the same tracing session. (Work around:
-//!   use the crate [`serde-name`](https://crates.io/crates/serde-name) and its adapters `SerializeNameAdapter` and `DeserializeNameAdapter`.)
+//! use the crate [`serde-name`](https://crates.io/crates/serde-name) and its adapters `SerializeNameAdapter` and `DeserializeNameAdapter`.)
 //!
 //! * Attributes that are not compatible with binary formats (e.g. `#[serde(flatten)]`, `#[serde(tag = ..)]`)
 //!
 //! * Tracing type aliases. (E.g. `type Pair = (u32, u64)` will not create an entry "Pair".)
 //!
 //! * Mutually recursive types for which picking the first variant of each enum does not
-//!   terminate. (Work around: re-order the variants. For instance `enum List {
-//!   Some(Box<List>), None}` must be rewritten `enum List { None, Some(Box<List>)}`.)
+//! terminate. (Work around: re-order the variants. For instance `enum List {
+//! Some(Box<List>), None}` must be rewritten `enum List { None, Some(Box<List>)}`.)
 //!
 //! * Certain standard types such as `std::num::NonZeroU8` may not be tracked as a
-//!   container and appear simply as their underlying primitive type (e.g. `u8`) in the
-//!   formats. This loss of information makes it difficult to use `trace_value` to work
-//!   around deserialization invariants (see example below). As a work around, you may
-//!   override the default for the primitive type using `TracerConfig` (e.g. `let config =
-//!   TracerConfig::default().default_u8_value(1);`).
+//! container and appear simply as their underlying primitive type (e.g. `u8`) in the
+//! formats. This loss of information makes it difficult to use `trace_value` to work
+//! around deserialization invariants (see example below). As a work around, you may
+//! override the default for the primitive type using `TracerConfig` (e.g. `let config =
+//! TracerConfig::default().default_u8_value(1);`).
 //!
 //! ## Security CAVEAT
 //!
@@ -268,7 +268,7 @@
 //! * In enums, only the variants explicitly covered by user samples will be recorded.
 //!
 //! * Providing a `None` value or an empty vector `[]` within a sample may result in
-//!   formats that are partially unknown.
+//! formats that are partially unknown.
 //!
 //! ```rust
 //! # use serde_reflection::*;
@@ -340,12 +340,12 @@
 //! * while visiting an `Seq<T>` for the second time, we choose to return the empty sequence `[]`;
 //! * while visiting an `Map<K, V>` for the second time, we choose to return the empty map `{}`;
 //! * while visiting an `enum T` for the second time, we choose to return the first variant, i.e.
-//!   a "base case" by assumption (1) above.
+//! a "base case" by assumption (1) above.
 //!
 //! In addition to the cases above,
 //!
 //! * while visiting a container, if the container's name is mapped to a recorded value,
-//!   we MAY decide to use it.
+//! we MAY decide to use it.
 //!
 //! The default configuration `TracerConfig:default()` always picks the recorded value for a
 //! `NewTypeStruct` and never does in the other cases.

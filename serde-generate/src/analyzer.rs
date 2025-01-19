@@ -23,9 +23,9 @@ fn get_dependencies<'a>(
 
 /// Build a map of dependencies between the entries of a `Registry`.
 /// * By definition, an entry named `x` depends on `y` iff the container format of `x` in the registry
-///   syntactically contains a reference to `y` (i.e. an expression `Format::TypeName(y)`).
+/// syntactically contains a reference to `y` (i.e. an expression `Format::TypeName(y)`).
 /// * Dependencies can play a role in code generation in some languages (e.g. Rust or C++) where inductive
-///   definitions may require explicit "boxing" (i.e. adding pointer indirections) to ensure finite object sizes.
+/// definitions may require explicit "boxing" (i.e. adding pointer indirections) to ensure finite object sizes.
 pub fn get_dependency_map(registry: &Registry) -> Result<BTreeMap<&str, BTreeSet<&str>>> {
     get_dependency_map_with_external_dependencies(registry, &BTreeSet::new())
 }
