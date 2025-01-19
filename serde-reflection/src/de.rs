@@ -17,9 +17,9 @@ use std::collections::btree_map::{BTreeMap, Entry};
 
 /// Deserialize a single value.
 /// * The lifetime 'a is set by the deserialization call site and the
-///   `&'a mut` references used to return tracing results.
+/// `&'a mut` references used to return tracing results.
 /// * The lifetime 'de is fixed and the `&'de` reference meant to let us
-///   borrow values from previous serialization runs.
+/// borrow values from previous serialization runs.
 pub(crate) struct Deserializer<'de, 'a> {
     tracer: &'a mut Tracer,
     samples: &'de Samples,
