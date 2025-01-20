@@ -9,8 +9,8 @@
 //! '''
 
 use serde_generate::{
-    cpp, csharp, dart, golang, java, ocaml, python3, rust, swift, typescript, CodeGeneratorConfig,
-    Encoding, SourceInstaller,
+    cpp, csharp, dart, golang, java, ocaml, python3, rust, solidity, swift, typescript,
+    CodeGeneratorConfig, Encoding, SourceInstaller,
 };
 use serde_reflection::Registry;
 use std::path::PathBuf;
@@ -21,6 +21,7 @@ arg_enum! {
 enum Language {
     Python3,
     Cpp,
+    Solidity,
     Rust,
     Java,
     Go,
@@ -139,6 +140,9 @@ fn main() {
                     Language::Cpp => cpp::CodeGenerator::new(&config)
                         .output(&mut out, &registry)
                         .unwrap(),
+                    Language::Solidity => solidity::CodeGenerator::new(&config)
+                        .output(&mut out, &registry)
+                        .unwrap(),
                     Language::Go => golang::CodeGenerator::new(&config)
                         .output(&mut out, &registry)
                         .unwrap(),
@@ -172,6 +176,7 @@ fn main() {
                     }
                     Language::Rust => Box::new(rust::Installer::new(install_dir)),
                     Language::Cpp => Box::new(cpp::Installer::new(install_dir)),
+                    Language::Solidity => Box::new(solidity::Installer::new(install_dir)),
                     Language::Java => Box::new(java::Installer::new(install_dir)),
                     Language::Go => {
                         Box::new(golang::Installer::new(install_dir, serde_package_name_opt))
