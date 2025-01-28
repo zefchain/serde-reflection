@@ -129,7 +129,7 @@ pub trait FormatHolder {
 
     /// Mutably visit all the formats in `self` in a depth-first way.
     /// * Replace variables (if any) with their known values then apply the
-    /// visiting function `f`.
+    ///   visiting function `f`.
     /// * Return an error if any variable has still an unknown value (thus cannot be removed).
     fn visit_mut(&mut self, f: &mut dyn FnMut(&mut Format) -> Result<()>) -> Result<()>;
 
