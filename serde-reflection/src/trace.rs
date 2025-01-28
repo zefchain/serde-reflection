@@ -195,9 +195,9 @@ impl Tracer {
 
     /// Trace the serialization of a particular value.
     /// * Nested containers will be added to the tracing registry, indexed by
-    /// their (non-qualified) name.
+    ///   their (non-qualified) name.
     /// * Sampled Rust values will be inserted into `samples` to benefit future calls
-    /// to the `trace_type_*` methods.
+    ///   to the `trace_type_*` methods.
     pub fn trace_value<T>(&mut self, samples: &mut Samples, value: &T) -> Result<(Format, Value)>
     where
         T: ?Sized + Serialize,
@@ -210,12 +210,12 @@ impl Tracer {
 
     /// Trace a single deserialization of a particular type.
     /// * Nested containers will be added to the tracing registry, indexed by
-    /// their (non-qualified) name.
+    ///   their (non-qualified) name.
     /// * As a byproduct of deserialization, we also return a value of type `T`.
     /// * Tracing deserialization of a type may fail if this type or some dependencies
-    /// have implemented a custom deserializer that validates data. The solution is
-    /// to make sure that `samples` holds enough sampled Rust values to cover all the
-    /// custom types.
+    ///   have implemented a custom deserializer that validates data. The solution is
+    ///   to make sure that `samples` holds enough sampled Rust values to cover all the
+    ///   custom types.
     pub fn trace_type_once<'de, T>(&mut self, samples: &'de Samples) -> Result<(Format, T)>
     where
         T: Deserialize<'de>,
@@ -271,7 +271,7 @@ impl Tracer {
     /// Trace a type `T` that is simple enough that no samples of values are needed.
     /// * If `T` is an enum, the tracing iterates until all variants of `T` are covered.
     /// * Accumulate and return all the sampled values at the end.
-    /// This is merely a shortcut for `self.trace_type` with a fixed empty set of samples.
+    ///   This is merely a shortcut for `self.trace_type` with a fixed empty set of samples.
     pub fn trace_simple_type<'de, T>(&mut self) -> Result<(Format, Vec<T>)>
     where
         T: Deserialize<'de>,
