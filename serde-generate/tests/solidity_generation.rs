@@ -148,5 +148,5 @@ fn test_solidity_compilation() {
         generator.output(&mut test_file, &registry).unwrap();
     }
 
-    let _bytecode = get_bytecode(path, "test.sol", "test").unwrap();
+    get_bytecode(path, "test.sol", "test").unwrap();
 }

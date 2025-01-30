@@ -28,15 +28,8 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
 
         let result: ExecutionResult = evm.transact_commit().unwrap();
 
-        let ExecutionResult::Success {
-            reason: _,
-            gas_used: _,
-            gas_refunded: _,
-            logs: _,
-            output,
-        } = result
-        else {
-            panic!("The TxKind::Create execution failed to be done");
+        let ExecutionResult::Success { output, .. } = result else {
+            panic!("The TxKind::Create execution failed");
         };
         let Output::Create(_, Some(contract_address)) = output else {
             panic!("Failure to create the contract");
@@ -54,15 +47,8 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
 
     let result: ExecutionResult = evm.transact_commit().unwrap();
 
-    let ExecutionResult::Success {
-        reason: _,
-        gas_used: _,
-        gas_refunded: _,
-        logs: _,
-        output: _,
-    } = result
-    else {
-        panic!("The TxKind::Call execution failed to be done");
+    let ExecutionResult::Success { .. } = result else {
+        panic!("The TxKind::Call execution failed");
     };
 }
 
