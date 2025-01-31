@@ -24,9 +24,10 @@ The following programming languages are fully supported as target languages:
 * OCaml
 * Dart >= 3
 
-The following languages are partially supported and still considered under development:
+The following languages are partially supported and/or still considered under development:
 
 * TypeScript 4 (packaged and tested with Deno) [(follow-up issue)](https://github.com/zefchain/serde-reflection/issues/58)
+* Solidity (tested with Revm) [(initial PR with discussion)](https://github.com/zefchain/serde-reflection/pull/61)
 
 ### Supported Encodings
 

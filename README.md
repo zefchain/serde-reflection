@@ -99,6 +99,11 @@ In addition to ensuring an optimal developer experience in Rust, the modular app
 This project was initially motivated by the need for canonical serialization and cryptographic hashing in the [Diem](https://github.com/diem/diem) project (formerly known as "Libra"). In this context, [`serde-name`](serde-name) has been used to provide predictable cryptographic seeds for Rust containers.
 
 
+## Limitations
+
+This project is built on top of the Rust serialization library [Serde](https://serde.rs/). The data model of `Serde` allows for type constructions that can be difficult to implement in other languages (e.g. using complex types as keys in a map). Currently, the requirements for a language to be officially supported by [`serde-generate`](serde-generate) are not specified and only based on the standard tests in this repo. To guarantee cross-language interoperability, make sure to test code-generation often on your schemas.
+
+
 ## Related projects
 
 ### Schemars
