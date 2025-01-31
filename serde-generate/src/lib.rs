@@ -164,6 +164,9 @@ pub mod python3;
 /// Support for code-generation in Rust
 #[cfg(feature = "rust")]
 pub mod rust;
+/// Support for code-generation in solidity
+#[cfg(feature = "solidity")]
+pub mod solidity;
 /// Support for code-generation in Swift
 #[cfg(feature = "swift")]
 pub mod swift;
