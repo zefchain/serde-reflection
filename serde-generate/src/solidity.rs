@@ -837,31 +837,36 @@ impl SolRegistry {
         // If we insert the signed version, then we also need the unsigned one internally
         match sol_format {
             SolFormat::Primitive(Primitive::I8) => {
+                self.names.insert(key_name, sol_format);
                 self.names
                     .insert("uint8".to_string(), SolFormat::Primitive(Primitive::U8));
             }
             SolFormat::Primitive(Primitive::I16) => {
+                self.names.insert(key_name, sol_format);
                 self.names
                     .insert("uint16".to_string(), SolFormat::Primitive(Primitive::U16));
             }
             SolFormat::Primitive(Primitive::I32) => {
+                self.names.insert(key_name, sol_format);
                 self.names
                     .insert("uint32".to_string(), SolFormat::Primitive(Primitive::U32));
             }
             SolFormat::Primitive(Primitive::I64) => {
+                self.names.insert(key_name, sol_format);
                 self.names
                     .insert("uint64".to_string(), SolFormat::Primitive(Primitive::U64));
             }
             SolFormat::Primitive(Primitive::I128) => {
+                self.names.insert(key_name, sol_format);
                 self.names
                     .insert("uint128".to_string(), SolFormat::Primitive(Primitive::U128));
             }
-            _ => {}
-        }
-        // Typename entries are by definition already covered and do not need
-        // to be inserted. Others do.
-        if !matches!(sol_format, SolFormat::TypeName(_)) {
-            self.names.insert(key_name, sol_format);
+            SolFormat::TypeName(_) => {
+                // Typename entries do not need to be inserted.
+            }
+            _ => {
+                self.names.insert(key_name, sol_format);
+            }
         }
     }
 
