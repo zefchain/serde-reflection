@@ -26,10 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # will install toolchain specified in rust-toolchain
-      - name: Install Rust toolchain
-        run: |
-          rustup show
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Version Information
         run: |
@@ -56,9 +53,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Rust toolchain
-        run: |
-          rustup show
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Setup Additional Languages (solidity)
