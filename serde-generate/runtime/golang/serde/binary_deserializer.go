@@ -38,6 +38,23 @@ func (d *BinaryDeserializer) DecreaseContainerDepth() {
 	d.containerDepthBudget += 1
 }
 
+func (d *BinaryDeserializer) DeserializeVecBytes(deserializeLen func() (uint64, error)) ([][]byte, error) {
+	len, err := deserializeLen()
+	if err != nil {
+		return nil, err
+	}
+	ret := make([][]byte, len)
+	for i := 0; uint64(i) < len; i++ {
+		bytes, err := d.DeserializeBytes(deserializeLen)
+		if err != nil {
+			return nil, err
+		}
+		ret[i] = bytes
+	}
+
+	return ret, err
+}
+
 // `deserializeLen` to be provided by the extending struct.
 func (d *BinaryDeserializer) DeserializeBytes(deserializeLen func() (uint64, error)) ([]byte, error) {
 	len, err := deserializeLen()

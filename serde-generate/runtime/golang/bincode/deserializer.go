@@ -7,7 +7,7 @@ import (
 	"errors"
 	"math"
 
-	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/serde"
+	"github.com/zefchain/serde-reflection/serde-generate/runtime/golang/serde"
 )
 
 // MaxSequenceLength is max length supported in practice (e.g. in Java).
@@ -30,6 +30,10 @@ func (d *deserializer) DeserializeF32() (float32, error) {
 func (d *deserializer) DeserializeF64() (float64, error) {
 	ret, err := d.DeserializeU64()
 	return math.Float64frombits(ret), err
+}
+
+func (d *deserializer) DeserializeVecBytes() ([][]byte, error) {
+	return d.BinaryDeserializer.DeserializeVecBytes(d.DeserializeLen)
 }
 
 func (d *deserializer) DeserializeBytes() ([]byte, error) {

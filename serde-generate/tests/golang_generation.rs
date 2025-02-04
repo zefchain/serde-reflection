@@ -69,7 +69,7 @@ fn test_that_golang_code_compiles_with_config_and_registry(
         .arg("edit")
         .arg("-replace")
         .arg(format!(
-            "github.com/novifinancial/serde-reflection/serde-generate/runtime/golang={}",
+            "github.com/zefchain/serde-reflection/serde-generate/runtime/golang={}",
             runtime_mod_path.to_str().unwrap()
         ))
         .status()
