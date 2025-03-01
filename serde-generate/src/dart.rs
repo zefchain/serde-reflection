@@ -79,7 +79,11 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn write_package(&self, install_dir: &Path) -> Result<()> {
-        let mut file = std::fs::File::create(install_dir.join("pubspec.yaml"))?;
+        let pubspec_path = install_dir.join("pubspec.yaml");
+        if pubspec_path.exists() {
+            return Ok(());
+        }
+        let mut file = std::fs::File::create(pubspec_path)?;
         let mut out = IndentedWriter::new(&mut file, IndentConfig::Space(2));
         writeln!(
             &mut out,
