@@ -13,7 +13,7 @@ pub struct CodeGeneratorConfig {
     pub(crate) comments: DocComments,
     pub(crate) custom_code: CustomCode,
     pub(crate) c_style_enums: bool,
-    pub(crate) project_spec: bool,
+    pub(crate) package_manifest: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -68,7 +68,7 @@ impl CodeGeneratorConfig {
             comments: BTreeMap::new(),
             custom_code: BTreeMap::new(),
             c_style_enums: false,
-            project_spec: true,
+            package_manifest: true,
         }
     }
 
@@ -120,10 +120,9 @@ impl CodeGeneratorConfig {
         self
     }
 
-    /// Generate a package manifests, headers, or source files
-    /// based on the target language.
-    pub fn with_project_spec(mut self, project_spec: bool) -> Self {
-        self.project_spec = project_spec;
+    /// Generate a package manifest file expected in the target language.
+    pub fn with_package_manifest(mut self, package_manifest: bool) -> Self {
+        self.package_manifest = package_manifest;
         self
     }
 }
