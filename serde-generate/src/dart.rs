@@ -1228,7 +1228,7 @@ impl crate::SourceInstaller for Installer {
         generator.output(self.install_dir.clone(), registry)?;
 
         // Write the `pubspec.yaml` package manifest file.
-        if config.package_manifest {
+        if config.project_spec {
             self.write_package(&self.install_dir, &config.module_name)?;
         }
 
