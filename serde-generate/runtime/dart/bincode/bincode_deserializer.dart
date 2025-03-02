@@ -8,7 +8,7 @@ const maxContainerDepth = (1 << 31) - 1;
 
 class BincodeDeserializer extends BinaryDeserializer {
   BincodeDeserializer(Uint8List input)
-    : super(input: input, containerDepthBudget: maxContainerDepth);
+      : super(input: input, containerDepthBudget: maxContainerDepth);
 
   @override
   int deserializeLength() {
