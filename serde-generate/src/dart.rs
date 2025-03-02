@@ -57,7 +57,9 @@ impl<'a> CodeGenerator<'a> {
 
         let mut dir_path = install_dir;
         std::fs::create_dir_all(&dir_path)?;
-        self.write_package(&dir_path)?;
+        if self.config.package_manifest {
+            self.write_package(&dir_path)?;
+        }
         dir_path = dir_path.join("lib").join("src");
         for part in &current_namespace {
             dir_path = dir_path.join(part);
@@ -79,11 +81,7 @@ impl<'a> CodeGenerator<'a> {
     }
 
     fn write_package(&self, install_dir: &Path) -> Result<()> {
-        let pubspec_path = install_dir.join("pubspec.yaml");
-        if pubspec_path.exists() {
-            return Ok(());
-        }
-        let mut file = std::fs::File::create(pubspec_path)?;
+        let mut file = std::fs::File::create(install_dir.join("pubspec.yaml"))?;
         let mut out = IndentedWriter::new(&mut file, IndentConfig::Space(2));
         writeln!(
             &mut out,

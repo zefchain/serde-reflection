@@ -13,6 +13,7 @@ pub struct CodeGeneratorConfig {
     pub(crate) comments: DocComments,
     pub(crate) custom_code: CustomCode,
     pub(crate) c_style_enums: bool,
+    pub(crate) package_manifest: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -67,6 +68,7 @@ impl CodeGeneratorConfig {
             comments: BTreeMap::new(),
             custom_code: BTreeMap::new(),
             c_style_enums: false,
+            package_manifest: true,
         }
     }
 
@@ -115,6 +117,12 @@ impl CodeGeneratorConfig {
     /// native enum type in supported languages.
     pub fn with_c_style_enums(mut self, c_style_enums: bool) -> Self {
         self.c_style_enums = c_style_enums;
+        self
+    }
+
+    /// Generate a package manifest file expected in the target language.
+    pub fn with_package_manifest(mut self, dependencies: bool) -> Self {
+        self.c_style_enums = dependencies;
         self
     }
 }
