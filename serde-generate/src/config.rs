@@ -120,7 +120,7 @@ impl CodeGeneratorConfig {
         self
     }
 
-    /// Generate a package manifest file expected in the target language.
+    /// Generate a package manifest file for the target language.
     pub fn with_package_manifest(mut self, package_manifest: bool) -> Self {
         self.package_manifest = package_manifest;
         self
