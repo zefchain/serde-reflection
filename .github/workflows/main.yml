@@ -82,7 +82,7 @@ jobs:
       - name: Setup Additional Languages (golang)
         uses: actions/setup-go@v3
         with:
-          go-version: '~1.15.0'
+          go-version: '~1.22.0'
 
       - name: Setup Additional Languages (deno)
         uses: denoland/setup-deno@v1
