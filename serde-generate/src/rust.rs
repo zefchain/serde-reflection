@@ -434,14 +434,14 @@ impl crate::SourceInstaller for Installer {
             write!(
                 cargo,
                 r#"[package]
-    name = "{}"
-    version = "{}"
-    edition = "2018"
-    
-    [dependencies]
-    serde = {{ version = "1.0", features = ["derive"] }}
-    serde_bytes = "0.11"
-    "#,
+name = "{}"
+version = "{}"
+edition = "2018"
+
+[dependencies]
+serde = {{ version = "1.0", features = ["derive"] }}
+serde_bytes = "0.11"
+"#,
                 name, version,
             )?;
         }
