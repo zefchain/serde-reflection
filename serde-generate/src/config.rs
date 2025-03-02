@@ -122,7 +122,7 @@ impl CodeGeneratorConfig {
 
     /// Generate a package manifest file expected in the target language.
     pub fn with_package_manifest(mut self, package_manifest: bool) -> Self {
-        self.c_style_enums = package_manifest;
+        self.package_manifest = package_manifest;
         self
     }
 }
