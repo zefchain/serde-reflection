@@ -57,9 +57,6 @@ impl<'a> CodeGenerator<'a> {
 
         let mut dir_path = install_dir;
         std::fs::create_dir_all(&dir_path)?;
-        if self.config.package_manifest {
-            self.write_package(&dir_path)?;
-        }
         dir_path = dir_path.join("lib").join("src");
         for part in &current_namespace {
             dir_path = dir_path.join(part);
@@ -77,25 +74,6 @@ impl<'a> CodeGenerator<'a> {
         }
         self.write_helper_class(&dir_path, current_namespace.clone(), registry)?;
         self.write_library(&dir_path, current_namespace, registry)?;
-        Ok(())
-    }
-
-    fn write_package(&self, install_dir: &Path) -> Result<()> {
-        let mut file = std::fs::File::create(install_dir.join("pubspec.yaml"))?;
-        let mut out = IndentedWriter::new(&mut file, IndentConfig::Space(2));
-        writeln!(
-            &mut out,
-            r#"name: {}
-
-environment:
-  sdk: '>=3.0.0 <4.0.0'
-
-dependencies:
-  meta: ^1.0.0
-  tuple: ^2.0.0
-"#,
-            self.config.module_name
-        )?;
         Ok(())
     }
 
@@ -1217,6 +1195,25 @@ impl Installer {
         }
         Ok(())
     }
+
+    fn write_package(&self, install_dir: &Path, module_name: &str) -> Result<()> {
+        let mut file = std::fs::File::create(install_dir.join("pubspec.yaml"))?;
+        let mut out = IndentedWriter::new(&mut file, IndentConfig::Space(2));
+        writeln!(
+            &mut out,
+            r#"name: {}
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  meta: ^1.0.0
+  tuple: ^2.0.0
+"#,
+            module_name
+        )?;
+        Ok(())
+    }
 }
 
 impl crate::SourceInstaller for Installer {
@@ -1229,7 +1226,13 @@ impl crate::SourceInstaller for Installer {
     ) -> std::result::Result<(), Self::Error> {
         let generator = CodeGenerator::new(config);
         generator.output(self.install_dir.clone(), registry)?;
-        // write the main module file to export the public api
+
+        // Write the `pubspec.yaml` package manifest file.
+        if config.package_manifest {
+            self.write_package(&self.install_dir, &config.module_name)?;
+        }
+
+        // Write the main module file to export the public API.
         std::fs::write(
             self.install_dir
                 .join("lib")
@@ -1239,6 +1242,7 @@ impl crate::SourceInstaller for Installer {
                 name = &config.module_name
             ),
         )?;
+
         Ok(())
     }
 
