@@ -1193,7 +1193,7 @@ impl crate::SourceInstaller for Installer {
             for dep in deps {
                 writeln!(
                     &mut dependencies,
-                    "      <ProjectReference Include=\"{1}{0}\\{0}.csproj\" />",
+                    "        <ProjectReference Include=\"{1}{0}\\{0}.csproj\" />",
                     dep, back_path
                 )?;
             }
@@ -1211,7 +1211,8 @@ impl crate::SourceInstaller for Installer {
         <PackageReference Include="System.ValueTuple" Version="4.5.0" />
     </ItemGroup>
     <ItemGroup>
-{}    </ItemGroup>
+{}    
+    </ItemGroup>
 </Project>
 "#,
                 dependencies
