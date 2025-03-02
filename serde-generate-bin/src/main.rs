@@ -79,9 +79,19 @@ struct Options {
     /// if the target language and the generator code support them.
     #[structopt(long)]
     use_c_style_enums: bool,
+
+    /// Avoid creating a package spec file defining dependencies for the chosen language.
+    /// Takes effect only for languages that have a package manifest format.
+    #[structopt(long)]
+    no_package_manifest: bool,
 }
 
-fn get_codegen_config<'a, I>(name: String, runtimes: I, c_style_enums: bool) -> CodeGeneratorConfig
+fn get_codegen_config<'a, I>(
+    name: String,
+    runtimes: I,
+    c_style_enums: bool,
+    package_manifest: bool,
+) -> CodeGeneratorConfig
 where
     I: IntoIterator<Item = &'a Runtime>,
 {
@@ -100,6 +110,7 @@ where
     CodeGeneratorConfig::new(name)
         .with_encodings(encodings)
         .with_c_style_enums(c_style_enums)
+        .with_package_manifest(package_manifest)
 }
 
 fn main() {
@@ -125,7 +136,12 @@ fn main() {
     match options.target_source_dir {
         None => {
             if let Some((registry, name)) = named_registry_opt {
-                let config = get_codegen_config(name, &runtimes, options.use_c_style_enums);
+                let config = get_codegen_config(
+                    name,
+                    &runtimes,
+                    options.use_c_style_enums,
+                    !options.no_package_manifest,
+                );
 
                 let stdout = std::io::stdout();
                 let mut out = stdout.lock();
@@ -189,7 +205,12 @@ fn main() {
                 };
 
             if let Some((registry, name)) = named_registry_opt {
-                let config = get_codegen_config(name, &runtimes, options.use_c_style_enums);
+                let config = get_codegen_config(
+                    name,
+                    &runtimes,
+                    options.use_c_style_enums,
+                    !options.no_package_manifest,
+                );
                 installer.install_module(&config, &registry).unwrap();
             }
 
