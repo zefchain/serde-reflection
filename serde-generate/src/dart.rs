@@ -195,7 +195,7 @@ where
     fn output_preamble(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "part of {}_types;",
+            "part of '{}.dart';",
             self.generator.config.module_name
         )?;
 

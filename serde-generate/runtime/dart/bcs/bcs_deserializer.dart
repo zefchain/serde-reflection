@@ -1,7 +1,7 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-part of bcs;
+part of 'bcs.dart';
 
 // Maximum length allowed for sequences (vectors, bytes, strings) and maps.
 const maxSequenceLength = (1 << 31) - 1;
