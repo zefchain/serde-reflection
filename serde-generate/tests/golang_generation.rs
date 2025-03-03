@@ -79,6 +79,7 @@ fn test_that_golang_code_compiles_with_config_and_registry(
     let status = Command::new("go")
         .current_dir(dir.path())
         .arg("build")
+        .arg("-mod=mod")
         .arg(&source_path)
         .status()
         .unwrap();
