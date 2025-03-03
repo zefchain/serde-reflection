@@ -83,7 +83,7 @@ struct Options {
     /// Avoid creating a package spec file defining dependencies for the chosen language.
     /// Takes effect only for languages that have a package manifest format.
     #[structopt(long)]
-    no_package_manifest: bool,
+    skip_package_manifest: bool,
 }
 
 fn get_codegen_config<'a, I>(
@@ -140,7 +140,7 @@ fn main() {
                     name,
                     &runtimes,
                     options.use_c_style_enums,
-                    !options.no_package_manifest,
+                    !options.skip_package_manifest,
                 );
 
                 let stdout = std::io::stdout();
@@ -209,7 +209,7 @@ fn main() {
                     name,
                     &runtimes,
                     options.use_c_style_enums,
-                    !options.no_package_manifest,
+                    !options.skip_package_manifest,
                 );
                 installer.install_module(&config, &registry).unwrap();
             }
