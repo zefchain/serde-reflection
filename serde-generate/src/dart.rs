@@ -114,7 +114,8 @@ dependencies:
 
         writeln!(
             &mut emitter.out,
-            r#"library {}_types;
+            r#"// ignore_for_file: unused_import
+library {}_types;
 
 import 'dart:typed_data';
 import 'package:meta/meta.dart';
@@ -194,7 +195,7 @@ where
     fn output_preamble(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "part of {}_types;",
+            "part of '{}.dart';",
             self.generator.config.module_name
         )?;
 
@@ -1192,7 +1193,7 @@ switch (index) {{"#,
     }
 }
 
-/// Installer for generated source files in Go.
+/// Installer for generated source files in Dart.
 pub struct Installer {
     install_dir: PathBuf,
 }

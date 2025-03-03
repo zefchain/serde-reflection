@@ -1,7 +1,7 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-part of bcs;
+part of 'bcs.dart';
 
 class BcsSerializer extends BinarySerializer {
   BcsSerializer()
