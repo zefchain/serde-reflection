@@ -120,6 +120,7 @@ func main() {{
     let status = Command::new("go")
         .current_dir(dir.path())
         .arg("run")
+        .arg("-mod=mod")
         .arg(&source_path)
         .status()
         .unwrap();
@@ -251,6 +252,7 @@ func main() {{
     let status = Command::new("go")
         .current_dir(dir.path())
         .arg("run")
+        .arg("-mod=mod")
         .arg(source_path)
         .status()
         .unwrap();
