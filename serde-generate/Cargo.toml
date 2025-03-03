@@ -1,6 +1,6 @@
 [package]
 name = "serde-generate"
-version = "0.28.0"
+version = "0.29.0"
 description = "Library to generate (de)serialization code in multiple languages"
 documentation = "https://docs.rs/serde-generate"
 repository = "https://github.com/zefchain/serde-reflection"
