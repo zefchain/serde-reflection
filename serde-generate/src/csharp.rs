@@ -1181,6 +1181,10 @@ impl crate::SourceInstaller for Installer {
         let generator = CodeGenerator::new(config);
         let dir_path = generator.write_source_files(self.install_dir.clone(), registry)?;
 
+        if !config.package_manifest {
+            return Ok(());
+        }
+
         let back_path: String = "..\\"
             .to_string()
             .repeat(dir_path.strip_prefix(&self.install_dir)?.iter().count());
@@ -1192,26 +1196,26 @@ impl crate::SourceInstaller for Installer {
         for dep in deps {
             writeln!(
                 &mut dependencies,
-                "      <ProjectReference Include=\"{1}{0}\\{0}.csproj\" />",
+                "        <ProjectReference Include=\"{1}{0}\\{0}.csproj\" />",
                 dep, back_path
             )?;
         }
-
         let mut proj = std::fs::File::create(dir_path.join(name + ".csproj"))?;
         write!(
             proj,
             r#"
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-       <TargetFramework>netstandard2.0</TargetFramework>
-       <LangVersion>7.2</LangVersion>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <LangVersion>7.2</LangVersion>
     </PropertyGroup>
     <ItemGroup>
-      <PackageReference Include="System.Memory" Version="4.5.4" />
-      <PackageReference Include="System.ValueTuple" Version="4.5.0" />
+        <PackageReference Include="System.Memory" Version="4.5.4" />
+        <PackageReference Include="System.ValueTuple" Version="4.5.0" />
     </ItemGroup>
     <ItemGroup>
-{}    </ItemGroup>
+{}    
+    </ItemGroup>
 </Project>
 "#,
             dependencies

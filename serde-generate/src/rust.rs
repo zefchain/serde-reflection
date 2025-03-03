@@ -428,10 +428,12 @@ impl crate::SourceInstaller for Installer {
         };
         let dir_path = self.install_dir.join(&name);
         std::fs::create_dir_all(&dir_path)?;
-        let mut cargo = std::fs::File::create(dir_path.join("Cargo.toml"))?;
-        write!(
-            cargo,
-            r#"[package]
+
+        if config.package_manifest {
+            let mut cargo = std::fs::File::create(dir_path.join("Cargo.toml"))?;
+            write!(
+                cargo,
+                r#"[package]
 name = "{}"
 version = "{}"
 edition = "2018"
@@ -440,9 +442,11 @@ edition = "2018"
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_bytes = "0.11"
 "#,
-            name, version,
-        )?;
-        std::fs::create_dir(dir_path.join("src"))?;
+                name, version,
+            )?;
+        }
+
+        std::fs::create_dir_all(dir_path.join("src"))?;
         let source_path = dir_path.join("src/lib.rs");
         let mut source = std::fs::File::create(source_path)?;
         generator.output(&mut source, registry)
