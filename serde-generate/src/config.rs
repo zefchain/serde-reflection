@@ -6,14 +6,14 @@ use std::collections::{BTreeMap, BTreeSet};
 /// Code generation options meant to be supported by all languages.
 #[derive(Clone, Debug)]
 pub struct CodeGeneratorConfig {
-    pub(crate) module_name: String,
-    pub(crate) serialization: bool,
-    pub(crate) encodings: BTreeSet<Encoding>,
-    pub(crate) external_definitions: ExternalDefinitions,
-    pub(crate) comments: DocComments,
-    pub(crate) custom_code: CustomCode,
-    pub(crate) c_style_enums: bool,
-    pub(crate) package_manifest: bool,
+    pub module_name: String,
+    pub serialization: bool,
+    pub encodings: BTreeSet<Encoding>,
+    pub external_definitions: ExternalDefinitions,
+    pub comments: DocComments,
+    pub custom_code: CustomCode,
+    pub c_style_enums: bool,
+    pub package_manifest: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
