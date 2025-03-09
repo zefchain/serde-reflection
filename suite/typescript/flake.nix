@@ -62,7 +62,7 @@
               '';
               scripts."gen:bincode".exec = ''
                 pushd ${root}
-                  rm ts/bincode/registry.ts
+                  rm -f ts/bincode/registry.ts
                   cargo run
                 popd
               '';
