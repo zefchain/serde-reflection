@@ -1,7 +1,7 @@
-import { Bench } from 'tinybench'
-import * as ProtobufRegistry from './proto/main.ts'
-import * as BincodeRegistry from './bincode/registry.ts'
-import * as Data from './data.ts'
+import { Bench } from "tinybench"
+import * as ProtobufRegistry from "./proto/main.ts"
+import * as BincodeRegistry from "./bincode/registry.ts"
+import * as Data from "./data.ts"
 
 const ComplexStruct_pb_obj: ProtobufRegistry.ComplexStruct = {
 	inner: { a: 42, b: "Hello" },
@@ -18,17 +18,17 @@ const ComplexStruct_pb_obj: ProtobufRegistry.ComplexStruct = {
 }
 
 await async function bench_encode() {
-	const b = new Bench({ time: 1_500 })
+	let b = new Bench({ time: 1_500 })
 
-	b.add('serdegen-bincode:encode', () => {
+	b.add("serdegen-bincode:encode", () => {
 		BincodeRegistry.ComplexStruct.encode(Data.ComplexStruct_obj)
 	})
 
-	b.add('JSON:encode', () => {
+	b.add("JSON:encode", () => {
 		JSON.stringify(Data.ComplexStruct_obj)
 	})
 	
-	b.add('protobuf-js-ts-proto:encode', () => {
+	b.add("protobuf-js-ts-proto:encode", () => {
 		ProtobufRegistry.ComplexStruct.encode(ComplexStruct_pb_obj)
 	})
 
@@ -38,23 +38,21 @@ await async function bench_encode() {
 	console.table(b.table())
 }()
 
-
-
 await async function bench_decode() {
-	const b = new Bench({ time: 1_500 })
+	let b = new Bench({ time: 1_500 })
 
-	const bincodec_encoded = BincodeRegistry.ComplexStruct.encode(Data.ComplexStruct_obj)
-	b.add('serdegen-bincode:decode', () => {
+	let bincodec_encoded = BincodeRegistry.ComplexStruct.encode(Data.ComplexStruct_obj)
+	b.add("serdegen-bincode:decode", () => {
 		BincodeRegistry.ComplexStruct.decode(bincodec_encoded)
 	})
 
-	const json_encoded = JSON.stringify(Data.ComplexStruct_obj)
-	b.add('JSON:decode', () => {
+	let json_encoded = JSON.stringify(Data.ComplexStruct_obj)
+	b.add("JSON:decode", () => {
 		JSON.parse(json_encoded)
 	})
 
-	const pb_encoded = ProtobufRegistry.ComplexStruct.encode(ComplexStruct_pb_obj).finish()
-	b.add('protobuf-js-ts-proto:decode', () => {
+	let pb_encoded = ProtobufRegistry.ComplexStruct.encode(ComplexStruct_pb_obj).finish()
+	b.add("protobuf-js-ts-proto:decode", () => {
 		ProtobufRegistry.ComplexStruct.decode(pb_encoded)
 	})
 

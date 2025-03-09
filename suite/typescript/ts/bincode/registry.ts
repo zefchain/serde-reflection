@@ -1,5 +1,5 @@
-import type * as $t from "./serde"
-import { BincodeReader, BincodeWriter } from "./bincode"
+import type * as $t from "./serde.ts"
+import { BincodeReader, BincodeWriter } from "./bincode.ts"
 
 export type ComplexStruct = {
 	inner: SimpleStruct,
@@ -34,7 +34,7 @@ export const ComplexStruct = {
 		SimpleStruct.encode(value.inner, writer)
 		writer.write_bool(value.flag)
 		writer.write_length(value.items.length)
-		for (const item of value.items) {
+		for (let item of value.items) {
 			MultiEnum.encode(item, writer)
 		}
 		UnitStruct.encode(value.unit, writer)
@@ -46,7 +46,7 @@ export const ComplexStruct = {
 		return writer.get_bytes()
 	},
 	decode(input: Uint8Array, reader = new BincodeReader(input)) {
-		const value: ComplexStruct = {
+		let value: ComplexStruct = {
 			inner: SimpleStruct.decode(input, reader),
 			flag: reader.read_bool(),
 			items: reader.read_list<MultiEnum>(() => MultiEnum.decode(input, reader)),
@@ -134,7 +134,7 @@ export const NewtypeStruct = {
 		return writer.get_bytes()
 	},
 	decode(input: Uint8Array, reader = new BincodeReader(input)) {
-		const value: NewtypeStruct = reader.read_i32()
+		let value: NewtypeStruct = reader.read_i32()
 		return value
 	}
 }
@@ -146,7 +146,7 @@ export const SimpleStruct = {
 		return writer.get_bytes()
 	},
 	decode(input: Uint8Array, reader = new BincodeReader(input)) {
-		const value: SimpleStruct = {
+		let value: SimpleStruct = {
 			a: reader.read_u32(),
 			b: reader.read_string(),
 		}
@@ -162,7 +162,7 @@ export const TupleStruct = {
 		return writer.get_bytes()
 	},
 	decode(input: Uint8Array, reader = new BincodeReader(input)) {
-		const value: TupleStruct = {
+		let value: TupleStruct = {
 			$0: reader.read_i32(),
 			$1: reader.read_f64(),
 			$2: reader.read_string(),
@@ -177,7 +177,7 @@ export const UnitStruct = {
 		return writer.get_bytes()
 	},
 	decode(input: Uint8Array, reader = new BincodeReader(input)) {
-		const value: $t.unit = reader.read_unit()
+		let value: $t.unit = reader.read_unit()
 		return value
 	}
 }

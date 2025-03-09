@@ -1,17 +1,18 @@
 use std::{collections::HashMap, error::Error};
 use serde::{Deserialize, Serialize};
+use bincode::{Encode, Decode};
 
 fn main() -> Result<(), Box<dyn Error>> {
     use serde_reflection::{Registry, Tracer, TracerConfig};
     let mut tracer = Tracer::new(TracerConfig::default());
 
-	#[derive(Clone, Debug, Serialize, Deserialize)]
+	#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode)]
 	struct SimpleStruct {
 		a: u32,
 		b: String,
 	}
 	
-	#[derive(Serialize, Deserialize, Debug)]
+	#[derive(Debug, Serialize, Deserialize, Encode, Decode)]
 	enum MultiEnum {
 		VariantA(i32),
 		VariantB(String),
@@ -19,16 +20,16 @@ fn main() -> Result<(), Box<dyn Error>> {
 		UnitVariant,
 	}
 	
-	#[derive(Serialize, Deserialize, Debug)]
+	#[derive(Debug, Serialize, Deserialize, Encode, Decode)]
 	struct UnitStruct;
 	
-	#[derive(Serialize, Deserialize, Debug)]
+	#[derive(Debug, Serialize, Deserialize, Encode, Decode)]
 	struct NewtypeStruct(i32);
 	
-	#[derive(Serialize, Deserialize, Debug)]
+	#[derive(Debug, Serialize, Deserialize, Encode, Decode)]
 	struct TupleStruct(i32, f64, String);
 	
-	#[derive(Serialize, Deserialize, Debug)]
+	#[derive(Debug, Serialize, Deserialize, Encode, Decode)]
 	struct ComplexStruct {
 		inner: SimpleStruct,
 		flag: bool,
@@ -61,10 +62,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 		map: HashMap::from_iter([(3, 7)])
     };
 
-    println!("simple_instance: {:?}", bincode::serialize(&simple_instance)?);
-    println!("enum_instance: {:?}", bincode::serialize(&enum_instance)?);
-    println!("unit_variant: {:?}", bincode::serialize(&unit_variant)?);
-    println!("complex_instance: {:?}", bincode::serialize(&complex_instance)?);
+    println!("simple_instance: {:?}", bincode::encode_to_vec(&simple_instance, bincode::config::standard())?);
+    println!("enum_instance: {:?}", bincode::encode_to_vec(&enum_instance, bincode::config::standard())?);
+    println!("unit_variant: {:?}", bincode::encode_to_vec(&unit_variant, bincode::config::standard())?);
+    println!("complex_instance: {:?}", bincode::encode_to_vec(&complex_instance, bincode::config::standard())?);
 
     let registry = tracer.registry()?;
 

@@ -81,10 +81,10 @@ impl<'a> CodeGenerator<'a> {
 
 impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 	fn output_preamble(&mut self) -> Result<()> {
-		writeln!(self.out, r#"import type * as $t from "./serde""#)?;
-		writeln!(self.out, r#"import {{ BincodeReader, BincodeWriter }} from "./bincode""#)?;
+		writeln!(self.out, r#"import type * as $t from "./serde.ts""#)?;
+		writeln!(self.out, r#"import {{ BincodeReader, BincodeWriter }} from "./bincode.ts""#)?;
 		for namespace in self.generator.namespaces_to_import.iter() {
-			writeln!(self.out, "import * as {} from '../{}/mod';\n", namespace.to_camel_case(), namespace)?;
+			writeln!(self.out, "import * as {} from '../{}/mod.ts';\n", namespace.to_camel_case(), namespace)?;
 		}
 		Ok(())
 	}
@@ -132,13 +132,13 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				
 		match container {
 			ContainerFormat::UnitStruct => {
-				writeln!(self.out, "const value: $t.unit = {}", self.quote_read_value(&Format::Unit))?;
+				writeln!(self.out, "let value: $t.unit = {}", self.quote_read_value(&Format::Unit))?;
 			}
 			ContainerFormat::NewTypeStruct(inner) => {
-				writeln!(self.out, "const value: {name} = {}", self.quote_read_value(inner))?;
+				writeln!(self.out, "let value: {name} = {}", self.quote_read_value(inner))?;
 			}
 			ContainerFormat::TupleStruct(inner_types) => {
-				writeln!(self.out, "const value: {name} = {{")?;
+				writeln!(self.out, "let value: {name} = {{")?;
 				self.out.indent();
 				for (i, inner) in inner_types.iter().enumerate() {
 					writeln!(self.out, "${i}: {},", self.quote_read_value(&inner))?;	
@@ -147,7 +147,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 				writeln!(self.out, "}}")?;
 			}
 			ContainerFormat::Struct(fields) => {
-				writeln!(self.out, "const value: {name} = {{")?;
+				writeln!(self.out, "let value: {name} = {{")?;
 				self.out.indent();
 				for field in fields.iter() {
 					writeln!(self.out, "{}: {},", field.name, self.quote_read_value(&field.value))?;
@@ -411,7 +411,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 			Seq(format) => {
 				formatdoc!("
 					writer.write_length({value}.length)
-					for (const item of {value}) {{
+					for (let item of {value}) {{
 						{}
 					}}", 
 					self.quote_write_value("item", format)
@@ -435,7 +435,7 @@ impl<'a, T: Write> TypeScriptEmitter<'a, T> {
 			}
 			TupleArray { content, .. } => {
 				formatdoc!("
-					for (const item of {value}) {{
+					for (let item of {value}) {{
 						{}
 					}}",
 					self.quote_write_value("item[0]", content)
