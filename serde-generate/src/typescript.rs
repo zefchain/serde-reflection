@@ -1,4 +1,3 @@
-#![allow(unused)]
 use crate::{
 	common,
 	indent::{IndentConfig, IndentedWriter},
