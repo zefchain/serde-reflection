@@ -1,0 +1,14 @@
+{
+  "name": "js-bin-benchmark",
+  "type": "module",
+  "version": "0.0.0",
+  "dependencies": {
+    "long": "^5.3.1",
+    "protobufjs": "^7.4.0",
+    "tinybench": "^2.9.0",
+    "ts-proto": "1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10"
+  }
+}
