@@ -19,7 +19,7 @@ pub struct CodeGenerator<'a> {
     /// Language-independent configuration.
     config: &'a CodeGeneratorConfig,
     /// Module path where to find the serde runtime packages (serde, bcs, bincode).
-    /// Default: "github.com/novifinancial/serde-reflection/serde-generate/runtime/golang".
+    /// Default: "github.com/zefchain/serde-reflection/serde-generate/runtime/golang".
     serde_module_path: String,
     /// Mapping from external type names to fully-qualified class names (e.g. "MyClass" -> "com.my_org.my_package.MyClass").
     /// Derived from `config.external_definitions`.
@@ -59,9 +59,8 @@ impl<'a> CodeGenerator<'a> {
         }
         Self {
             config,
-            serde_module_path:
-                "github.com/novifinancial/serde-reflection/serde-generate/runtime/golang"
-                    .to_string(),
+            serde_module_path: "github.com/zefchain/serde-reflection/serde-generate/runtime/golang"
+                .to_string(),
             external_qualified_names,
         }
     }

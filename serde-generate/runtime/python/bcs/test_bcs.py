@@ -141,6 +141,28 @@ class BcsTestCase(unittest.TestCase):
 
         self.assertEqual(bcs.deserialize(b"\x00", bytes), (b"", b""))
 
+    def test_serialize_vec_bytes(self):
+        a = []
+        b = [b"\x00\x00", b"\x01\x01"]
+        c = [b"\x00" * 128, b"\x01" * 127, b"\x02" * 3, b""]
+
+        aser = bcs.serialize(a, typing.Sequence[bytes])
+        bser = bcs.serialize(b, typing.Sequence[bytes])
+        cser = bcs.serialize(c, typing.Sequence[bytes])
+
+        self.assertEqual(aser, b"\x00")
+        self.assertEqual(bser, b"\x02\x02\x00\x00\x02\x01\x01")
+        self.assertEqual(cser,
+                b"\x04\x80\x01" + b"\x00" * 128 +
+                b"\x7F" + b"\x01" * 127 +
+                b"\x03" + b"\x02" * 3 +
+                b"\x00"
+        )
+
+        self.assertEqual(bcs.deserialize(aser, typing.Sequence[bytes]), (a, b""))
+        self.assertEqual(bcs.deserialize(bser, typing.Sequence[bytes]), (b, b""))
+        self.assertEqual(bcs.deserialize(cser, typing.Sequence[bytes]), (c, b""))
+
     def test_serialize_tuple(self):
         T = typing.Tuple[st.uint8, st.uint16]
         self.assertEqual(bcs.serialize((0, 1), T), b"\x00\x01\x00")
