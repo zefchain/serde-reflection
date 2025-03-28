@@ -833,47 +833,46 @@ return obj;
         writeln!(self.out, "}}")?;
 
         // Hashing
-        if field_count > 0 {
-            write!(self.out, "\n@override")?;
+        write!(self.out, "\n@override")?;
+        if field_count == 0 {
+            writeln!(self.out, "\nint get hashCode => runtimeType.hashCode;")?;
+        } else if field_count == 1 {
+            writeln!(
+                self.out,
+                "\nint get hashCode => {}.hashCode;",
+                fields.first().unwrap().name.to_mixed_case()
+            )?;
+        } else {
+            let use_hash_all = field_count > 20;
 
-            if field_count == 1 {
+            if use_hash_all {
+                writeln!(self.out, "\nint get hashCode => Object.hashAll([")?;
+            } else {
+                writeln!(self.out, "\nint get hashCode => Object.hash(")?;
+            }
+
+            self.out.indent();
+            self.out.indent();
+            self.out.indent();
+
+            for field in fields {
                 writeln!(
                     self.out,
-                    "\nint get hashCode => {}.hashCode;",
-                    fields.first().unwrap().name.to_mixed_case()
+                    "{},",
+                    self.quote_field(&field.name.to_mixed_case())
                 )?;
-            } else {
-                let use_hash_all = field_count > 20;
-
-                if use_hash_all {
-                    writeln!(self.out, "\nint get hashCode => Object.hashAll([")?;
-                } else {
-                    writeln!(self.out, "\nint get hashCode => Object.hash(")?;
-                }
-
-                self.out.indent();
-                self.out.indent();
-                self.out.indent();
-
-                for field in fields {
-                    writeln!(
-                        self.out,
-                        "{},",
-                        self.quote_field(&field.name.to_mixed_case())
-                    )?;
-                }
-
-                self.out.unindent();
-
-                if use_hash_all {
-                    writeln!(self.out, "]);")?;
-                } else {
-                    writeln!(self.out, ");")?;
-                }
-
-                self.out.unindent();
-                self.out.unindent();
             }
+
+            self.out.unindent();
+
+            if use_hash_all {
+                writeln!(self.out, "]);")?;
+            } else {
+                writeln!(self.out, ");")?;
+            }
+
+            self.out.unindent();
+            self.out.unindent();
         }
 
         // Generate a toString implementation in each class
