@@ -1004,7 +1004,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                "default: throw Exception(\"Unknown variant index for {}: \" + index.toString());",
+                "default: throw Exception('Unknown variant index for {}: ' + index.toString());",
                 self.quote_qualified_name(name),
             )?;
             self.out.unindent();
@@ -1090,7 +1090,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                "default: throw Exception(\"Unknown variant index for {}: \" + index.toString());",
+                "default: throw Exception('Unknown variant index for {}: ' + index.toString());",
                 self.quote_qualified_name(name),
             )?;
             self.out.unindent();
