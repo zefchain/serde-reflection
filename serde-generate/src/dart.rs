@@ -486,7 +486,7 @@ if (tag) {{
                     self.out,
                     r#"
 final length = deserializer.deserializeLength();
-return List.generate(length, (_i) => {0});
+return List.generate(length, (_) => {0});
 "#,
                     self.quote_deserialize(format)
                 )?;
