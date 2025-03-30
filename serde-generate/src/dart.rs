@@ -175,7 +175,7 @@ where
     fn output_preamble(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "part of '{}.dart';",
+            "// ignore_for_file: type=lint, type=warning\npart of '{}.dart';",
             self.generator.config.module_name
         )?;
 
