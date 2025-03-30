@@ -3,7 +3,6 @@
 
 part of 'serde.dart';
 
-///
 /// A Dart type to represent the Rust u128 type.
 @immutable
 class Uint128 {

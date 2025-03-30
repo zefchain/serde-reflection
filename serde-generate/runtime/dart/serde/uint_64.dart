@@ -3,7 +3,6 @@
 
 part of 'serde.dart';
 
-///
 /// A Dart type to represent the Rust u64 type.
 @immutable
 class Uint64 {
