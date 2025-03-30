@@ -61,12 +61,12 @@ abstract class BinarySerializer {
 
   void serializeUint64(Uint64 val) {
     BigInt number = val.toBigInt();
-    final _byteMask = BigInt.from(0xFF);
+    final byteMask = BigInt.from(0xFF);
     int bytes = 8;
     var bdata = Uint8List(bytes);
     for (int i = 0; i < bytes; i++) {
       // little endian
-      bdata[i] = (number & _byteMask).toInt();
+      bdata[i] = (number & byteMask).toInt();
       number = number >> 8;
     }
 
