@@ -19,6 +19,7 @@ class BincodeSerializer extends BinarySerializer {
     serializeUint32(value);
   }
 
+  @override
   void sortMapEntries(List<int> offsets) {
     // Not required by the format.
   }

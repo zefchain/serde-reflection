@@ -3,11 +3,8 @@
 
 part of 'serde.dart';
 
-/**
- * Immutable wrapper class around byte[].
- *
- * Enforces value-semantice for `equals` and `hashCode`.
- */
+/// Immutable wrapper class around byte[].
+/// Enforces value-semantice for `equals` and `hashCode`.
 @immutable
 class Bytes {
   const Bytes(this.content);

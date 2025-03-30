@@ -27,6 +27,7 @@ class BcsSerializer extends BinarySerializer {
     serializeUint32AsUleb128(value);
   }
 
+  @override
   void sortMapEntries(List<int> offsets) {
     if (offsets.isEmpty) {
       return;

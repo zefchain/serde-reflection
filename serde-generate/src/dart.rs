@@ -175,7 +175,7 @@ where
     fn output_preamble(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "part of '{}.dart';",
+            "// ignore_for_file: type=lint, type=warning\npart of '{}.dart';",
             self.generator.config.module_name
         )?;
 
@@ -486,7 +486,7 @@ if (tag) {{
                     self.out,
                     r#"
 final length = deserializer.deserializeLength();
-return List.generate(length, (_i) => {0});
+return List.generate(length, (_) => {0});
 "#,
                     self.quote_deserialize(format)
                 )?;
@@ -833,47 +833,46 @@ return obj;
         writeln!(self.out, "}}")?;
 
         // Hashing
-        if field_count > 0 {
-            write!(self.out, "\n@override")?;
+        write!(self.out, "\n@override")?;
+        if field_count == 0 {
+            writeln!(self.out, "\nint get hashCode => runtimeType.hashCode;")?;
+        } else if field_count == 1 {
+            writeln!(
+                self.out,
+                "\nint get hashCode => {}.hashCode;",
+                fields.first().unwrap().name.to_mixed_case()
+            )?;
+        } else {
+            let use_hash_all = field_count > 20;
 
-            if field_count == 1 {
+            if use_hash_all {
+                writeln!(self.out, "\nint get hashCode => Object.hashAll([")?;
+            } else {
+                writeln!(self.out, "\nint get hashCode => Object.hash(")?;
+            }
+
+            self.out.indent();
+            self.out.indent();
+            self.out.indent();
+
+            for field in fields {
                 writeln!(
                     self.out,
-                    "\nint get hashCode => {}.hashCode;",
-                    fields.first().unwrap().name.to_mixed_case()
+                    "{},",
+                    self.quote_field(&field.name.to_mixed_case())
                 )?;
-            } else {
-                let use_hash_all = field_count > 20;
-
-                if use_hash_all {
-                    writeln!(self.out, "\nint get hashCode => Object.hashAll([")?;
-                } else {
-                    writeln!(self.out, "\nint get hashCode => Object.hash(")?;
-                }
-
-                self.out.indent();
-                self.out.indent();
-                self.out.indent();
-
-                for field in fields {
-                    writeln!(
-                        self.out,
-                        "{},",
-                        self.quote_field(&field.name.to_mixed_case())
-                    )?;
-                }
-
-                self.out.unindent();
-
-                if use_hash_all {
-                    writeln!(self.out, "]);")?;
-                } else {
-                    writeln!(self.out, ");")?;
-                }
-
-                self.out.unindent();
-                self.out.unindent();
             }
+
+            self.out.unindent();
+
+            if use_hash_all {
+                writeln!(self.out, "]);")?;
+            } else {
+                writeln!(self.out, ");")?;
+            }
+
+            self.out.unindent();
+            self.out.unindent();
         }
 
         // Generate a toString implementation in each class
@@ -1004,7 +1003,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                "default: throw Exception(\"Unknown variant index for {}: \" + index.toString());",
+                "default: throw Exception('Unknown variant index for {}: ' + index.toString());",
                 self.quote_qualified_name(name),
             )?;
             self.out.unindent();
@@ -1090,7 +1089,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                "default: throw Exception(\"Unknown variant index for {}: \" + index.toString());",
+                "default: throw Exception('Unknown variant index for {}: ' + index.toString());",
                 self.quote_qualified_name(name),
             )?;
             self.out.unindent();

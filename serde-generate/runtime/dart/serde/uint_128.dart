@@ -3,11 +3,10 @@
 
 part of 'serde.dart';
 
-///
 /// A Dart type to represent the Rust u128 type.
 @immutable
 class Uint128 {
-  Uint128(this.high, this.low);
+  const Uint128(this.high, this.low);
 
   factory Uint128.parse(String num, {int? radix}) {
     return Uint128.fromBigInt(BigInt.parse(num, radix: radix));

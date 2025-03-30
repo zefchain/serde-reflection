@@ -27,7 +27,7 @@ abstract class BinaryDeserializer {
       return true;
     } else {
       throw Exception(
-        'Invalid boolean: expected 0 or 1, but got ${result}',
+        'Invalid boolean: expected 0 or 1, but got $result',
       );
     }
   }
