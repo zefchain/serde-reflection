@@ -14,6 +14,7 @@ pub struct CodeGeneratorConfig {
     pub custom_code: CustomCode,
     pub c_style_enums: bool,
     pub package_manifest: bool,
+    pub case_convention_matters: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -69,6 +70,7 @@ impl CodeGeneratorConfig {
             custom_code: BTreeMap::new(),
             c_style_enums: false,
             package_manifest: true,
+            case_convention_matters: false,
         }
     }
 
@@ -123,6 +125,12 @@ impl CodeGeneratorConfig {
     /// Generate a package manifest file for the target language.
     pub fn with_package_manifest(mut self, package_manifest: bool) -> Self {
         self.package_manifest = package_manifest;
+        self
+    }
+
+    /// Does case convention matters.
+    pub fn with_case_convention_matters(mut self, matters: bool) -> Self {
+        self.case_convention_matters = matters;
         self
     }
 }

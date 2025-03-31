@@ -188,3 +188,10 @@ fn test_that_swift_code_compiles_with_custom_code() {
     let content = std::fs::read_to_string(source_path).unwrap();
     assert!(content.contains("// custom1"));
 }
+
+#[test]
+fn test_that_swift_code_compiles_with_case_convention_matters() {
+    let config = CodeGeneratorConfig::new("Testing".to_string()).with_case_convention_matters(true);
+
+    test_that_swift_code_compiles_with_config(&config);
+}
