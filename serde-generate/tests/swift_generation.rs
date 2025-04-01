@@ -191,7 +191,18 @@ fn test_that_swift_code_compiles_with_custom_code() {
 
 #[test]
 fn test_that_swift_code_compiles_with_case_convention_matters() {
-    let config = CodeGeneratorConfig::new("Testing".to_string()).with_case_convention_matters(true);
+    let config = CodeGeneratorConfig::new("Testing".to_string());
 
-    test_that_swift_code_compiles_with_config(&config);
+    let (_dir, source_path) = test_that_swift_code_compiles_with_config(&config);
+    // Case convention were correctly followed.
+    let content = std::fs::read_to_string(source_path).unwrap();
+
+    println!("content={}", content);
+    // Enum variants are lowerCamelCase.
+    assert!(content.contains(r#"case primitiveTypes"#));
+    assert!(!content.contains(r#"case PrimitiveTypes"#));
+    assert!(!content.contains(r#"case primitive_ypes"#));
+    // Field names are lowerCamelCase.
+    assert!(content.contains(r#"@Indirect public var fBool: Bool"#));
+    assert!(!content.contains(r#"@Indirect public var f_bool: Bool"#));
 }
