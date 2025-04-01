@@ -8,7 +8,7 @@ use crate::{
     indent::{IndentConfig, IndentedWriter},
     CodeGeneratorConfig, Encoding,
 };
-use heck::CamelCase;
+use heck::{CamelCase, MixedCase};
 use include_dir::include_dir as include_directory;
 use serde_reflection::{ContainerFormat, Format, FormatHolder, Named, Registry, VariantFormat};
 use std::{
@@ -469,7 +469,7 @@ return obj
     fn output_variant(&mut self, name: &str, variant: &VariantFormat) -> Result<()> {
         use VariantFormat::*;
         self.output_comment(name)?;
-        let name = common::lowercase_first_letter(name);
+        let name = common::lowercase_first_letter(name).to_mixed_case();
         match variant {
             Unit => {
                 writeln!(self.out, "case {}", name)?;
@@ -684,7 +684,8 @@ public static func {1}Deserialize(input: [UInt8]) throws -> {0} {{
             writeln!(self.out, "switch self {{")?;
             for (index, variant) in variants {
                 let fields = Self::variant_fields(&variant.value);
-                let formatted_variant_name = common::lowercase_first_letter(&variant.name);
+                let formatted_variant_name =
+                    common::lowercase_first_letter(&variant.name).to_mixed_case();
                 if fields.is_empty() {
                     writeln!(self.out, "case .{}:", formatted_variant_name)?;
                 } else {
@@ -741,7 +742,8 @@ switch index {{"#,
             for (index, variant) in variants {
                 writeln!(self.out, "case {}:", index)?;
                 self.out.indent();
-                let formatted_variant_name = common::lowercase_first_letter(&variant.name);
+                let formatted_variant_name =
+                    common::lowercase_first_letter(&variant.name).to_mixed_case();
                 let fields = Self::variant_fields(&variant.value);
                 if fields.is_empty() {
                     writeln!(self.out, "try deserializer.decrease_container_depth()")?;
@@ -818,7 +820,7 @@ switch index {{"#,
             Struct(fields) => fields
                 .iter()
                 .map(|f| Named {
-                    name: f.name.clone(),
+                    name: f.name.to_mixed_case(),
                     value: f.value.clone(),
                 })
                 .collect(),
