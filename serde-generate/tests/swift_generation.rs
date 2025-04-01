@@ -197,7 +197,6 @@ fn test_that_swift_code_compiles_with_case_convention_matters() {
     // Case convention were correctly followed.
     let content = std::fs::read_to_string(source_path).unwrap();
 
-    println!("content={}", content);
     // Enum variants are lowerCamelCase.
     assert!(content.contains(r#"case primitiveTypes"#));
     assert!(!content.contains(r#"case PrimitiveTypes"#));
