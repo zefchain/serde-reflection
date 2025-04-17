@@ -30,14 +30,14 @@ pub struct Tracer {
 
     /// Enums that have detected to be yet incomplete (i.e. missing variants)
     /// while tracing deserialization.
-    pub(crate) incomplete_enums: BTreeMap<String, EnumProgress>,
+    pub incomplete_enums: BTreeMap<String, EnumProgress>,
 
     /// Discriminant associated with each variant of each enum.
     pub(crate) discriminants: BTreeMap<(TypeId, VariantId<'static>), Discriminant>,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum EnumProgress {
+pub enum EnumProgress {
     /// There are variant names that have not yet been traced.
     NamedVariantsRemaining,
     /// There are variant numbers that have not yet been traced.
