@@ -366,3 +366,4 @@ pub use format::{ContainerFormat, Format, FormatHolder, Named, Variable, Variant
 pub use trace::{Registry, Samples, Tracer, TracerConfig};
 pub use value::Value;
 pub use ser::Serializer;
+pub use de::Deserializer;

@@ -20,14 +20,14 @@ use std::collections::btree_map::{BTreeMap, Entry};
 ///   `&'a mut` references used to return tracing results.
 /// * The lifetime 'de is fixed and the `&'de` reference meant to let us
 ///   borrow values from previous serialization runs.
-pub(crate) struct Deserializer<'de, 'a> {
+pub struct Deserializer<'de, 'a> {
     tracer: &'a mut Tracer,
     samples: &'de Samples,
     format: &'a mut Format,
 }
 
 impl<'de, 'a> Deserializer<'de, 'a> {
-    pub(crate) fn new(
+    pub fn new(
         tracer: &'a mut Tracer,
         samples: &'de Samples,
         format: &'a mut Format,
