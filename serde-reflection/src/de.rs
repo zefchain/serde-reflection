@@ -27,11 +27,7 @@ pub struct Deserializer<'de, 'a> {
 }
 
 impl<'de, 'a> Deserializer<'de, 'a> {
-    pub fn new(
-        tracer: &'a mut Tracer,
-        samples: &'de Samples,
-        format: &'a mut Format,
-    ) -> Self {
+    pub fn new(tracer: &'a mut Tracer, samples: &'de Samples, format: &'a mut Format) -> Self {
         Deserializer {
             tracer,
             samples,
