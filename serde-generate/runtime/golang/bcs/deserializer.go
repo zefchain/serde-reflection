@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/novifinancial/serde-reflection/serde-generate/runtime/golang/serde"
+	"github.com/zefchain/serde-reflection/serde-generate/runtime/golang/serde"
 )
 
 // Maximum length allowed for sequences (vectors, bytes, strings) and maps.
@@ -35,6 +35,10 @@ func (d *deserializer) DeserializeF32() (float32, error) {
 // DeserializeF64 is unimplemented.
 func (d *deserializer) DeserializeF64() (float64, error) {
 	return 0, errors.New("unimplemented")
+}
+
+func (d *deserializer) DeserializeVecBytes() ([][]byte, error) {
+	return d.BinaryDeserializer.DeserializeVecBytes(d.DeserializeLen)
 }
 
 func (d *deserializer) DeserializeBytes() ([]byte, error) {
