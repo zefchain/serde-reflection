@@ -1009,7 +1009,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "    pure")?;
                 writeln!(out, "    returns (bytes memory)")?;
                 writeln!(out, "{{")?;
-                writeln!(out, "    returns abi.encodePacked(input);")?;
+                writeln!(out, "    return abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
                 writeln!(
@@ -1022,7 +1022,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "{{")?;
                 writeln!(out, "    {name} dest;")?;
                 writeln!(out, "    assembly {{")?;
-                writeln!(out, "        dest := mload(add(add(src, 0x20), pos))")?;
+                writeln!(out, "        dest := mload(add(add(input, 0x20), pos))")?;
                 writeln!(out, "    }}")?;
                 writeln!(out, "    uint256 new_pos = pos + {size};")?;
                 writeln!(out, "    return (new_pos, dest);")?;
