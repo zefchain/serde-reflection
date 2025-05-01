@@ -45,7 +45,11 @@ fn output_generic_bcs_deserialize<T: std::io::Write>(
     writeln!(
         out,
         r#"
-function bcs_deserialize_{key_name}(bytes memory input) public pure returns ({code_name}{data_location}) {{
+function bcs_deserialize_{key_name}(bytes memory input)
+    public
+    pure
+    returns ({code_name}{data_location})
+{{
   uint256 new_pos;
   {code_name}{data_location} value;
   (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);
@@ -1317,8 +1321,9 @@ impl<'a> CodeGenerator<'a> {
             generator: self,
         };
 
-        emitter.output_preamble()?;
+        emitter.output_license()?;
         emitter.output_open_library()?;
+        emitter.output_preamble()?;
 
         let mut sol_registry = SolRegistry::default();
         for (key, container_format) in registry {
@@ -1345,13 +1350,25 @@ impl<'a, T> SolEmitter<'a, T>
 where
     T: std::io::Write,
 {
+    fn output_license(&mut self) -> Result<()> {
+        writeln!(
+            self.out,
+            r#"
+/// SPDX-License-Identifier: UNLICENSED"#
+        )?;
+        Ok(())
+    }
+
     fn output_preamble(&mut self) -> Result<()> {
         writeln!(
             self.out,
             r#"
-/// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-function bcs_serialize_len(uint256 x) pure returns (bytes memory) {{
+function bcs_serialize_len(uint256 x)
+    internal
+    pure
+    returns (bytes memory)
+{{
   uint256 power = 128;
   bytes memory result;
   bytes1 entry;
@@ -1371,7 +1388,11 @@ function bcs_serialize_len(uint256 x) pure returns (bytes memory) {{
   }}
 }}
 
-function bcs_deserialize_offset_len(uint256 pos, bytes memory input) pure returns (uint256, uint256) {{
+function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
+    internal
+    pure
+    returns (uint256, uint256)
+{{
   uint256 idx = 0;
   while (true) {{
     if (uint8(input[pos + idx]) < 128) {{
