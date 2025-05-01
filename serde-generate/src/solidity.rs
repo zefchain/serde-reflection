@@ -50,11 +50,11 @@ function bcs_deserialize_{key_name}(bytes memory input)
     pure
     returns ({code_name}{data_location})
 {{
-  uint256 new_pos;
-  {code_name}{data_location} value;
-  (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);
-  require(new_pos == input.length, "incomplete deserialization");
-  return value;
+    uint256 new_pos;
+    {code_name}{data_location} value;
+    (new_pos, value) = bcs_deserialize_offset_{key_name}(0, input);
+    require(new_pos == input.length, "incomplete deserialization");
+    return value;
 }}"#
     )?;
     Ok(())
@@ -147,7 +147,7 @@ impl Primitive {
                 out,
                 r#"
 struct empty_struct {{
-  int8 val;
+    int8 val;
 }}
 
 function bcs_serialize_empty_struct(empty_struct memory input)
@@ -155,8 +155,8 @@ function bcs_serialize_empty_struct(empty_struct memory input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result;
-  return result;
+    bytes memory result;
+    return result;
 }}
 
 function bcs_deserialize_offset_empty_struct(uint256 pos, bytes memory input)
@@ -164,8 +164,8 @@ function bcs_deserialize_offset_empty_struct(uint256 pos, bytes memory input)
     pure
     returns (uint256, empty_struct memory)
 {{
-  int8 val = 0;
-  return (pos, empty_struct(val));
+    int8 val = 0;
+    return (pos, empty_struct(val));
 }}"#
             )?,
             Bool => {
@@ -177,7 +177,7 @@ function bcs_serialize_bool(bool input)
     pure
     returns (bytes memory)
 {{
-  return abi.encodePacked(input);
+    return abi.encodePacked(input);
 }}
 
 function bcs_deserialize_offset_bool(uint256 pos, bytes memory input)
@@ -185,14 +185,14 @@ function bcs_deserialize_offset_bool(uint256 pos, bytes memory input)
     pure
     returns (uint256, bool)
 {{
-  uint8 val = uint8(input[pos]);
-  bool result = false;
-  if (val == 1) {{
-    result = true;
-  }} else {{
-    require(val == 0);
-  }}
-  return (pos + 1, result);
+    uint8 val = uint8(input[pos]);
+    bool result = false;
+    if (val == 1) {{
+        result = true;
+    }} else {{
+        require(val == 0);
+    }}
+    return (pos + 1, result);
 }}"#
                 )?;
             }
@@ -205,7 +205,7 @@ function bcs_serialize_int8(int8 input)
     pure
     returns (bytes memory)
 {{
-  return abi.encodePacked(input);
+    return abi.encodePacked(input);
 }}
 
 function bcs_deserialize_offset_int8(uint256 pos, bytes memory input)
@@ -213,12 +213,12 @@ function bcs_deserialize_offset_int8(uint256 pos, bytes memory input)
     pure
     returns (uint256, int8)
 {{
-  int16 val = int16(uint16(uint8(input[pos])));
-  if (val < 128) {{
-    return (pos + 1, int8(val));
-  }} else {{
-    return (pos + 1, int8(val - 256));
-  }}
+    int16 val = int16(uint16(uint8(input[pos])));
+    if (val < 128) {{
+        return (pos + 1, int8(val));
+    }} else {{
+        return (pos + 1, int8(val - 256));
+    }}
 }}"#
                 )?;
             }
@@ -230,15 +230,15 @@ function bcs_serialize_int16(int16 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = new bytes(2);
-  uint16 uinput;
-  if (input >= 0) {{
-    uinput = uint16(input);
-  }} else {{
-    int32 input_32 = int32(input) + 65536;
-    uinput = uint16(uint32(input_32));
-  }}
-  return bcs_serialize_uint16(uinput);
+    bytes memory result = new bytes(2);
+    uint16 uinput;
+    if (input >= 0) {{
+        uinput = uint16(input);
+    }} else {{
+        int32 input_32 = int32(input) + 65536;
+        uinput = uint16(uint32(input_32));
+    }}
+    return bcs_serialize_uint16(uinput);
 }}
 
 function bcs_deserialize_offset_int16(uint256 pos, bytes memory input)
@@ -246,18 +246,18 @@ function bcs_deserialize_offset_int16(uint256 pos, bytes memory input)
     pure
     returns (uint256, int16)
 {{
-  uint256 new_pos;
-  uint16 uresult;
-  (new_pos, uresult) = bcs_deserialize_offset_uint16(pos, input);
-  int16 result;
-  if (uresult < 32768) {{
-    result = int16(uresult);
+    uint256 new_pos;
+    uint16 uresult;
+    (new_pos, uresult) = bcs_deserialize_offset_uint16(pos, input);
+    int16 result;
+    if (uresult < 32768) {{
+        result = int16(uresult);
+        return (new_pos, result);
+    }} else {{
+        int32 result_32 = int32(uint32(uresult)) - 65536;
+        result = int16(result_32);
+    }}
     return (new_pos, result);
-  }} else {{
-    int32 result_32 = int32(uint32(uresult)) - 65536;
-    result = int16(result_32);
-  }}
-  return (new_pos, result);
 }}"#
             )?,
             I32 => {
@@ -269,15 +269,15 @@ function bcs_serialize_int32(int32 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = new bytes(4);
-  uint32 uinput;
-  if (input >= 0) {{
-    uinput = uint32(input);
-  }} else {{
-    int64 input_64 = int64(input) + 4294967296;
-    uinput = uint32(uint64(input_64));
-  }}
-  return bcs_serialize_uint32(uinput);
+    bytes memory result = new bytes(4);
+    uint32 uinput;
+    if (input >= 0) {{
+        uinput = uint32(input);
+    }} else {{
+        int64 input_64 = int64(input) + 4294967296;
+        uinput = uint32(uint64(input_64));
+    }}
+    return bcs_serialize_uint32(uinput);
 }}
 
 function bcs_deserialize_offset_int32(uint256 pos, bytes memory input)
@@ -285,18 +285,18 @@ function bcs_deserialize_offset_int32(uint256 pos, bytes memory input)
     pure
     returns (uint256, int32)
 {{
-  uint256 new_pos;
-  uint32 uresult;
-  (new_pos, uresult) = bcs_deserialize_offset_uint32(pos, input);
-  int32 result;
-  if (uresult < 2147483648) {{
-    result = int32(uresult);
+    uint256 new_pos;
+    uint32 uresult;
+    (new_pos, uresult) = bcs_deserialize_offset_uint32(pos, input);
+    int32 result;
+    if (uresult < 2147483648) {{
+        result = int32(uresult);
+        return (new_pos, result);
+    }} else {{
+        int64 result_64 = int64(uint64(uresult)) - 4294967296;
+        result = int32(result_64);
+    }}
     return (new_pos, result);
-  }} else {{
-    int64 result_64 = int64(uint64(uresult)) - 4294967296;
-    result = int32(result_64);
-  }}
-  return (new_pos, result);
 }}"#
                 )?;
             }
@@ -309,15 +309,15 @@ function bcs_serialize_int64(int64 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = new bytes(8);
-  uint64 uinput;
-  if (input >= 0) {{
-    uinput = uint64(input);
-  }} else {{
-    int128 input_128 = int128(input) + 18446744073709551616;
-    uinput = uint64(uint128(input_128));
-  }}
-  return bcs_serialize_uint64(uinput);
+    bytes memory result = new bytes(8);
+    uint64 uinput;
+    if (input >= 0) {{
+        uinput = uint64(input);
+    }} else {{
+        int128 input_128 = int128(input) + 18446744073709551616;
+        uinput = uint64(uint128(input_128));
+    }}
+    return bcs_serialize_uint64(uinput);
 }}
 
 function bcs_deserialize_offset_int64(uint256 pos, bytes memory input)
@@ -325,18 +325,18 @@ function bcs_deserialize_offset_int64(uint256 pos, bytes memory input)
     pure
     returns (uint256, int64)
 {{
-  uint256 new_pos;
-  uint64 uresult;
-  (new_pos, uresult) = bcs_deserialize_offset_uint64(pos, input);
-  int64 result;
-  if (uresult < 9223372036854775808) {{
-    result = int64(uresult);
+    uint256 new_pos;
+    uint64 uresult;
+    (new_pos, uresult) = bcs_deserialize_offset_uint64(pos, input);
+    int64 result;
+    if (uresult < 9223372036854775808) {{
+        result = int64(uresult);
+        return (new_pos, result);
+    }} else {{
+        int128 result_128 = int128(uint128(uresult)) - 18446744073709551616;
+        result = int64(result_128);
+    }}
     return (new_pos, result);
-  }} else {{
-    int128 result_128 = int128(uint128(uresult)) - 18446744073709551616;
-    result = int64(result_128);
-  }}
-  return (new_pos, result);
 }}"#
                 )?;
             }
@@ -349,15 +349,15 @@ function bcs_serialize_int128(int128 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = new bytes(16);
-  uint128 uinput;
-  if (input >= 0) {{
-    uinput = uint128(input);
-  }} else {{
-    int256 input_256 = int256(input) + 340282366920938463463374607431768211456;
-    uinput = uint128(uint256(input_256));
-  }}
-  return bcs_serialize_uint128(uinput);
+    bytes memory result = new bytes(16);
+    uint128 uinput;
+    if (input >= 0) {{
+        uinput = uint128(input);
+    }} else {{
+        int256 input_256 = int256(input) + 340282366920938463463374607431768211456;
+        uinput = uint128(uint256(input_256));
+    }}
+    return bcs_serialize_uint128(uinput);
 }}
 
 function bcs_deserialize_offset_int128(uint256 pos, bytes memory input)
@@ -365,18 +365,18 @@ function bcs_deserialize_offset_int128(uint256 pos, bytes memory input)
     pure
     returns (uint256, int128)
 {{
-  uint256 new_pos;
-  uint128 uresult;
-  (new_pos, uresult) = bcs_deserialize_offset_uint128(pos, input);
-  int128 result;
-  if (uresult < 170141183460469231731687303715884105728) {{
-    result = int128(uresult);
+    uint256 new_pos;
+    uint128 uresult;
+    (new_pos, uresult) = bcs_deserialize_offset_uint128(pos, input);
+    int128 result;
+    if (uresult < 170141183460469231731687303715884105728) {{
+        result = int128(uresult);
+        return (new_pos, result);
+    }} else {{
+        int256 result_256 = int256(uint256(uresult)) - 340282366920938463463374607431768211456;
+        result = int128(result_256);
+    }}
     return (new_pos, result);
-  }} else {{
-    int256 result_256 = int256(uint256(uresult)) - 340282366920938463463374607431768211456;
-    result = int128(result_256);
-  }}
-  return (new_pos, result);
 }}"#
                 )?;
             }
@@ -395,9 +395,10 @@ function bcs_serialize_uint8(uint8 input)
 function bcs_deserialize_offset_uint8(uint256 pos, bytes memory input)
     internal
     pure
-    returns (uint256, uint8) {{
-  uint8 value = uint8(input[pos]);
-  return (pos + 1, value);
+    returns (uint256, uint8)
+{{
+    uint8 value = uint8(input[pos]);
+    return (pos + 1, value);
 }}"#
                 )?;
             }
@@ -410,12 +411,12 @@ function bcs_serialize_uint16(uint16 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = new bytes(2);
-  uint16 value = input;
-  result[0] = bytes1(uint8(value));
-  value = value >> 8;
-  result[1] = bytes1(uint8(value));
-  return result;
+    bytes memory result = new bytes(2);
+    uint16 value = input;
+    result[0] = bytes1(uint8(value));
+    value = value >> 8;
+    result[1] = bytes1(uint8(value));
+    return result;
 }}
 
 function bcs_deserialize_offset_uint16(uint256 pos, bytes memory input)
@@ -423,10 +424,10 @@ function bcs_deserialize_offset_uint16(uint256 pos, bytes memory input)
     pure
     returns (uint256, uint16)
 {{
-  uint16 value = uint8(input[pos+1]);
-  value = value << 8;
-  value += uint8(input[pos]);
-  return (pos + 2, value);
+    uint16 value = uint8(input[pos+1]);
+    value = value << 8;
+    value += uint8(input[pos]);
+    return (pos + 2, value);
 }}"#
                 )?;
             }
@@ -439,14 +440,14 @@ function bcs_serialize_uint32(uint32 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = new bytes(4);
-  uint32 value = input;
-  result[0] = bytes1(uint8(value));
-  for (uint i=1; i<4; i++) {{
-    value = value >> 8;
-    result[i] = bytes1(uint8(value));
-  }}
-  return result;
+    bytes memory result = new bytes(4);
+    uint32 value = input;
+    result[0] = bytes1(uint8(value));
+    for (uint i=1; i<4; i++) {{
+        value = value >> 8;
+        result[i] = bytes1(uint8(value));
+    }}
+    return result;
 }}
 
 function bcs_deserialize_offset_uint32(uint256 pos, bytes memory input)
@@ -454,12 +455,12 @@ function bcs_deserialize_offset_uint32(uint256 pos, bytes memory input)
     pure
     returns (uint256, uint32)
 {{
-  uint32 value = uint8(input[pos + 3]);
-  for (uint256 i=0; i<3; i++) {{
-    value = value << 8;
-    value += uint8(input[pos + 2 - i]);
-  }}
-  return (pos + 4, value);
+    uint32 value = uint8(input[pos + 3]);
+    for (uint256 i=0; i<3; i++) {{
+        value = value << 8;
+        value += uint8(input[pos + 2 - i]);
+    }}
+    return (pos + 4, value);
 }}"#
                 )?;
             }
@@ -472,14 +473,14 @@ function bcs_serialize_uint64(uint64 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = new bytes(8);
-  uint64 value = input;
-  result[0] = bytes1(uint8(value));
-  for (uint i=1; i<8; i++) {{
-    value = value >> 8;
-    result[i] = bytes1(uint8(value));
-  }}
-  return result;
+    bytes memory result = new bytes(8);
+    uint64 value = input;
+    result[0] = bytes1(uint8(value));
+    for (uint i=1; i<8; i++) {{
+        value = value >> 8;
+        result[i] = bytes1(uint8(value));
+    }}
+    return result;
 }}
 
 function bcs_deserialize_offset_uint64(uint256 pos, bytes memory input)
@@ -487,12 +488,12 @@ function bcs_deserialize_offset_uint64(uint256 pos, bytes memory input)
     pure
     returns (uint256, uint64)
 {{
-  uint64 value = uint8(input[pos + 7]);
-  for (uint256 i=0; i<7; i++) {{
-    value = value << 8;
-    value += uint8(input[pos + 6 - i]);
-  }}
-  return (pos + 8, value);
+    uint64 value = uint8(input[pos + 7]);
+    for (uint256 i=0; i<7; i++) {{
+        value = value << 8;
+        value += uint8(input[pos + 6 - i]);
+    }}
+    return (pos + 8, value);
 }}"#
                 )?;
             }
@@ -505,14 +506,14 @@ function bcs_serialize_uint128(uint128 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = new bytes(16);
-  uint128 value = input;
-  result[0] = bytes1(uint8(value));
-  for (uint i=1; i<16; i++) {{
-    value = value >> 8;
-    result[i] = bytes1(uint8(value));
-  }}
-  return result;
+    bytes memory result = new bytes(16);
+    uint128 value = input;
+    result[0] = bytes1(uint8(value));
+    for (uint i=1; i<16; i++) {{
+        value = value >> 8;
+        result[i] = bytes1(uint8(value));
+    }}
+    return result;
 }}
 
 function bcs_deserialize_offset_uint128(uint256 pos, bytes memory input)
@@ -520,12 +521,12 @@ function bcs_deserialize_offset_uint128(uint256 pos, bytes memory input)
     pure
     returns (uint256, uint128)
 {{
-  uint128 value = uint8(input[pos + 15]);
-  for (uint256 i=0; i<15; i++) {{
-    value = value << 8;
-    value += uint8(input[pos + 14 - i]);
-  }}
-  return (pos + 16, value);
+    uint128 value = uint8(input[pos + 15]);
+    for (uint256 i=0; i<15; i++) {{
+        value = value << 8;
+        value += uint8(input[pos + 14 - i]);
+    }}
+    return (pos + 16, value);
 }}"#
                 )?;
             }
@@ -538,8 +539,7 @@ function bcs_serialize_bytes1(bytes1 input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result = abi.encodePacked(input);
-  return result;
+    return abi.encodePacked(input);
 }}
 
 function bcs_deserialize_offset_bytes1(uint256 pos, bytes memory input)
@@ -547,8 +547,8 @@ function bcs_deserialize_offset_bytes1(uint256 pos, bytes memory input)
     pure
     returns (uint256, bytes1)
 {{
-  bytes1 result = bytes1(input[pos]);
-  return (pos + 1, result);
+    bytes1 result = bytes1(input[pos]);
+    return (pos + 1, result);
 }}"#
                 )?;
             }
@@ -561,21 +561,21 @@ function bcs_serialize_string(string memory input)
     pure
     returns (bytes memory)
 {{
-  bytes memory input_bytes = bytes(input);
-  uint256 number_bytes = input_bytes.length;
-  uint256 number_char = 0;
-  uint256 pos = 0;
-  while (true) {{
-    if (uint8(input_bytes[pos]) < 128) {{
-      number_char += 1;
+    bytes memory input_bytes = bytes(input);
+    uint256 number_bytes = input_bytes.length;
+    uint256 number_char = 0;
+    uint256 pos = 0;
+    while (true) {{
+        if (uint8(input_bytes[pos]) < 128) {{
+            number_char += 1;
+        }}
+        pos += 1;
+        if (pos == number_bytes) {{
+            break;
+        }}
     }}
-    pos += 1;
-    if (pos == number_bytes) {{
-      break;
-    }}
-  }}
-  bytes memory result_len = bcs_serialize_len(number_char);
-  return abi.encodePacked(result_len, input);
+    bytes memory result_len = bcs_serialize_len(number_char);
+    return abi.encodePacked(result_len, input);
 }}
 
 function bcs_deserialize_offset_string(uint256 pos, bytes memory input)
@@ -583,24 +583,24 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input)
     pure
     returns (uint256, string memory)
 {{
-  uint256 len, new_pos;
-  (new_pos, len) = bcs_deserialize_offset_len(pos, input);
-  uint256 shift = 0;
-  for (uint256 i=0; i<len; i++) {{
-    while (true) {{
-      bytes1 val = input[new_pos + shift];
-      shift += 1;
-      if (uint8(val) < 128) {{
-        break;
-      }}
+    uint256 len, new_pos;
+    (new_pos, len) = bcs_deserialize_offset_len(pos, input);
+    uint256 shift = 0;
+    for (uint256 i=0; i<len; i++) {{
+        while (true) {{
+            bytes1 val = input[new_pos + shift];
+            shift += 1;
+            if (uint8(val) < 128) {{
+                break;
+            }}
+        }}
     }}
-  }}
-  bytes memory result_bytes = new bytes(shift);
-  for (uint256 i=0; i<shift; i++) {{
-    result_bytes[i] = input[new_pos + i];
-  }}
-  string memory result = string(result_bytes);
-  return (new_pos + shift, result);
+    bytes memory result_bytes = new bytes(shift);
+    for (uint256 i=0; i<shift; i++) {{
+        result_bytes[i] = input[new_pos + i];
+    }}
+    string memory result = string(result_bytes);
+    return (new_pos + shift, result);
 }}"#
                 )?;
             }
@@ -613,9 +613,9 @@ function bcs_serialize_bytes(bytes memory input)
     pure
     returns (bytes memory)
 {{
-  uint256 len = input.length;
-  bytes memory result = bcs_serialize_len(len);
-  return abi.encodePacked(result, input);
+    uint256 len = input.length;
+    bytes memory result = bcs_serialize_len(len);
+    return abi.encodePacked(result, input);
 }}
 
 function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input)
@@ -623,13 +623,13 @@ function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input)
     pure
     returns (uint256, bytes memory)
 {{
-  uint256 len, new_pos;
-  (new_pos, len) = bcs_deserialize_offset_len(pos, input);
-  bytes memory result = new bytes(len);
-  for (uint256 u=0; u<len; u++) {{
-    result[u] = input[new_pos + u];
-  }}
-  return (new_pos + len, result);
+    uint256 len, new_pos;
+    (new_pos, len) = bcs_deserialize_offset_len(pos, input);
+    bytes memory result = new bytes(len);
+    for (uint256 u=0; u<len; u++) {{
+        result[u] = input[new_pos + u];
+    }}
+    return (new_pos + len, result);
 }}"#
                 )?;
             }
@@ -710,8 +710,8 @@ impl SolFormat {
                     out,
                     r#"
 struct {full_name} {{
-  bool has_value;
-  {code_name} value;
+    bool has_value;
+    {code_name} value;
 }}
 
 function bcs_serialize_{full_name}({full_name} memory input)
@@ -719,14 +719,14 @@ function bcs_serialize_{full_name}({full_name} memory input)
     pure
     returns (bytes memory)
 {{
-  bool has_value = input.has_value;
-  bytes memory block1 = bcs_serialize_bool(has_value);
-  if (has_value) {{
-    bytes memory block2 = bcs_serialize_{key_name}(input.value);
-    return abi.encodePacked(block1, block2);
-  }} else {{
-    return block1;
-  }}
+    bool has_value = input.has_value;
+    bytes memory block1 = bcs_serialize_bool(has_value);
+    if (has_value) {{
+        bytes memory block2 = bcs_serialize_{key_name}(input.value);
+        return abi.encodePacked(block1, block2);
+    }} else {{
+        return block1;
+    }}
 }}
 
 function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input)
@@ -734,14 +734,14 @@ function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input)
     pure
     returns (uint256, {full_name} memory)
 {{
-  uint256 new_pos;
-  bool has_value;
-  (new_pos, has_value) = bcs_deserialize_offset_bool(pos, input);
-  {code_name}{data_location} value;
-  if (has_value) {{
-    (new_pos, value) = bcs_deserialize_offset_{key_name}(new_pos, input);
-  }}
-  return (new_pos, {full_name}(true, value));
+    uint256 new_pos;
+    bool has_value;
+    (new_pos, has_value) = bcs_deserialize_offset_bool(pos, input);
+    {code_name}{data_location} value;
+    if (has_value) {{
+        (new_pos, value) = bcs_deserialize_offset_{key_name}(new_pos, input);
+    }}
+    return (new_pos, {full_name}(true, value));
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, &full_name, &full_name, true)?;
@@ -760,12 +760,12 @@ function bcs_serialize_{key_name}({code_name} memory input)
     pure
     returns (bytes memory)
 {{
-  uint256 len = input.length;
-  bytes memory result = bcs_serialize_len(len);
-  for (uint256 i=0; i<len; i++) {{
-    result = abi.encodePacked(result, bcs_serialize_{inner_key_name}(input[i]));
-  }}
-  return result;
+    uint256 len = input.length;
+    bytes memory result = bcs_serialize_len(len);
+    for (uint256 i=0; i<len; i++) {{
+        result = abi.encodePacked(result, bcs_serialize_{inner_key_name}(input[i]));
+    }}
+    return result;
 }}
 
 function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input)
@@ -773,16 +773,16 @@ function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input)
     pure
     returns (uint256, {code_name} memory)
 {{
-  uint256 len, new_pos;
-  (new_pos, len) = bcs_deserialize_offset_len(pos, input);
-  {inner_code_name}[] memory result;
-  result = new {inner_code_name}[](len);
-  {inner_code_name}{data_location} value;
-  for (uint256 i=0; i<len; i++) {{
-    (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);
-    result[i] = value;
-  }}
-  return (new_pos, result);
+    uint256 len, new_pos;
+    (new_pos, len) = bcs_deserialize_offset_len(pos, input);
+    {inner_code_name}[] memory result;
+    result = new {inner_code_name}[](len);
+    {inner_code_name}{data_location} value;
+    for (uint256 i=0; i<len; i++) {{
+        (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);
+        result[i] = value;
+    }}
+    return (new_pos, result);
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, &key_name, &code_name, true)?;
@@ -795,7 +795,7 @@ function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input)
                     out,
                     r#"
 struct {struct_name} {{
-  {inner_code_name}[] values;
+    {inner_code_name}[] values;
 }}
 
 function bcs_serialize_{struct_name}({struct_name} memory input)
@@ -803,11 +803,11 @@ function bcs_serialize_{struct_name}({struct_name} memory input)
     pure
     returns (bytes memory)
 {{
-  bytes memory result;
-  for (uint i=0; i<{size}; i++) {{
-    result = abi.encodePacked(result, bcs_serialize_{inner_key_name}(input.values[i]));
-  }}
-  return result;
+    bytes memory result;
+    for (uint i=0; i<{size}; i++) {{
+        result = abi.encodePacked(result, bcs_serialize_{inner_key_name}(input.values[i]));
+    }}
+    return result;
 }}
 
 function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
@@ -815,15 +815,15 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
     pure
     returns (uint256, {struct_name} memory)
 {{
-  uint256 new_pos = pos;
-  {inner_code_name} value;
-  {inner_code_name}[] memory values;
-  values = new {inner_code_name}[]({size});
-  for (uint i=0; i<{size}; i++) {{
-    (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);
-    values[i] = value;
-  }}
-  return (new_pos, {struct_name}(values));
+    uint256 new_pos = pos;
+    {inner_code_name} value;
+    {inner_code_name}[] memory values;
+    values = new {inner_code_name}[]({size});
+    for (uint i=0; i<{size}; i++) {{
+        (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);
+        values[i] = value;
+    }}
+    return (new_pos, {struct_name}(values));
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, &struct_name, &struct_name, true)?;
@@ -846,16 +846,16 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                 writeln!(out, "{{")?;
                 writeln!(
                     out,
-                    "  bytes memory result = bcs_serialize_{}(input.{});",
+                    "    bytes memory result = bcs_serialize_{}(input.{});",
                     &formats[0].value.key_name(),
                     safe_variable(&formats[0].name)
                 )?;
                 for named_format in &formats[1..] {
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
-                    writeln!(out, "  result = abi.encodePacked(result, bcs_serialize_{key_name}(input.{safe_name}));")?;
+                    writeln!(out, "    result = abi.encodePacked(result, bcs_serialize_{key_name}(input.{safe_name}));")?;
                 }
-                writeln!(out, "  return result;")?;
+                writeln!(out, "    return result;")?;
                 writeln!(out, "}}")?;
                 writeln!(out, "")?;
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
@@ -863,18 +863,18 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                 writeln!(out, "    pure")?;
                 writeln!(out, "    returns (uint256, {name} memory)")?;
                 writeln!(out, "{{")?;
-                writeln!(out, "  uint256 new_pos = pos;")?;
+                writeln!(out, "    uint256 new_pos = pos;")?;
                 for named_format in formats {
                     let data_location = sol_registry.data_location(&named_format.value);
                     let code_name = named_format.value.code_name();
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
-                    writeln!(out, "  {code_name}{data_location} {safe_name};")?;
-                    writeln!(out, "  (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
+                    writeln!(out, "    {code_name}{data_location} {safe_name};")?;
+                    writeln!(out, "    (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
                 }
                 writeln!(
                     out,
-                    "  return (new_pos, {name}({}));",
+                    "    return (new_pos, {name}({}));",
                     formats
                         .iter()
                         .map(|named_format| safe_variable(&named_format.name))
@@ -896,7 +896,7 @@ function bcs_serialize_{name}({name} input)
     pure
     returns (bytes memory)
 {{
-  return abi.encodePacked(input);
+    return abi.encodePacked(input);
 }}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
@@ -904,35 +904,35 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     pure
     returns (uint256, {name})
 {{
-  uint8 choice = uint8(input[pos]);"#
+    uint8 choice = uint8(input[pos]);"#
                 )?;
                 for (idx, name_choice) in names.iter().enumerate() {
                     writeln!(
                         out,
                         r#"
-  if (choice == {idx}) {{
-    return (pos + 1, {name}.{name_choice});
-  }}"#
+    if (choice == {idx}) {{
+        return (pos + 1, {name}.{name_choice});
+    }}"#
                     )?;
                 }
                 writeln!(
                     out,
                     r#"
-  require(choice < {number_names});
+    require(choice < {number_names});
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, name, name, false)?;
             }
             Enum { name, formats } => {
                 writeln!(out, "struct {name} {{")?;
-                writeln!(out, "  uint8 choice;")?;
+                writeln!(out, "    uint8 choice;")?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     let name = named_format.name.clone();
-                    writeln!(out, "  // choice={idx} corresponds to {name}")?;
+                    writeln!(out, "    // choice={idx} corresponds to {name}")?;
                     if let Some(format) = &named_format.value {
                         let code_name = format.code_name();
                         let snake_name = named_format.name.to_snake_case();
-                        writeln!(out, "  {code_name} {snake_name};")?;
+                        writeln!(out, "    {code_name} {snake_name};")?;
                     }
                 }
                 writeln!(out, "}}")?;
@@ -943,18 +943,18 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "{{")?;
                 writeln!(
                     out,
-                    "  bytes memory result = abi.encodePacked(input.choice);"
+                    "    bytes memory result = abi.encodePacked(input.choice);"
                 )?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
                         let key_name = format.key_name();
                         let snake_name = named_format.name.to_snake_case();
-                        writeln!(out, "  if (input.choice == {idx}) {{")?;
-                        writeln!(out, "    return abi.encodePacked(result, bcs_serialize_{key_name}(input.{snake_name}));")?;
-                        writeln!(out, "  }}")?;
+                        writeln!(out, "    if (input.choice == {idx}) {{")?;
+                        writeln!(out, "        return abi.encodePacked(result, bcs_serialize_{key_name}(input.{snake_name}));")?;
+                        writeln!(out, "    }}")?;
                     }
                 }
-                writeln!(out, "  return result;")?;
+                writeln!(out, "    return result;")?;
                 writeln!(out, "}}")?;
                 writeln!(out, "")?;
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
@@ -966,7 +966,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "    uint8 choice;")?;
                 writeln!(
                     out,
-                    "  (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);"
+                    "    (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);"
                 )?;
                 let mut entries = Vec::new();
                 for (idx, named_format) in formats.iter().enumerate() {
@@ -984,7 +984,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 }
                 writeln!(
                     out,
-                    "  return (new_pos, {name}(choice, {}));",
+                    "    return (new_pos, {name}(choice, {}));",
                     entries.join(", ")
                 )?;
                 writeln!(out, "}}")?;
@@ -1404,23 +1404,23 @@ function bcs_serialize_len(uint256 x)
     pure
     returns (bytes memory)
 {{
-  uint256 power = 128;
-  bytes memory result;
-  bytes1 entry;
-  while (true) {{
-    if (x < 128) {{
-      entry = bytes1(uint8(x));
-      result = abi.encodePacked(result, entry);
-      return result;
-    }} else {{
-      uint256 xb = x >> 7;
-      uint256 remainder = x - (xb << 7);
-      require(remainder < 128);
-      entry = bytes1(uint8(remainder) + 128);
-      result = abi.encodePacked(result, entry);
-      x = xb;
+    uint256 power = 128;
+    bytes memory result;
+    bytes1 entry;
+    while (true) {{
+        if (x < 128) {{
+            entry = bytes1(uint8(x));
+            result = abi.encodePacked(result, entry);
+            return result;
+        }} else {{
+            uint256 xb = x >> 7;
+            uint256 remainder = x - (xb << 7);
+            require(remainder < 128);
+            entry = bytes1(uint8(remainder) + 128);
+            result = abi.encodePacked(result, entry);
+            x = xb;
+        }}
     }}
-  }}
 }}
 
 function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
@@ -1428,22 +1428,22 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
     pure
     returns (uint256, uint256)
 {{
-  uint256 idx = 0;
-  while (true) {{
-    if (uint8(input[pos + idx]) < 128) {{
-      uint256 result = 0;
-      uint256 power = 1;
-      for (uint256 u=0; u<idx; u++) {{
-        uint8 val = uint8(input[pos + u]) - 128;
-        result += power * uint256(val);
-        power *= 128;
-      }}
-      result += power * uint8(input[pos + idx]);
-      uint256 new_pos = pos + idx + 1;
-      return (new_pos, result);
+    uint256 idx = 0;
+    while (true) {{
+        if (uint8(input[pos + idx]) < 128) {{
+            uint256 result = 0;
+            uint256 power = 1;
+            for (uint256 u=0; u<idx; u++) {{
+                uint8 val = uint8(input[pos + u]) - 128;
+                result += power * uint256(val);
+                power *= 128;
+            }}
+            result += power * uint8(input[pos + idx]);
+            uint256 new_pos = pos + idx + 1;
+            return (new_pos, result);
+        }}
+        idx += 1;
     }}
-    idx += 1;
-  }}
 }}"#
         )?;
         Ok(())
