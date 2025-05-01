@@ -861,7 +861,10 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                 writeln!(out, "    return result;")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
-                writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
+                writeln!(
+                    out,
+                    "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)"
+                )?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
                 writeln!(out, "    returns (uint256, {name} memory)")?;
@@ -960,7 +963,10 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "    return result;")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
-                writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
+                writeln!(
+                    out,
+                    "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)"
+                )?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
                 writeln!(out, "    returns (uint256, {name} memory)")?;
@@ -1003,7 +1009,10 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "    returns abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
                 writeln!(out)?;
-                writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
+                writeln!(
+                    out,
+                    "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)"
+                )?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
                 writeln!(out, "    returns (uint256, {name})")?;
@@ -1015,7 +1024,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "    uint256 new_pos = pos + {size};")?;
                 writeln!(out, "    return (new_pos, dest);")?;
                 writeln!(out, "}}")?;
-            },
+            }
             OptionBool => {
                 let name = "OptionBool";
                 writeln!(
@@ -1057,7 +1066,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
-            },
+            }
         }
         Ok(())
     }
@@ -1244,7 +1253,7 @@ impl SolRegistry {
                         size,
                     }
                 }
-            },
+            }
         };
         self.insert(sol_format.clone());
         sol_format
