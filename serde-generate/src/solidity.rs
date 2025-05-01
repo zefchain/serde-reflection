@@ -99,7 +99,7 @@ fn safe_variable(s: &str) -> String {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Primitive {
     Unit,
     Bool,
@@ -638,7 +638,7 @@ function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input)
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum SolFormat {
     /// One of the primitive types defined elsewhere
     Primitive(Primitive),
@@ -657,6 +657,8 @@ enum SolFormat {
     Option(Box<SolFormat>),
     /// A Tuplearray encapsulated as a solidity struct.
     TupleArray { format: Box<SolFormat>, size: usize },
+    /// A Tuplearray of N U8 has the native type bytesN
+    BytesN { size: usize },
     /// A complex enum encapsulated as a solidity struct.
     Enum {
         name: String,
@@ -684,6 +686,7 @@ impl SolFormat {
             Struct { name, formats: _ } => name.to_string(),
             SimpleEnum { name, names: _ } => name.to_string(),
             Enum { name, formats: _ } => name.to_string(),
+            BytesN { size } => format!("bytes{size}"),
         }
     }
 
@@ -959,8 +962,8 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "    pure")?;
                 writeln!(out, "    returns (uint256, {name} memory)")?;
                 writeln!(out, "{{")?;
-                writeln!(out, "  uint256 new_pos;")?;
-                writeln!(out, "  uint8 choice;")?;
+                writeln!(out, "    uint256 new_pos;")?;
+                writeln!(out, "    uint8 choice;")?;
                 writeln!(
                     out,
                     "  (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);"
@@ -972,10 +975,10 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                         let snake_name = named_format.name.to_snake_case();
                         let code_name = format.code_name();
                         let key_name = format.key_name();
-                        writeln!(out, "  {code_name}{data_location} {snake_name};")?;
-                        writeln!(out, "  if (choice == {idx}) {{")?;
-                        writeln!(out, "    (new_pos, {snake_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
-                        writeln!(out, "  }}")?;
+                        writeln!(out, "    {code_name}{data_location} {snake_name};")?;
+                        writeln!(out, "    if (choice == {idx}) {{")?;
+                        writeln!(out, "        (new_pos, {snake_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
+                        writeln!(out, "    }}")?;
                         entries.push(snake_name);
                     }
                 }
@@ -987,6 +990,29 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "}}")?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
             }
+            BytesN { size } => {
+                let name = format!("bytes{size}");
+                writeln!(out, "function bcs_serialize_{name}({name} input)")?;
+                writeln!(out, "    internal")?;
+                writeln!(out, "    pure")?;
+                writeln!(out, "    returns (bytes memory)")?;
+                writeln!(out, "{{")?;
+                writeln!(out, "    returns abi.encodePacked(input);")?;
+                writeln!(out, "}}")?;
+                writeln!(out, "")?;
+                writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
+                writeln!(out, "    internal")?;
+                writeln!(out, "    pure")?;
+                writeln!(out, "    returns (uint256, {name})")?;
+                writeln!(out, "{{")?;
+                writeln!(out, "    {name} dest;")?;
+                writeln!(out, "    assembly {{")?;
+                writeln!(out, "        dest := mload(add(add(src, 0x20), pos))")?;
+                writeln!(out, "    }}")?;
+                writeln!(out, "    uint256 new_pos = pos + {size};")?;
+                writeln!(out, "    return (new_pos, dest);")?;
+                writeln!(out, "}}")?;
+            },
         }
         Ok(())
     }
@@ -1011,6 +1037,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                     Some(format) => vec![format.key_name()],
                 })
                 .collect(),
+            BytesN { size: _ } => vec![],
         }
     }
 }
@@ -1157,9 +1184,16 @@ impl SolRegistry {
                     .collect();
                 SolFormat::Struct { name, formats }
             }
-            TupleArray { content, size } => SolFormat::TupleArray {
-                format: Box::new(self.parse_format(*content)),
-                size,
+            TupleArray { content, size } => {
+                let format = self.parse_format(*content);
+                if size <= 32 && size >= 1 && format == SolFormat::Primitive(Primitive::U8) {
+                    SolFormat::BytesN { size }
+                } else {
+                    SolFormat::TupleArray {
+                        format: Box::new(format),
+                        size,
+                    }
+                }
             },
         };
         self.insert(sol_format.clone());
@@ -1294,6 +1328,7 @@ impl SolRegistry {
                 name: _,
                 formats: _,
             } => true,
+            BytesN { size: _ } => false,
         }
     }
 
@@ -1354,7 +1389,8 @@ where
         writeln!(
             self.out,
             r#"
-/// SPDX-License-Identifier: UNLICENSED"#
+/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;"#
         )?;
         Ok(())
     }
@@ -1363,7 +1399,6 @@ where
         writeln!(
             self.out,
             r#"
-pragma solidity ^0.8.0;
 function bcs_serialize_len(uint256 x)
     internal
     pure
