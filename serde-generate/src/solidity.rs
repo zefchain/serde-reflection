@@ -657,13 +657,15 @@ enum SolFormat {
     Option(Box<SolFormat>),
     /// A Tuplearray encapsulated as a solidity struct.
     TupleArray { format: Box<SolFormat>, size: usize },
-    /// A Tuplearray of N U8 has the native type bytesN
-    BytesN { size: usize },
     /// A complex enum encapsulated as a solidity struct.
     Enum {
         name: String,
         formats: Vec<Named<Option<SolFormat>>>,
     },
+    /// A Tuplearray of N U8 has the native type bytesN
+    BytesN { size: usize },
+    /// An option of boolean
+    OptionBool,
 }
 
 impl SolFormat {
@@ -687,6 +689,7 @@ impl SolFormat {
             SimpleEnum { name, names: _ } => name.to_string(),
             Enum { name, formats: _ } => name.to_string(),
             BytesN { size } => format!("bytes{size}"),
+            OptionBool => format!("OptionBool"),
         }
     }
 
@@ -1013,6 +1016,48 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "    return (new_pos, dest);")?;
                 writeln!(out, "}}")?;
             },
+            OptionBool => {
+                let name = "OptionBool";
+                writeln!(
+                    out,
+                    r#"
+enum {name} {{ None, True, False }}
+function bcs_serialize_{name}({name} input)
+    internal
+    pure
+    returns (bytes memory)
+{{
+    if (input == {name}.None) {{
+        return abi.encodePacked(0);
+    }}
+    if (input == {name}.False) {{
+        return abi.encodePacked(1, 0);
+    }}
+    return abi.encodePacked(1, 1);
+}}
+
+function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
+    internal
+    pure
+    returns (uint256, {name})
+{{
+    uint8 choice = uint8(input[pos]);
+    if (choice == 0) {{
+       return (pos + 1, {name}.None);
+    }} else {{
+        require(choice == 1);
+        uint8 value = uint8(input[pos + 1]);
+        if (value == 0) {{
+            return (pos + 2, {name}.False);
+        }} else {{
+            require(value == 1);
+            return (pos + 2, {name}.True);
+        }}
+    }}
+}}"#
+                )?;
+                output_generic_bcs_deserialize(out, name, name, true)?;
+            },
         }
         Ok(())
     }
@@ -1038,6 +1083,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 })
                 .collect(),
             BytesN { size: _ } => vec![],
+            OptionBool => vec![],
         }
     }
 }
@@ -1137,7 +1183,11 @@ impl SolRegistry {
             Bytes => SolFormat::Primitive(Primitive::Bytes),
             Option(format) => {
                 let format = self.parse_format(*format);
-                SolFormat::Option(Box::new(format))
+                if format == SolFormat::Primitive(Primitive::Bool) {
+                    SolFormat::OptionBool
+                } else {
+                    SolFormat::Option(Box::new(format))
+                }
             }
             Seq(format) => {
                 let format = self.parse_format(*format);
@@ -1329,6 +1379,7 @@ impl SolRegistry {
                 formats: _,
             } => true,
             BytesN { size: _ } => false,
+            OptionBool => false,
         }
     }
 
