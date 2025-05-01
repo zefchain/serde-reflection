@@ -583,7 +583,8 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input)
     pure
     returns (uint256, string memory)
 {{
-    uint256 len, new_pos;
+    uint256 len;
+    uint256 new_pos;
     (new_pos, len) = bcs_deserialize_offset_len(pos, input);
     uint256 shift = 0;
     for (uint256 i=0; i<len; i++) {{
@@ -623,7 +624,8 @@ function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input)
     pure
     returns (uint256, bytes memory)
 {{
-    uint256 len, new_pos;
+    uint256 len;
+    uint256 new_pos;
     (new_pos, len) = bcs_deserialize_offset_len(pos, input);
     bytes memory result = new bytes(len);
     for (uint256 u=0; u<len; u++) {{
@@ -776,7 +778,8 @@ function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input)
     pure
     returns (uint256, {code_name} memory)
 {{
-    uint256 len, new_pos;
+    uint256 len;
+    uint256 new_pos;
     (new_pos, len) = bcs_deserialize_offset_len(pos, input);
     {inner_code_name}[] memory result;
     result = new {inner_code_name}[](len);
