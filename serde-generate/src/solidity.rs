@@ -689,7 +689,7 @@ impl SolFormat {
             SimpleEnum { name, names: _ } => name.to_string(),
             Enum { name, formats: _ } => name.to_string(),
             BytesN { size } => format!("bytes{size}"),
-            OptionBool => format!("OptionBool"),
+            OptionBool => "OptionBool".to_string(),
         }
     }
 
@@ -860,7 +860,7 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                 }
                 writeln!(out, "    return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "")?;
+                writeln!(out)?;
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
@@ -959,7 +959,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 }
                 writeln!(out, "    return result;")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "")?;
+                writeln!(out)?;
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
@@ -1002,7 +1002,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 writeln!(out, "{{")?;
                 writeln!(out, "    returns abi.encodePacked(input);")?;
                 writeln!(out, "}}")?;
-                writeln!(out, "")?;
+                writeln!(out)?;
                 writeln!(out, "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)")?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
@@ -1236,7 +1236,7 @@ impl SolRegistry {
             }
             TupleArray { content, size } => {
                 let format = self.parse_format(*content);
-                if size <= 32 && size >= 1 && format == SolFormat::Primitive(Primitive::U8) {
+                if (1..=32).contains(&size) && format == SolFormat::Primitive(Primitive::U8) {
                     SolFormat::BytesN { size }
                 } else {
                     SolFormat::TupleArray {
