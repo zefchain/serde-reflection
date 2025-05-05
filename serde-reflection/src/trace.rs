@@ -30,18 +30,21 @@ pub struct Tracer {
 
     /// Enums that have detected to be yet incomplete (i.e. missing variants)
     /// while tracing deserialization.
-    pub incomplete_enums: BTreeMap<String, EnumProgress>,
+    pub(crate) incomplete_enums: BTreeMap<String, EnumProgress>,
 
     /// Discriminant associated with each variant of each enum.
     pub(crate) discriminants: BTreeMap<(TypeId, VariantId<'static>), Discriminant>,
 }
 
+/// Type of untraced enum variants
 #[derive(Copy, Clone, Debug)]
 pub enum EnumProgress {
     /// There are variant names that have not yet been traced.
     NamedVariantsRemaining,
     /// There are variant numbers that have not yet been traced.
     IndexedVariantsRemaining,
+    /// Tracing of further variants is pending.
+    Pending,
 }
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -243,6 +246,24 @@ impl Tracer {
         Ok((format, value))
     }
 
+    /// Enable tracing of further variants of a incomplete enum.
+    ///
+    /// Marks an enum name as pending in the map of incomplete enums
+    /// and returns which type of variant tracing still needs to be performed.
+    ///
+    /// Call this in order to (simultaneously):
+    ///
+    /// * determine whether all variants of an enum have been traced,
+    /// * determine which type of variant tracing ([`EnumProgress`]) still needs to be
+    ///   performed, and
+    /// * allow `Deserializer`/`trace_type_once` to make progress on a top level enum by
+    ///   enabling tracing the next variant.
+    pub fn pend_enum(&mut self, name: &str) -> Option<EnumProgress> {
+        self.incomplete_enums
+            .get_mut(name)
+            .map(|p| std::mem::replace(p, EnumProgress::Pending))
+    }
+
     /// Same as `trace_type_once` but if `T` is an enum, we repeat the process
     /// until all variants of `T` are covered.
     /// We accumulate and return all the sampled values at the end.
@@ -255,9 +276,12 @@ impl Tracer {
             let (format, value) = self.trace_type_once::<T>(samples)?;
             values.push(value);
             if let Format::TypeName(name) = &format {
-                if let Some(&progress) = self.incomplete_enums.get(name) {
+                if let Some(progress) = self.pend_enum(name) {
+                    debug_assert!(
+                        !matches!(progress, EnumProgress::Pending),
+                        "failed to make progress tracing enum {name}"
+                    );
                     // Restart the analysis to find more variants of T.
-                    self.incomplete_enums.remove(name);
                     if let EnumProgress::NamedVariantsRemaining = progress {
                         values.pop().unwrap();
                     }
@@ -294,9 +318,12 @@ impl Tracer {
             let (format, value) = self.trace_type_once_with_seed(samples, seed.clone())?;
             values.push(value);
             if let Format::TypeName(name) = &format {
-                if let Some(&progress) = self.incomplete_enums.get(name) {
+                if let Some(progress) = self.pend_enum(name) {
+                    debug_assert!(
+                        !matches!(progress, EnumProgress::Pending),
+                        "failed to make progress tracing enum {name}"
+                    );
                     // Restart the analysis to find more variants of T.
-                    self.incomplete_enums.remove(name);
                     if let EnumProgress::NamedVariantsRemaining = progress {
                         values.pop().unwrap();
                     }

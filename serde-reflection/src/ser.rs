@@ -18,6 +18,7 @@ pub struct Serializer<'a> {
 }
 
 impl<'a> Serializer<'a> {
+    /// Create a new Serializer
     pub fn new(tracer: &'a mut Tracer, samples: &'a mut Samples) -> Self {
         Self { tracer, samples }
     }

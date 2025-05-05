@@ -27,6 +27,7 @@ pub struct Deserializer<'de, 'a> {
 }
 
 impl<'de, 'a> Deserializer<'de, 'a> {
+    /// Create a new Deserializer
     pub fn new(tracer: &'a mut Tracer, samples: &'de Samples, format: &'a mut Format) -> Self {
         Deserializer {
             tracer,
@@ -418,9 +419,11 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             _ => unreachable!(),
         };
 
-        // If the enum is already marked as incomplete, visit the first index, hoping
-        // to avoid recursion.
-        if self.tracer.incomplete_enums.contains_key(enum_name) {
+        // If the enum is already marked as incomplete and not pending, visit the first index,
+        // hoping to avoid recursion.
+        if let Some(EnumProgress::IndexedVariantsRemaining | EnumProgress::NamedVariantsRemaining) =
+            self.tracer.incomplete_enums.get(enum_name)
+        {
             return visitor.visit_enum(EnumDeserializer::new(
                 self.tracer,
                 self.samples,
