@@ -1039,6 +1039,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                     out,
                     r#"
 enum {name} {{ None, True, False }}
+
 function bcs_serialize_{name}({name} input)
     internal
     pure
