@@ -423,18 +423,18 @@ contract ExampleCode is ExampleCodeBase {{
 
     // Building the test entry
     let mut v1 = [0_u8; 32];
-    for i in 0..32 {
-        v1[i] = i as u8;
+    for (i, item) in v1.iter_mut().enumerate() {
+        *item = i as u8;
     }
     //
     let mut v2 = [0_u8; 20];
-    for i in 0..20 {
-        v2[i] = i as u8;
+    for (i, item) in v2.iter_mut().enumerate() {
+        *item = i as u8;
     }
     //
     let mut v3 = [0_u16; 10];
-    for i in 0..10 {
-        v3[i] = i as u16;
+    for (i, item) in v3.iter_mut().enumerate() {
+        *item = i as u16;
     }
     //
     let t = ComplexStruct { v1, v2, v3 };
