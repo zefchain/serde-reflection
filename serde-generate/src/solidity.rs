@@ -835,6 +835,7 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                 output_generic_bcs_deserialize(out, &struct_name, &struct_name, true)?;
             }
             Struct { name, formats } => {
+                writeln!(out)?;
                 writeln!(out, "struct {name} {{")?;
                 for named_format in formats {
                     writeln!(
@@ -845,6 +846,7 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                     )?;
                 }
                 writeln!(out, "}}")?;
+                writeln!(out)?;
                 writeln!(out, "function bcs_serialize_{name}({name} memory input)")?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
@@ -900,6 +902,7 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                     out,
                     r#"
 enum {name} {{ {names_join} }}
+
 function bcs_serialize_{name}({name} input)
     internal
     pure
@@ -945,6 +948,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                     }
                 }
                 writeln!(out, "}}")?;
+                writeln!(out)?;
                 writeln!(out, "function bcs_serialize_{name}({name} memory input)")?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
@@ -1004,6 +1008,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
             }
             BytesN { size } => {
                 let name = format!("bytes{size}");
+                writeln!(out)?;
                 writeln!(out, "function bcs_serialize_{name}({name} input)")?;
                 writeln!(out, "    internal")?;
                 writeln!(out, "    pure")?;
