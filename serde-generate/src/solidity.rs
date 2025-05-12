@@ -1001,7 +1001,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 let entries = entries.join(", ");
                 writeln!(
                     out,
-                    r#"    return (new_pos, {name}(choice, {entries}));",
+                    r#"    return (new_pos, {name}(choice, {entries}));
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
