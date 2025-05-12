@@ -840,18 +840,21 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                 for named_format in formats {
                     writeln!(
                         out,
-                        "  {} {};",
+                        "    {} {};",
                         named_format.value.code_name(),
                         safe_variable(&named_format.name)
                     )?;
                 }
-                writeln!(out, "}}")?;
-                writeln!(out)?;
-                writeln!(out, "function bcs_serialize_{name}({name} memory input)")?;
-                writeln!(out, "    internal")?;
-                writeln!(out, "    pure")?;
-                writeln!(out, "    returns (bytes memory)")?;
-                writeln!(out, "{{")?;
+                writeln!(
+                    out,
+                    r#"}}
+
+function bcs_serialize_{name}({name} memory input)
+    internal
+    pure
+    returns (bytes memory)
+{{"#
+                )?;
                 writeln!(
                     out,
                     "    bytes memory result = bcs_serialize_{}(input.{});",
@@ -863,18 +866,18 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                     let safe_name = safe_variable(&named_format.name);
                     writeln!(out, "    result = abi.encodePacked(result, bcs_serialize_{key_name}(input.{safe_name}));")?;
                 }
-                writeln!(out, "    return result;")?;
-                writeln!(out, "}}")?;
-                writeln!(out)?;
                 writeln!(
                     out,
-                    "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)"
+                    r#"    return result;
+}}
+
+function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
+    internal
+    pure
+    returns (uint256, {name} memory)
+{{
+    uint256 new_pos = pos;"#
                 )?;
-                writeln!(out, "    internal")?;
-                writeln!(out, "    pure")?;
-                writeln!(out, "    returns (uint256, {name} memory)")?;
-                writeln!(out, "{{")?;
-                writeln!(out, "    uint256 new_pos = pos;")?;
                 for named_format in formats {
                     let data_location = sol_registry.data_location(&named_format.value);
                     let code_name = named_format.value.code_name();
@@ -947,16 +950,16 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                         writeln!(out, "    {code_name} {snake_name};")?;
                     }
                 }
-                writeln!(out, "}}")?;
-                writeln!(out)?;
-                writeln!(out, "function bcs_serialize_{name}({name} memory input)")?;
-                writeln!(out, "    internal")?;
-                writeln!(out, "    pure")?;
-                writeln!(out, "    returns (bytes memory)")?;
-                writeln!(out, "{{")?;
                 writeln!(
                     out,
-                    "    bytes memory result = abi.encodePacked(input.choice);"
+                    r#"}}
+
+function bcs_serialize_{name}({name} memory input)
+    internal
+    pure
+    returns (bytes memory)
+{{
+    bytes memory result = abi.encodePacked(input.choice);"#
                 )?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
@@ -967,22 +970,19 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                         writeln!(out, "    }}")?;
                     }
                 }
-                writeln!(out, "    return result;")?;
-                writeln!(out, "}}")?;
-                writeln!(out)?;
                 writeln!(
                     out,
-                    "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)"
-                )?;
-                writeln!(out, "    internal")?;
-                writeln!(out, "    pure")?;
-                writeln!(out, "    returns (uint256, {name} memory)")?;
-                writeln!(out, "{{")?;
-                writeln!(out, "    uint256 new_pos;")?;
-                writeln!(out, "    uint8 choice;")?;
-                writeln!(
-                    out,
-                    "    (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);"
+                    r#"    return result;
+}}
+
+function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
+    internal
+    pure
+    returns (uint256, {name} memory)
+{{
+    uint256 new_pos;
+    uint8 choice;
+    (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);"#
                 )?;
                 let mut entries = Vec::new();
                 for (idx, named_format) in formats.iter().enumerate() {
@@ -998,40 +998,40 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                         entries.push(snake_name);
                     }
                 }
+                let entries = entries.join(", ");
                 writeln!(
                     out,
-                    "    return (new_pos, {name}(choice, {}));",
-                    entries.join(", ")
+                    r#"    return (new_pos, {name}(choice, {entries}));",
+}}"#
                 )?;
-                writeln!(out, "}}")?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
             }
             BytesN { size } => {
                 let name = format!("bytes{size}");
-                writeln!(out)?;
-                writeln!(out, "function bcs_serialize_{name}({name} input)")?;
-                writeln!(out, "    internal")?;
-                writeln!(out, "    pure")?;
-                writeln!(out, "    returns (bytes memory)")?;
-                writeln!(out, "{{")?;
-                writeln!(out, "    return abi.encodePacked(input);")?;
-                writeln!(out, "}}")?;
-                writeln!(out)?;
                 writeln!(
                     out,
-                    "function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)"
+                    r#"
+function bcs_serialize_{name}({name} input)
+    internal
+    pure
+    returns (bytes memory)
+{{
+    return abi.encodePacked(input);
+}}
+
+function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
+    internal
+    pure
+    returns (uint256, {name})
+{{
+    {name} dest;
+    assembly {{
+        dest := mload(add(add(input, 0x20), pos))
+    }}
+    uint256 new_pos = pos + {size};
+    return (new_pos, dest);
+}}"#
                 )?;
-                writeln!(out, "    internal")?;
-                writeln!(out, "    pure")?;
-                writeln!(out, "    returns (uint256, {name})")?;
-                writeln!(out, "{{")?;
-                writeln!(out, "    {name} dest;")?;
-                writeln!(out, "    assembly {{")?;
-                writeln!(out, "        dest := mload(add(add(input, 0x20), pos))")?;
-                writeln!(out, "    }}")?;
-                writeln!(out, "    uint256 new_pos = pos + {size};")?;
-                writeln!(out, "    return (new_pos, dest);")?;
-                writeln!(out, "}}")?;
             }
             OptionBool => {
                 let name = "OptionBool";
