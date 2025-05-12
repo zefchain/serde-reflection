@@ -1045,13 +1045,19 @@ function bcs_serialize_{name}({name} input)
     pure
     returns (bytes memory)
 {{
+    uint8 value0;
+    uint8 value1;
     if (input == {name}.None) {{
-        return abi.encodePacked(0);
+        value0 = 0;
+        return abi.encodePacked(value0);
     }}
+    value0 = 1;
     if (input == {name}.False) {{
-        return abi.encodePacked(1, 0);
+        value1 = 0;
+        return abi.encodePacked(value0, value1);
     }}
-    return abi.encodePacked(1, 1);
+    value1 = 1;
+    return abi.encodePacked(value0, value1);
 }}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
@@ -1473,7 +1479,6 @@ function bcs_serialize_len(uint256 x)
     pure
     returns (bytes memory)
 {{
-    uint256 power = 128;
     bytes memory result;
     bytes1 entry;
     while (true) {{
@@ -1490,6 +1495,8 @@ function bcs_serialize_len(uint256 x)
             x = xb;
         }}
     }}
+    require(false, "Code that cannot be reached");
+    return result;
 }}
 
 function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
@@ -1513,6 +1520,8 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
         }}
         idx += 1;
     }}
+    require(false, "Code that cannot be reached");
+    return (0,0);
 }}"#
         )?;
         Ok(())
