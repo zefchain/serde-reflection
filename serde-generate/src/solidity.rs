@@ -1074,7 +1074,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     }}
 }}"#
                 )?;
-                output_generic_bcs_deserialize(out, name, name, true)?;
+                output_generic_bcs_deserialize(out, name, name, false)?;
             }
         }
         Ok(())
