@@ -1495,7 +1495,7 @@ function bcs_serialize_len(uint256 x)
             x = xb;
         }}
     }}
-    require(false, "Code that cannot be reached");
+    require(false, "This line is unreachable");
     return result;
 }}
 
@@ -1520,7 +1520,7 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
         }}
         idx += 1;
     }}
-    require(false, "Code that cannot be reached");
+    require(false, "This line is unreachable");
     return (0,0);
 }}"#
         )?;
