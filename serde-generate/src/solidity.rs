@@ -46,7 +46,7 @@ fn output_generic_bcs_deserialize<T: std::io::Write>(
         out,
         r#"
 function bcs_deserialize_{key_name}(bytes memory input)
-    public
+    internal
     pure
     returns ({code_name}{data_location})
 {{
@@ -1463,8 +1463,7 @@ where
     fn output_license(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            r#"
-/// SPDX-License-Identifier: UNLICENSED
+            r#"/// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;"#
         )?;
         Ok(())
@@ -1530,7 +1529,7 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
     fn output_open_library(&mut self) -> Result<()> {
         writeln!(
             self.out,
-            "\ncontract {} {{",
+            "\nlibrary {} {{",
             self.generator.config.module_name
         )?;
         self.out.indent();
@@ -1541,7 +1540,7 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
         self.out.unindent();
         writeln!(
             self.out,
-            "\n}} // end of contract {}",
+            "\n}} // end of library {}",
             self.generator.config.module_name
         )?;
         Ok(())

@@ -65,27 +65,37 @@ fn test_vector_serialization<T: Serialize + DeserializeOwned + Display>(
     let path = dir.path();
 
     // The generated code
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // The test code
     let test_code_path = path.join("test_code.sol");
     {
         let mut test_code_file = File::create(&test_code_path)?;
-        let name = "ExampleCodeBase".to_string();
-        let config = CodeGeneratorConfig::new(name);
-        let generator = solidity::CodeGenerator::new(&config);
-        generator.output(&mut test_code_file, &registry).unwrap();
 
         let len = t.vec.len();
         let first_val = &t.vec[0];
         writeln!(
             test_code_file,
-            r#"
-contract ExampleCode is ExampleCodeBase {{
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
 
     function test_deserialization(bytes calldata input) external {{
-      TestVec memory t = bcs_deserialize_TestVec(input);
+      Library.TestVec memory t = Library.bcs_deserialize_TestVec(input);
       require(t.vec.length == {len}, "The length is incorrect");
       require(t.vec[0] == {first_val}, "incorrect value");
 
-      bytes memory input_rev = bcs_serialize_TestVec(t);
+      bytes memory input_rev = Library.bcs_serialize_TestVec(t);
       require(input.length == input_rev.length);
       for (uint256 i=0; i<input.length; i++) {{
         require(input[i] == input_rev[i]);
@@ -175,25 +185,35 @@ fn test_simple_enum_serialization() -> anyhow::Result<()> {
     let path = dir.path();
 
     // The generated code
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // The test code
     let test_code_path = path.join("test_code.sol");
     {
         let mut test_code_file = File::create(&test_code_path)?;
-        let name = "ExampleCodeBase".to_string();
-        let config = CodeGeneratorConfig::new(name);
-        let generator = solidity::CodeGenerator::new(&config);
-        generator.output(&mut test_code_file, &registry).unwrap();
 
         writeln!(
             test_code_file,
-            r#"
-contract ExampleCode is ExampleCodeBase {{
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
 
     function test_deserialization(bytes calldata input) external {{
       require(input.length == 1);
-      SimpleEnumTestType t = bcs_deserialize_SimpleEnumTestType(input);
-      require(t == SimpleEnumTestType.ChoiceB);
+      Library.SimpleEnumTestType t = Library.bcs_deserialize_SimpleEnumTestType(input);
+      require(t == Library.SimpleEnumTestType.ChoiceB);
 
-      bytes memory input_rev = bcs_serialize_SimpleEnumTestType(t);
+      bytes memory input_rev = Library.bcs_serialize_SimpleEnumTestType(t);
       require(input_rev.length == 1);
       require(input[0] == input_rev[0]);
     }}
@@ -235,23 +255,33 @@ fn test_struct_bool_string() -> anyhow::Result<()> {
     let path = dir.path();
 
     // The generated code
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // The test code
     let test_code_path = path.join("test_code.sol");
     {
         let mut test_code_file = File::create(&test_code_path)?;
-        let name = "ExampleCodeBase".to_string();
-        let config = CodeGeneratorConfig::new(name);
-        let generator = solidity::CodeGenerator::new(&config);
-        generator.output(&mut test_code_file, &registry).unwrap();
 
         writeln!(
             test_code_file,
-            r#"
-contract ExampleCode is ExampleCodeBase {{
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
 
     function test_deserialization(bytes calldata input) external {{
-      StructBoolString memory t = bcs_deserialize_StructBoolString(input);
+      Library.StructBoolString memory t = Library.bcs_deserialize_StructBoolString(input);
 
-      bytes memory input_rev = bcs_serialize_StructBoolString(t);
+      bytes memory input_rev = Library.bcs_serialize_StructBoolString(t);
       require(input.length == input_rev.length);
       for (uint256 i=0; i<input.length; i++) {{
         require(input[i] == input_rev[i]);
@@ -299,23 +329,33 @@ fn test_complex_enum() -> anyhow::Result<()> {
     let path = dir.path();
 
     // The generated code
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // The test code
     let test_code_path = path.join("test_code.sol");
     {
         let mut test_code_file = File::create(&test_code_path)?;
-        let name = "ExampleCodeBase".to_string();
-        let config = CodeGeneratorConfig::new(name);
-        let generator = solidity::CodeGenerator::new(&config);
-        generator.output(&mut test_code_file, &registry).unwrap();
 
         writeln!(
             test_code_file,
-            r#"
-contract ExampleCode is ExampleCodeBase {{
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
 
     function test_deserialization(bytes calldata input) external {{
-      ComplexEnumTestType memory t = bcs_deserialize_ComplexEnumTestType(input);
+      Library.ComplexEnumTestType memory t = Library.bcs_deserialize_ComplexEnumTestType(input);
 
-      bytes memory input_rev = bcs_serialize_ComplexEnumTestType(t);
+      bytes memory input_rev = Library.bcs_serialize_ComplexEnumTestType(t);
       require(input.length == input_rev.length);
       for (uint256 i=0; i<input.length; i++) {{
         require(input[i] == input_rev[i]);
@@ -363,19 +403,29 @@ fn test_bytes32_and_related() -> anyhow::Result<()> {
     let dir = tempdir().unwrap();
     let path = dir.path();
 
-    // The generated code
+    // The library code
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // The test code
     let test_code_path = path.join("test_code.sol");
     {
         let mut test_code_file = File::create(&test_code_path)?;
-        let name = "ExampleCodeBase".to_string();
-        let config = CodeGeneratorConfig::new(name);
-        let generator = solidity::CodeGenerator::new(&config);
-        generator.output(&mut test_code_file, &registry).unwrap();
 
         writeln!(
             test_code_file,
-            r#"
-contract ExampleCode is ExampleCodeBase {{
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
 
     function get_bytes32() internal returns (bytes32) {{
         bytes memory vect;
@@ -402,9 +452,9 @@ contract ExampleCode is ExampleCodeBase {{
     }}
 
     function test_deserialization(bytes calldata input) external {{
-      ComplexStruct memory t = bcs_deserialize_ComplexStruct(input);
+      Library.ComplexStruct memory t = Library.bcs_deserialize_ComplexStruct(input);
 
-      bytes memory input_rev = bcs_serialize_ComplexStruct(t);
+      bytes memory input_rev = Library.bcs_serialize_ComplexStruct(t);
       require(input.length == input_rev.length);
       for (uint256 i=0; i<input.length; i++) {{
         require(input[i] == input_rev[i]);
