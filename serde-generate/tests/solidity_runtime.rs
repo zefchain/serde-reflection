@@ -558,7 +558,12 @@ contract ExampleCode {{
     // Compiling the code and reading it.
     let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
     //
-    let t = NestingBools { v1: None, v2: Some(true), v3: Some(false), v4: true };
+    let t = NestingBools {
+        v1: None,
+        v2: Some(true),
+        v3: Some(false),
+        v4: true,
+    };
     let expected_input = bcs::to_bytes(&t).unwrap();
 
     // Building the input to the smart contract
