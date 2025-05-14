@@ -501,3 +501,74 @@ contract ExampleCode {{
     test_contract(bytecode.clone(), fct_args);
     Ok(())
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct NestingBools {
+    v1: Option<bool>,
+    v2: Option<bool>,
+    v3: Option<bool>,
+    v4: bool,
+}
+
+#[test]
+fn test_nesting_bools() -> anyhow::Result<()> {
+    let registry = get_registry_from_type::<NestingBools>();
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    // The library code
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // The test code
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+
+    function test_deserialization(bytes calldata input) external {{
+      Library.NestingBools memory t = Library.bcs_deserialize_NestingBools(input);
+
+      bytes memory input_rev = Library.bcs_serialize_NestingBools(t);
+      require(input.length == input_rev.length);
+      for (uint256 i=0; i<input.length; i++) {{
+        require(input[i] == input_rev[i]);
+      }}
+    }}
+
+}}
+"#
+        )?;
+    }
+
+    // Compiling the code and reading it.
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+    //
+    let t = NestingBools { v1: None, v2: Some(true), v3: Some(false), v4: true };
+    let expected_input = bcs::to_bytes(&t).unwrap();
+
+    // Building the input to the smart contract
+    sol! {
+        function test_deserialization(bytes calldata input);
+    }
+    let input = Bytes::copy_from_slice(&expected_input);
+    let fct_args = test_deserializationCall { input };
+    let fct_args = fct_args.abi_encode().into();
+
+    test_contract(bytecode.clone(), fct_args);
+    Ok(())
+}

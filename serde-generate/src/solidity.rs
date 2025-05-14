@@ -1045,19 +1045,13 @@ function bcs_serialize_{name}({name} input)
     pure
     returns (bytes memory)
 {{
-    uint8 value0;
-    uint8 value1;
     if (input == {name}.None) {{
-        value0 = 0;
-        return abi.encodePacked(value0);
+        return abi.encodePacked(uint8(0));
     }}
-    value0 = 1;
     if (input == {name}.False) {{
-        value1 = 0;
-        return abi.encodePacked(value0, value1);
+        return abi.encodePacked(uint8(1), uint8(0));
     }}
-    value1 = 1;
-    return abi.encodePacked(value0, value1);
+    return abi.encodePacked(uint8(1), uint8(1));
 }}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
