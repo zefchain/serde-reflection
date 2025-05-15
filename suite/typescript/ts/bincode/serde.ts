@@ -1,0 +1,1 @@
+/home/foxpro/misc/sources/serde-reflection/serde-generate/runtime/typescript/serde.ts
