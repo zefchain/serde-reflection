@@ -856,21 +856,22 @@ function bcs_serialize_{name}({name} memory input)
     returns (bytes memory)
 {{"#
                 )?;
-                writeln!(
-                    out,
-                    "    bytes memory result = bcs_serialize_{}(input.{});",
-                    &formats[0].value.key_name(),
-                    safe_variable(&formats[0].name)
-                )?;
-                for named_format in &formats[1..] {
+                for (index, named_format) in formats.iter().enumerate() {
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
-                    writeln!(out, "    result = abi.encodePacked(result, bcs_serialize_{key_name}(input.{safe_name}));")?;
+                    let serialized_var = format!("bcs_serialize_{key_name}(input.{safe_name})");
+                    let strout = if index == 0 {
+                        format!("bytes memory result = {serialized_var}")
+                    } else if index == formats.len() - 1 {
+                        format!("return abi.encodePacked(result, {serialized_var})")
+                    } else {
+                        format!("result = abi.encodePacked(result, {serialized_var})")
+                    };
+                    writeln!(out, "    {strout};")?;
                 }
                 writeln!(
                     out,
-                    r#"    return result;
-}}
+                    r#"}}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     internal
@@ -1480,8 +1481,7 @@ function bcs_serialize_len(uint256 x)
     while (true) {{
         if (x < 128) {{
             entry = bytes1(uint8(x));
-            result = abi.encodePacked(result, entry);
-            return result;
+            return abi.encodePacked(result, entry);
         }} else {{
             uint256 xb = x >> 7;
             uint256 remainder = x - (xb << 7);
