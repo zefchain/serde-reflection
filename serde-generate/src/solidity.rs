@@ -939,6 +939,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 output_generic_bcs_deserialize(out, name, name, false)?;
             }
             Enum { name, formats } => {
+                let number_names = formats.len();
                 writeln!(out, "struct {name} {{")?;
                 writeln!(out, "    uint8 choice;")?;
                 for (idx, named_format) in formats.iter().enumerate() {
@@ -998,6 +999,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                         entries.push(snake_name);
                     }
                 }
+                writeln!(out, "    require(choice < {number_names});")?;
                 let entries = entries.join(", ");
                 writeln!(
                     out,
