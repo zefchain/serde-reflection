@@ -884,15 +884,20 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     pure
     returns (uint256, {name} memory)
 {{
-    uint256 new_pos = pos;"#
+    uint256 new_pos;"#
                 )?;
-                for named_format in formats {
+                for (index, named_format) in formats.iter().enumerate() {
                     let data_location = sol_registry.data_location(&named_format.value);
                     let code_name = named_format.value.code_name();
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
+                    let start_pos = if index == 0 {
+                        "pos"
+                    } else {
+                        "new_pos"
+                    };
                     writeln!(out, "    {code_name}{data_location} {safe_name};")?;
-                    writeln!(out, "    (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
+                    writeln!(out, "    (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}({start_pos}, input);")?;
                 }
                 writeln!(
                     out,
@@ -1038,8 +1043,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     assembly {{
         dest := mload(add(add(input, 0x20), pos))
     }}
-    uint256 new_pos = pos + {size};
-    return (new_pos, dest);
+    return (pos + {size}, dest);
 }}"#
                 )?;
             }
@@ -1516,8 +1520,7 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
                 power *= 128;
             }}
             result += power * uint8(input[pos + idx]);
-            uint256 new_pos = pos + idx + 1;
-            return (new_pos, result);
+            return (pos + idx + 1, result);
         }}
         idx += 1;
     }}
