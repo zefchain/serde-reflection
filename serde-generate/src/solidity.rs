@@ -602,7 +602,8 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input)
     }}
     string memory result = string(result_bytes);
     return (new_pos + shift, result);
-}}"#
+}}
+"#
                 )?;
             }
             Bytes => {
@@ -940,8 +941,9 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
             }
             Enum { name, formats } => {
                 let number_names = formats.len();
-                writeln!(out, "struct {name} {{")?;
-                writeln!(out, "    uint8 choice;")?;
+                writeln!(out, r#"
+struct {name} {{
+    uint8 choice;"#)?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     let name = named_format.name.clone();
                     writeln!(out, "    // choice={idx} corresponds to {name}")?;
@@ -1447,7 +1449,6 @@ impl<'a> CodeGenerator<'a> {
         }
 
         emitter.output_close_library()?;
-        writeln!(emitter.out)?;
         Ok(())
     }
 }
