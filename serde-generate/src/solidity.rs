@@ -744,7 +744,7 @@ function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input)
     if (has_value) {{
         (new_pos, value) = bcs_deserialize_offset_{key_name}(new_pos, input);
     }}
-    return (new_pos, {full_name}(true, value));
+    return (new_pos, {full_name}(has_value, value));
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, &full_name, &full_name, true)?;
@@ -968,21 +968,20 @@ function bcs_serialize_{name}({name} memory input)
     internal
     pure
     returns (bytes memory)
-{{
-    bytes memory result = abi.encodePacked(input.choice);"#
+{{"#
                 )?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
                         let key_name = format.key_name();
                         let snake_name = safe_variable(&named_format.name.to_snake_case());
                         writeln!(out, "    if (input.choice == {idx}) {{")?;
-                        writeln!(out, "        return abi.encodePacked(result, bcs_serialize_{key_name}(input.{snake_name}));")?;
+                        writeln!(out, "        return abi.encodePacked(input.choice, bcs_serialize_{key_name}(input.{snake_name}));")?;
                         writeln!(out, "    }}")?;
                     }
                 }
                 writeln!(
                     out,
-                    r#"    return result;
+                    r#"    return abi.encodePacked(input.choice);
 }}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
