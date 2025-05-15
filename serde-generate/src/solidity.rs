@@ -725,13 +725,10 @@ function bcs_serialize_{full_name}({full_name} memory input)
     pure
     returns (bytes memory)
 {{
-    bool has_value = input.has_value;
-    bytes memory block1 = bcs_serialize_bool(has_value);
-    if (has_value) {{
-        bytes memory block2 = bcs_serialize_{key_name}(input.value);
-        return abi.encodePacked(block1, block2);
+    if (input.has_value) {{
+        return abi.encodePacked(uint8(1), bcs_serialize_{key_name}(input.value));
     }} else {{
-        return block1;
+        return abi.encodePacked(uint8(0));
     }}
 }}
 
@@ -859,15 +856,24 @@ function bcs_serialize_{name}({name} memory input)
                 for (index, named_format) in formats.iter().enumerate() {
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
-                    let serialized_var = format!("bcs_serialize_{key_name}(input.{safe_name})");
-                    let strout = if index == 0 {
-                        format!("bytes memory result = {serialized_var}")
-                    } else if index == formats.len() - 1 {
-                        format!("return abi.encodePacked(result, {serialized_var})")
+                    let block = format!("bcs_serialize_{key_name}(input.{safe_name})");
+                    let block = if index == 0 {
+                        block
                     } else {
-                        format!("result = abi.encodePacked(result, {serialized_var})")
+                        format!("abi.encodePacked(result, {block})")
                     };
-                    writeln!(out, "    {strout};")?;
+                    let block = if formats.len() > 1 {
+                        if index == 0 {
+                            format!("bytes memory result = {block}")
+                        } else if index < formats.len() - 1 {
+                            format!("result = abi.encodePacked(result, {block})")
+                        } else {
+                            format!("return abi.encodePacked(result, {block})")
+                        }
+                    } else {
+                        format!("return {block}")
+                    };
+                    writeln!(out, "    {block};")?;
                 }
                 writeln!(
                     out,
@@ -950,7 +956,7 @@ struct {name} {{
                     writeln!(out, "    // choice={idx} corresponds to {name}")?;
                     if let Some(format) = &named_format.value {
                         let code_name = format.code_name();
-                        let snake_name = named_format.name.to_snake_case();
+                        let snake_name = safe_variable(&named_format.name.to_snake_case());
                         writeln!(out, "    {code_name} {snake_name};")?;
                     }
                 }
@@ -968,7 +974,7 @@ function bcs_serialize_{name}({name} memory input)
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
                         let key_name = format.key_name();
-                        let snake_name = named_format.name.to_snake_case();
+                        let snake_name = safe_variable(&named_format.name.to_snake_case());
                         writeln!(out, "    if (input.choice == {idx}) {{")?;
                         writeln!(out, "        return abi.encodePacked(result, bcs_serialize_{key_name}(input.{snake_name}));")?;
                         writeln!(out, "    }}")?;
@@ -992,7 +998,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
                         let data_location = sol_registry.data_location(format);
-                        let snake_name = named_format.name.to_snake_case();
+                        let snake_name = safe_variable(&named_format.name.to_snake_case());
                         let code_name = format.code_name();
                         let key_name = format.key_name();
                         writeln!(out, "    {code_name}{data_location} {snake_name};")?;
