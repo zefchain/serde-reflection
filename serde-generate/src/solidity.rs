@@ -9,7 +9,7 @@ use heck::SnakeCase;
 use phf::phf_set;
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashSet},
     io::{Result, Write},
     path::PathBuf,
 };
@@ -857,11 +857,6 @@ function bcs_serialize_{name}({name} memory input)
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
                     let block = format!("bcs_serialize_{key_name}(input.{safe_name})");
-                    let block = if index == 0 {
-                        block
-                    } else {
-                        format!("abi.encodePacked(result, {block})")
-                    };
                     let block = if formats.len() > 1 {
                         if index == 0 {
                             format!("bytes memory result = {block}")
@@ -965,10 +960,45 @@ struct {name} {{
                         writeln!(out, "    {code_name} {snake_name};")?;
                     }
                 }
+                writeln!(out, "}}")?;
+                let mut entries = Vec::new();
+                let mut type_vars = Vec::new();
+                for named_format in formats {
+                    if let Some(format) = &named_format.value {
+                        let data_location = sol_registry.data_location(format);
+                        let snake_name = safe_variable(&named_format.name.to_snake_case());
+                        let code_name = format.code_name();
+                        let type_var = format!("{code_name}{data_location} {snake_name}");
+                        type_vars.push(type_var);
+                        entries.push(snake_name);
+                    } else {
+                        type_vars.push(String::new());
+                    }
+                }
+                let entries = entries.join(", ");
+                for (choice, named_format_i) in formats.iter().enumerate() {
+                    let snake_name = named_format_i.name.to_snake_case();
+                    let type_var = &type_vars[choice];
+                    writeln!(out, r#"
+function new_{name}_case_{snake_name}({type_var})
+    internal
+    pure
+    returns ({name} memory)
+{{"#)?;
+                    for i_choice in 0..number_names {
+                        let type_var = &type_vars[i_choice];
+                        if !type_var.is_empty() {
+                            if choice != i_choice {
+                                writeln!(out, "    {type_var};")?;
+                            }
+                        }
+                    }
+                    writeln!(out, "    return {name}(uint8({choice}), {entries});")?;
+                    writeln!(out, "}}")?;
+                }
                 writeln!(
                     out,
-                    r#"}}
-
+                    r#"
 function bcs_serialize_{name}({name} memory input)
     internal
     pure
@@ -1122,7 +1152,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
 
 #[derive(Default)]
 struct SolRegistry {
-    names: HashMap<String, SolFormat>,
+    names: BTreeMap<String, SolFormat>,
 }
 
 impl SolRegistry {
