@@ -140,6 +140,13 @@ impl Primitive {
         }
     }
 
+    pub fn need_memory(&self) -> bool {
+        matches!(
+            self,
+            Primitive::Unit | Primitive::Bytes | Primitive::Str
+        )
+    }
+
     pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
         use Primitive::*;
         match self {
@@ -706,7 +713,8 @@ impl SolFormat {
             Primitive(primitive) => {
                 primitive.output(out)?;
                 let full_name = primitive.name();
-                output_generic_bcs_deserialize(out, &full_name, &full_name, false)?;
+                let need_memory = primitive.need_memory();
+                output_generic_bcs_deserialize(out, &full_name, &full_name, need_memory)?;
             },
             TypeName(_) => {
                 // by definition for TypeName the code already exists
@@ -1420,13 +1428,7 @@ impl SolRegistry {
     fn need_memory(&self, sol_format: &SolFormat) -> bool {
         use SolFormat::*;
         match sol_format {
-            Primitive(primitive) => {
-                use crate::solidity::Primitive;
-                matches!(
-                    primitive,
-                    Primitive::Unit | Primitive::Bytes | Primitive::Str
-                )
-            }
+            Primitive(primitive) => primitive.need_memory(),
             TypeName(name) => {
                 let mesg = format!("to find a matching entry for name={name}");
                 let sol_format = self.names.get(name).expect(&mesg);
