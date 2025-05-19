@@ -9,7 +9,7 @@ use heck::SnakeCase;
 use phf::phf_set;
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashSet},
     io::{Result, Write},
     path::PathBuf,
 };
@@ -138,6 +138,10 @@ impl Primitive {
             Str => "string".into(),
             Bytes => "bytes".into(),
         }
+    }
+
+    pub fn need_memory(&self) -> bool {
+        matches!(self, Primitive::Unit | Primitive::Bytes | Primitive::Str)
     }
 
     pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
@@ -602,7 +606,8 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input)
     }}
     string memory result = string(result_bytes);
     return (new_pos + shift, result);
-}}"#
+}}
+"#
                 )?;
             }
             Bytes => {
@@ -702,7 +707,12 @@ impl SolFormat {
     ) -> Result<()> {
         use SolFormat::*;
         match self {
-            Primitive(primitive) => primitive.output(out)?,
+            Primitive(primitive) => {
+                primitive.output(out)?;
+                let full_name = primitive.name();
+                let need_memory = primitive.need_memory();
+                output_generic_bcs_deserialize(out, &full_name, &full_name, need_memory)?;
+            }
             TypeName(_) => {
                 // by definition for TypeName the code already exists
             }
@@ -724,13 +734,10 @@ function bcs_serialize_{full_name}({full_name} memory input)
     pure
     returns (bytes memory)
 {{
-    bool has_value = input.has_value;
-    bytes memory block1 = bcs_serialize_bool(has_value);
-    if (has_value) {{
-        bytes memory block2 = bcs_serialize_{key_name}(input.value);
-        return abi.encodePacked(block1, block2);
+    if (input.has_value) {{
+        return abi.encodePacked(uint8(1), bcs_serialize_{key_name}(input.value));
     }} else {{
-        return block1;
+        return abi.encodePacked(uint8(0));
     }}
 }}
 
@@ -746,7 +753,7 @@ function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input)
     if (has_value) {{
         (new_pos, value) = bcs_deserialize_offset_{key_name}(new_pos, input);
     }}
-    return (new_pos, {full_name}(true, value));
+    return (new_pos, {full_name}(has_value, value));
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, &full_name, &full_name, true)?;
@@ -855,36 +862,42 @@ function bcs_serialize_{name}({name} memory input)
     returns (bytes memory)
 {{"#
                 )?;
-                writeln!(
-                    out,
-                    "    bytes memory result = bcs_serialize_{}(input.{});",
-                    &formats[0].value.key_name(),
-                    safe_variable(&formats[0].name)
-                )?;
-                for named_format in &formats[1..] {
+                for (index, named_format) in formats.iter().enumerate() {
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
-                    writeln!(out, "    result = abi.encodePacked(result, bcs_serialize_{key_name}(input.{safe_name}));")?;
+                    let block = format!("bcs_serialize_{key_name}(input.{safe_name})");
+                    let block = if formats.len() > 1 {
+                        if index == 0 {
+                            format!("bytes memory result = {block}")
+                        } else if index < formats.len() - 1 {
+                            format!("result = abi.encodePacked(result, {block})")
+                        } else {
+                            format!("return abi.encodePacked(result, {block})")
+                        }
+                    } else {
+                        format!("return {block}")
+                    };
+                    writeln!(out, "    {block};")?;
                 }
                 writeln!(
                     out,
-                    r#"    return result;
-}}
+                    r#"}}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     internal
     pure
     returns (uint256, {name} memory)
 {{
-    uint256 new_pos = pos;"#
+    uint256 new_pos;"#
                 )?;
-                for named_format in formats {
+                for (index, named_format) in formats.iter().enumerate() {
                     let data_location = sol_registry.data_location(&named_format.value);
                     let code_name = named_format.value.code_name();
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
+                    let start_pos = if index == 0 { "pos" } else { "new_pos" };
                     writeln!(out, "    {code_name}{data_location} {safe_name};")?;
-                    writeln!(out, "    (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
+                    writeln!(out, "    (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}({start_pos}, input);")?;
                 }
                 writeln!(
                     out,
@@ -939,40 +952,79 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 output_generic_bcs_deserialize(out, name, name, false)?;
             }
             Enum { name, formats } => {
-                writeln!(out, "struct {name} {{")?;
-                writeln!(out, "    uint8 choice;")?;
+                let number_names = formats.len();
+                writeln!(
+                    out,
+                    r#"
+struct {name} {{
+    uint8 choice;"#
+                )?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     let name = named_format.name.clone();
                     writeln!(out, "    // choice={idx} corresponds to {name}")?;
                     if let Some(format) = &named_format.value {
                         let code_name = format.code_name();
-                        let snake_name = named_format.name.to_snake_case();
+                        let snake_name = safe_variable(&named_format.name.to_snake_case());
                         writeln!(out, "    {code_name} {snake_name};")?;
                     }
                 }
+                writeln!(out, "}}")?;
+                let mut entries = Vec::new();
+                let mut type_vars = Vec::new();
+                for named_format in formats {
+                    if let Some(format) = &named_format.value {
+                        let data_location = sol_registry.data_location(format);
+                        let snake_name = safe_variable(&named_format.name.to_snake_case());
+                        let code_name = format.code_name();
+                        let type_var = format!("{code_name}{data_location} {snake_name}");
+                        type_vars.push(type_var);
+                        entries.push(snake_name);
+                    } else {
+                        type_vars.push(String::new());
+                    }
+                }
+                let entries = entries.join(", ");
+                for (choice, named_format_i) in formats.iter().enumerate() {
+                    let snake_name = named_format_i.name.to_snake_case();
+                    let type_var = &type_vars[choice];
+                    writeln!(
+                        out,
+                        r#"
+function {name}_case_{snake_name}({type_var})
+    internal
+    pure
+    returns ({name} memory)
+{{"#
+                    )?;
+                    for (i_choice, type_var) in type_vars.iter().enumerate() {
+                        if !type_var.is_empty() && choice != i_choice {
+                            writeln!(out, "    {type_var};")?;
+                        }
+                    }
+                    writeln!(out, "    return {name}(uint8({choice}), {entries});")?;
+                    writeln!(out, "}}")?;
+                }
                 writeln!(
                     out,
-                    r#"}}
-
+                    r#"
 function bcs_serialize_{name}({name} memory input)
     internal
     pure
     returns (bytes memory)
-{{
-    bytes memory result = abi.encodePacked(input.choice);"#
+{{"#
                 )?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
                         let key_name = format.key_name();
-                        let snake_name = named_format.name.to_snake_case();
+                        let snake_name = safe_variable(&named_format.name.to_snake_case());
                         writeln!(out, "    if (input.choice == {idx}) {{")?;
-                        writeln!(out, "        return abi.encodePacked(result, bcs_serialize_{key_name}(input.{snake_name}));")?;
+                        writeln!(out, "        return abi.encodePacked(input.choice, bcs_serialize_{key_name}(input.{snake_name}));")?;
                         writeln!(out, "    }}")?;
                     }
                 }
                 writeln!(
                     out,
-                    r#"    return result;
+                    r#"    return abi.encodePacked(input.choice);
 }}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
@@ -988,7 +1040,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 for (idx, named_format) in formats.iter().enumerate() {
                     if let Some(format) = &named_format.value {
                         let data_location = sol_registry.data_location(format);
-                        let snake_name = named_format.name.to_snake_case();
+                        let snake_name = safe_variable(&named_format.name.to_snake_case());
                         let code_name = format.code_name();
                         let key_name = format.key_name();
                         writeln!(out, "    {code_name}{data_location} {snake_name};")?;
@@ -998,6 +1050,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                         entries.push(snake_name);
                     }
                 }
+                writeln!(out, "    require(choice < {number_names});")?;
                 let entries = entries.join(", ");
                 writeln!(
                     out,
@@ -1028,8 +1081,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     assembly {{
         dest := mload(add(add(input, 0x20), pos))
     }}
-    uint256 new_pos = pos + {size};
-    return (new_pos, dest);
+    return (pos + {size}, dest);
 }}"#
                 )?;
             }
@@ -1108,7 +1160,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
 
 #[derive(Default)]
 struct SolRegistry {
-    names: HashMap<String, SolFormat>,
+    names: BTreeMap<String, SolFormat>,
 }
 
 impl SolRegistry {
@@ -1372,13 +1424,7 @@ impl SolRegistry {
     fn need_memory(&self, sol_format: &SolFormat) -> bool {
         use SolFormat::*;
         match sol_format {
-            Primitive(primitive) => {
-                use crate::solidity::Primitive;
-                matches!(
-                    primitive,
-                    Primitive::Unit | Primitive::Bytes | Primitive::Str
-                )
-            }
+            Primitive(primitive) => primitive.need_memory(),
             TypeName(name) => {
                 let mesg = format!("to find a matching entry for name={name}");
                 let sol_format = self.names.get(name).expect(&mesg);
@@ -1445,7 +1491,6 @@ impl<'a> CodeGenerator<'a> {
         }
 
         emitter.output_close_library()?;
-        writeln!(emitter.out)?;
         Ok(())
     }
 }
@@ -1477,8 +1522,7 @@ function bcs_serialize_len(uint256 x)
     while (true) {{
         if (x < 128) {{
             entry = bytes1(uint8(x));
-            result = abi.encodePacked(result, entry);
-            return result;
+            return abi.encodePacked(result, entry);
         }} else {{
             uint256 xb = x >> 7;
             uint256 remainder = x - (xb << 7);
@@ -1508,8 +1552,7 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
                 power *= 128;
             }}
             result += power * uint8(input[pos + idx]);
-            uint256 new_pos = pos + idx + 1;
-            return (new_pos, result);
+            return (pos + idx + 1, result);
         }}
         idx += 1;
     }}
