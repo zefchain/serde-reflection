@@ -703,7 +703,11 @@ impl SolFormat {
     ) -> Result<()> {
         use SolFormat::*;
         match self {
-            Primitive(primitive) => primitive.output(out)?,
+            Primitive(primitive) => {
+                primitive.output(out)?;
+                let full_name = primitive.name();
+                output_generic_bcs_deserialize(out, &full_name, &full_name, false)?;
+            },
             TypeName(_) => {
                 // by definition for TypeName the code already exists
             }
@@ -980,7 +984,7 @@ struct {name} {{
                     let snake_name = named_format_i.name.to_snake_case();
                     let type_var = &type_vars[choice];
                     writeln!(out, r#"
-function new_{name}_case_{snake_name}({type_var})
+function {name}_case_{snake_name}({type_var})
     internal
     pure
     returns ({name} memory)
