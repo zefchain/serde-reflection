@@ -141,10 +141,7 @@ impl Primitive {
     }
 
     pub fn need_memory(&self) -> bool {
-        matches!(
-            self,
-            Primitive::Unit | Primitive::Bytes | Primitive::Str
-        )
+        matches!(self, Primitive::Unit | Primitive::Bytes | Primitive::Str)
     }
 
     pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
@@ -715,7 +712,7 @@ impl SolFormat {
                 let full_name = primitive.name();
                 let need_memory = primitive.need_memory();
                 output_generic_bcs_deserialize(out, &full_name, &full_name, need_memory)?;
-            },
+            }
             TypeName(_) => {
                 // by definition for TypeName the code already exists
             }
@@ -898,11 +895,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                     let code_name = named_format.value.code_name();
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
-                    let start_pos = if index == 0 {
-                        "pos"
-                    } else {
-                        "new_pos"
-                    };
+                    let start_pos = if index == 0 { "pos" } else { "new_pos" };
                     writeln!(out, "    {code_name}{data_location} {safe_name};")?;
                     writeln!(out, "    (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}({start_pos}, input);")?;
                 }
@@ -960,9 +953,12 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
             }
             Enum { name, formats } => {
                 let number_names = formats.len();
-                writeln!(out, r#"
+                writeln!(
+                    out,
+                    r#"
 struct {name} {{
-    uint8 choice;"#)?;
+    uint8 choice;"#
+                )?;
                 for (idx, named_format) in formats.iter().enumerate() {
                     let name = named_format.name.clone();
                     writeln!(out, "    // choice={idx} corresponds to {name}")?;
@@ -991,12 +987,15 @@ struct {name} {{
                 for (choice, named_format_i) in formats.iter().enumerate() {
                     let snake_name = named_format_i.name.to_snake_case();
                     let type_var = &type_vars[choice];
-                    writeln!(out, r#"
+                    writeln!(
+                        out,
+                        r#"
 function {name}_case_{snake_name}({type_var})
     internal
     pure
     returns ({name} memory)
-{{"#)?;
+{{"#
+                    )?;
                     for i_choice in 0..number_names {
                         let type_var = &type_vars[i_choice];
                         if !type_var.is_empty() {
