@@ -996,12 +996,9 @@ function {name}_case_{snake_name}({type_var})
     returns ({name} memory)
 {{"#
                     )?;
-                    for i_choice in 0..number_names {
-                        let type_var = &type_vars[i_choice];
-                        if !type_var.is_empty() {
-                            if choice != i_choice {
-                                writeln!(out, "    {type_var};")?;
-                            }
+                    for (i_choice, type_var) in type_vars.iter().enumerate() {
+                        if !type_var.is_empty() && choice != i_choice {
+                            writeln!(out, "    {type_var};")?;
                         }
                     }
                     writeln!(out, "    return {name}(uint8({choice}), {entries});")?;
