@@ -186,10 +186,6 @@ where
             .flatten()
             .cloned()
             .collect::<HashSet<_>>();
-        writeln!(self.out, "#![allow(unused_imports)]")?;
-        if !external_names.contains("Map") {
-            writeln!(self.out, "use std::collections::BTreeMap as Map;")?;
-        }
         if self.generator.config.serialization {
             writeln!(self.out, "use serde::{{Serialize, Deserialize}};")?;
         }

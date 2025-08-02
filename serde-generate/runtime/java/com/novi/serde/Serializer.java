@@ -4,9 +4,12 @@
 package com.novi.serde;
 
 import java.math.BigInteger;
+import java.util.List;
 
 public interface Serializer {
     void serialize_str(String value) throws SerializationError;
+
+    void serialize_vec_bytes(List<Bytes> value) throws SerializationError;
 
     void serialize_bytes(Bytes value) throws SerializationError;
 
