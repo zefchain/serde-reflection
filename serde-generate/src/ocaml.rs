@@ -30,7 +30,7 @@ struct OCamlEmitter<'a, T> {
 
 impl<'a> CodeGenerator<'a> {
     pub fn new(config: &'a CodeGeneratorConfig) -> Self {
-        if config.c_style_enums {
+        if config.enums.c_style {
             panic!("OCaml does not support generating c-style enums");
         }
         Self {
