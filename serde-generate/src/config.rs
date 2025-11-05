@@ -1,7 +1,7 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// Code generation options meant to be supported by all languages.
 #[derive(Clone, Debug)]
@@ -12,7 +12,7 @@ pub struct CodeGeneratorConfig {
     pub external_definitions: ExternalDefinitions,
     pub comments: DocComments,
     pub custom_code: CustomCode,
-    pub c_style_enums: bool,
+    pub enums: EnumConfig,
     pub package_manifest: bool,
 }
 
@@ -35,6 +35,18 @@ pub type CustomCode = std::collections::BTreeMap<
     /* qualified name */ Vec<String>,
     /* custom code */ String,
 >;
+
+/// Configure the generation style of enums.
+#[derive(Clone, Debug)]
+pub struct EnumConfig {
+    // Generate [enum] if `true` or classes if `false`
+    pub c_style: bool,
+    // Generate sealed class if `true` or abstract class if `false`
+    pub sealed: bool,
+    // If `sealed_enums` is true then the listed names will be abstract,
+    // if `sealed_enums` is false then the listed names will be sealed.
+    pub output_type: HashMap<&'static str, &'static str>,
+}
 
 /// How to copy generated source code and available runtimes for a given language.
 pub trait SourceInstaller {
@@ -67,7 +79,11 @@ impl CodeGeneratorConfig {
             external_definitions: BTreeMap::new(),
             comments: BTreeMap::new(),
             custom_code: BTreeMap::new(),
-            c_style_enums: false,
+            enums: EnumConfig {
+                c_style: false,
+                sealed: false,
+                output_type: HashMap::new(),
+            },
             package_manifest: true,
         }
     }
@@ -116,7 +132,23 @@ impl CodeGeneratorConfig {
     /// Generate C-style enums (without variant data) as the target language
     /// native enum type in supported languages.
     pub fn with_c_style_enums(mut self, c_style_enums: bool) -> Self {
-        self.c_style_enums = c_style_enums;
+        self.enums.c_style = c_style_enums;
+        self
+    }
+
+    /// For complex enums generate sealed enum classes instead of abstract classes
+    pub fn with_sealed_enums(mut self, sealed: bool) -> Self {
+        self.enums.sealed = sealed;
+        self
+    }
+
+    /// Generate abstract or sealed classes for data enums  based on `with_sealed_enums`
+    /// but allow item by item overrides.
+    pub fn with_enum_type_overrides(
+        mut self,
+        overrides: HashMap<&'static str, &'static str>,
+    ) -> Self {
+        self.enums.output_type = overrides;
         self
     }
 
