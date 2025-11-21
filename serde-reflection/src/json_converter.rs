@@ -20,6 +20,15 @@ pub struct Context<'a, E> {
     pub environment: &'a E,
 }
 
+use once_cell::sync::Lazy;
+use std::{collections::HashSet, sync::Mutex};
+
+static GLOBAL_STRING_SET: Lazy<Mutex<HashSet<&'static str>>> =
+    Lazy::new(|| Mutex::new(HashSet::new()));
+
+static GLOBAL_FIELDS_SET: Lazy<Mutex<HashSet<&'static [&'static str]>>> =
+    Lazy::new(|| Mutex::new(HashSet::new()));
+
 /// The requirement for the `environment` object.
 pub trait Environment<'de> {
     /// Deserialize a value of an external type `name`.
@@ -27,10 +36,30 @@ pub trait Environment<'de> {
     where
         D: Deserializer<'de>;
 
-    /// For human-readable serialization formats, override this to use `String::leak` or
-    /// store names in a static table.
-    fn leak(&self, _name: &str) -> &'static str {
-        ""
+    fn leak_name(&self, name: &str) -> &'static str {
+        let mut set = GLOBAL_STRING_SET.lock().unwrap();
+        // TODO: use https://github.com/rust-lang/rust/issues/60896 when available
+        if let Some(value) = set.get(name) {
+            value
+        } else {
+            set.insert(name.to_string().leak());
+            set.get(name).unwrap()
+        }
+    }
+
+    fn leak_fields(&self, fields: &[&str]) -> &'static [&'static str] {
+        let fields = fields
+            .iter()
+            .map(|name| self.leak_name(name))
+            .collect::<Vec<_>>();
+        let mut set = GLOBAL_FIELDS_SET.lock().unwrap();
+        // TODO: use https://github.com/rust-lang/rust/issues/60896 when available
+        if let Some(value) = set.get(fields.as_slice()) {
+            value
+        } else {
+            set.insert(fields.to_vec().leak());
+            set.get(fields.as_slice()).unwrap()
+        }
     }
 }
 
@@ -436,7 +465,7 @@ where
         }
         NewTypeStruct(format) => {
             // NewType structs unwrap to their inner value
-            let name = environment.leak(name);
+            let name = environment.leak_name(name);
             let visitor = NewTypeStructVisitor {
                 format: (**format).clone(),
                 registry,
@@ -455,23 +484,37 @@ where
         }
         Struct(fields) => {
             // Named structs deserialize as maps
-            let name = environment.leak(name);
+            let name = environment.leak_name(name);
+            let static_fields = environment.leak_fields(
+                fields
+                    .iter()
+                    .map(|f| f.name.as_str())
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            );
             let visitor = StructVisitor {
                 fields: fields.clone(),
                 registry,
                 environment,
             };
-            deserializer.deserialize_struct(name, &[], visitor)
+            deserializer.deserialize_struct(name, static_fields, visitor)
         }
         Enum(variants) => {
             // Enums need special handling
-            let name = environment.leak(name);
+            let name = environment.leak_name(name);
+            let static_fields = environment.leak_fields(
+                variants
+                    .iter()
+                    .map(|(_, v)| v.name.as_str())
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            );
             let visitor = EnumVisitor {
                 variants: variants.clone(),
                 registry,
                 environment,
             };
-            deserializer.deserialize_enum(name, &[], visitor)
+            deserializer.deserialize_enum(name, static_fields, visitor)
         }
     }
 }
@@ -649,16 +692,14 @@ where
     where
         A: serde::de::EnumAccess<'de>,
     {
-        let (variant_name, variant_data) = data.variant::<String>()?;
+        // Create a custom deserializer for the variant identifier that can handle
+        // both string names (e.g., JSON) and integer indices (e.g., bincode)
+        let variant_visitor = VariantIdentifierVisitor {
+            variants: &self.variants,
+        };
 
-        // Find the variant by name
-        let variant_format = self
-            .variants
-            .values()
-            .find(|v| v.name == variant_name)
-            .ok_or_else(|| {
-                serde::de::Error::custom(format!("Unknown variant: {}", variant_name))
-            })?;
+        let (variant_info, variant_data) = data.variant_seed(variant_visitor)?;
+        let (variant_name, variant_format) = variant_info;
 
         let variant_value = deserialize_variant_format(
             &variant_format.value,
@@ -671,6 +712,64 @@ where
         let mut object = serde_json::Map::new();
         object.insert(variant_name, variant_value);
         Ok(Value::Object(object))
+    }
+}
+
+struct VariantIdentifierVisitor<'a> {
+    variants: &'a BTreeMap<u32, Named<VariantFormat>>,
+}
+
+impl<'de> serde::de::DeserializeSeed<'de> for VariantIdentifierVisitor<'_> {
+    type Value = (String, Named<VariantFormat>);
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_identifier(self)
+    }
+}
+
+impl<'de> Visitor<'de> for VariantIdentifierVisitor<'_> {
+    type Value = (String, Named<VariantFormat>);
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("variant identifier")
+    }
+
+    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        // Handle integer variant indices (e.g., bincode)
+        let variant = self
+            .variants
+            .get(&(value as u32))
+            .ok_or_else(|| serde::de::Error::custom(format!("Unknown variant index: {}", value)))?;
+        Ok((variant.name.clone(), variant.clone()))
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        // Handle string variant names (e.g., JSON)
+        let variant = self
+            .variants
+            .values()
+            .find(|v| v.name == value)
+            .ok_or_else(|| serde::de::Error::custom(format!("Unknown variant: {}", value)))?;
+        Ok((variant.name.clone(), variant.clone()))
+    }
+
+    fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        // Handle byte string variant names
+        let value_str = std::str::from_utf8(value)
+            .map_err(|_| serde::de::Error::custom("Invalid UTF-8 in variant name"))?;
+        self.visit_str(value_str)
     }
 }
 
@@ -711,12 +810,19 @@ where
             variant_data.tuple_variant(formats.len(), visitor)
         }
         Struct(fields) => {
+            let static_fields = environment.leak_fields(
+                fields
+                    .iter()
+                    .map(|v| v.name.as_str())
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            );
             let visitor = StructVariantVisitor {
                 fields: fields.clone(),
                 registry,
                 environment,
             };
-            variant_data.struct_variant(&[], visitor)
+            variant_data.struct_variant(static_fields, visitor)
         }
     }
 }

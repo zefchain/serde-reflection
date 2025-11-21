@@ -4,6 +4,7 @@
 //! Integration tests for the json_converter module
 #![cfg(feature = "json")]
 
+use bincode::Options;
 use serde::de::{DeserializeSeed, IntoDeserializer};
 use serde_json::{json, Value};
 use serde_reflection::{
@@ -710,11 +711,11 @@ fn test_bincode_simple_struct() {
     let registry = tracer.registry().unwrap();
 
     // Serialize with bincode
+    let config = bincode::DefaultOptions::new();
     let point = Point { x: 10, y: 20 };
-    let encoded = bincode::serialize(&point).unwrap();
+    let encoded = config.serialize(&point).unwrap();
 
     // Deserialize using json_converter Context
-    let config = bincode::config::DefaultOptions::new();
     let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
 
     let context = Context {
@@ -723,9 +724,7 @@ fn test_bincode_simple_struct() {
         environment: &EmptyEnvironment,
     };
 
-    let result = context.deserialize(&mut deserializer);
-    assert!(result.is_ok(), "Failed to deserialize: {:?}", result.err());
-    let value = result.unwrap();
+    let value = context.deserialize(&mut deserializer).unwrap();
     assert_eq!(value["x"], json!(10));
     assert_eq!(value["y"], json!(20));
 }
@@ -749,42 +748,35 @@ fn test_bincode_enum() {
 
     // Test Unit variant
     let msg = Message::Quit;
-    let encoded = bincode::serialize(&msg).unwrap();
-    let config = bincode::config::DefaultOptions::new();
+    let config = bincode::DefaultOptions::new();
+    let encoded = config.serialize(&msg).unwrap();
     let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
     let context = Context {
         format: format.clone(),
         registry: &registry,
         environment: &EmptyEnvironment,
     };
-    let result = context.deserialize(&mut deserializer);
-    assert!(result.is_ok(), "Failed on Quit variant: {:?}", result.err());
+    context.deserialize(&mut deserializer).unwrap();
 
     // Test Struct variant
     let msg = Message::Move { x: 5, y: 10 };
-    let encoded = bincode::serialize(&msg).unwrap();
+    let encoded = config.serialize(&msg).unwrap();
     let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
     let context = Context {
         format: format.clone(),
         registry: &registry,
         environment: &EmptyEnvironment,
     };
-    let result = context.deserialize(&mut deserializer);
-    assert!(result.is_ok(), "Failed on Move variant: {:?}", result.err());
+    context.deserialize(&mut deserializer).unwrap();
 
     // Test NewType variant
     let msg = Message::Write("Hello".to_string());
-    let encoded = bincode::serialize(&msg).unwrap();
+    let encoded = config.serialize(&msg).unwrap();
     let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
     let context = Context {
         format,
         registry: &registry,
         environment: &EmptyEnvironment,
     };
-    let result = context.deserialize(&mut deserializer);
-    assert!(
-        result.is_ok(),
-        "Failed on Write variant: {:?}",
-        result.err()
-    );
+    context.deserialize(&mut deserializer).unwrap();
 }
