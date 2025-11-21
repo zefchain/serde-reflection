@@ -47,9 +47,12 @@ pub trait Environment<'de> {
         }
     }
 
-    fn leak_fields(&self, fields: &[&str]) -> &'static [&'static str] {
+    fn leak_fields<'a>(
+        &self,
+        fields: impl IntoIterator<Item = &'a str>,
+    ) -> &'static [&'static str] {
         let fields = fields
-            .iter()
+            .into_iter()
             .map(|name| self.leak_name(name))
             .collect::<Vec<_>>();
         let mut set = GLOBAL_FIELDS_SET.lock().unwrap();
@@ -485,13 +488,7 @@ where
         Struct(fields) => {
             // Named structs deserialize as maps
             let name = environment.leak_name(name);
-            let static_fields = environment.leak_fields(
-                fields
-                    .iter()
-                    .map(|f| f.name.as_str())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
+            let static_fields = environment.leak_fields(fields.iter().map(|f| f.name.as_str()));
             let visitor = StructVisitor {
                 fields: fields.clone(),
                 registry,
@@ -502,13 +499,8 @@ where
         Enum(variants) => {
             // Enums need special handling
             let name = environment.leak_name(name);
-            let static_fields = environment.leak_fields(
-                variants
-                    .iter()
-                    .map(|(_, v)| v.name.as_str())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
+            let static_fields =
+                environment.leak_fields(variants.iter().map(|(_, v)| v.name.as_str()));
             let visitor = EnumVisitor {
                 variants: variants.clone(),
                 registry,
@@ -810,13 +802,7 @@ where
             variant_data.tuple_variant(formats.len(), visitor)
         }
         Struct(fields) => {
-            let static_fields = environment.leak_fields(
-                fields
-                    .iter()
-                    .map(|v| v.name.as_str())
-                    .collect::<Vec<_>>()
-                    .as_slice(),
-            );
+            let static_fields = environment.leak_fields(fields.iter().map(|v| v.name.as_str()));
             let visitor = StructVariantVisitor {
                 fields: fields.clone(),
                 registry,
