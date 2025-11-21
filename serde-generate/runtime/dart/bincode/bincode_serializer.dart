@@ -10,13 +10,13 @@ class BincodeSerializer extends BinarySerializer {
         );
 
   @override
-  void serializeLength(int value) {
-    serializeUint64(Uint64(BigInt.from(value)));
+  void serializeLength(int len) {
+    serializeUint64(Uint64(BigInt.from(len)));
   }
 
   @override
-  void serializeVariantIndex(int value) {
-    serializeUint32(value);
+  void serializeVariantIndex(int index) {
+    serializeUint32(index);
   }
 
   @override
