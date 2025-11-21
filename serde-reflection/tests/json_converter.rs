@@ -5,11 +5,11 @@
 #![cfg(feature = "json")]
 
 use serde::de::{DeserializeSeed, IntoDeserializer};
+use serde_json::{json, Value};
 use serde_reflection::{
     json_converter::{Context, EmptyEnvironment, Environment},
     ContainerFormat, Format, Named, Registry, VariantFormat,
 };
-use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
 // Helper function to deserialize JSON with a given format
@@ -22,7 +22,9 @@ fn deserialize_json(format: Format, registry: &Registry, json_str: &str) -> Resu
     };
 
     let deserializer = value.into_deserializer();
-    context.deserialize(deserializer).map_err(|e: serde_json::Error| e.to_string())
+    context
+        .deserialize(deserializer)
+        .map_err(|e: serde_json::Error| e.to_string())
 }
 
 // ============================================================================
@@ -49,11 +51,19 @@ fn test_primitive_integers() {
         (Format::I8, "42", json!(42)),
         (Format::I16, "1000", json!(1000)),
         (Format::I32, "100000", json!(100000)),
-        (Format::I64, "9223372036854775807", json!(9223372036854775807i64)),
+        (
+            Format::I64,
+            "9223372036854775807",
+            json!(9223372036854775807i64),
+        ),
         (Format::U8, "255", json!(255)),
         (Format::U16, "65535", json!(65535)),
         (Format::U32, "4294967295", json!(4294967295u64)),
-        (Format::U64, "18446744073709551615", json!(18446744073709551615u64)),
+        (
+            Format::U64,
+            "18446744073709551615",
+            json!(18446744073709551615u64),
+        ),
     ];
 
     for (format, input, expected) in test_cases {
@@ -359,8 +369,15 @@ fn test_enum_struct_variant() {
     registry.insert("Shape".to_string(), ContainerFormat::Enum(variants));
 
     let format = Format::TypeName("Shape".to_string());
-    let result = deserialize_json(format, &registry, r#"{"Rectangle": {"width": 100, "height": 50}}"#);
-    assert_eq!(result.unwrap(), json!({"Rectangle": {"width": 100, "height": 50}}));
+    let result = deserialize_json(
+        format,
+        &registry,
+        r#"{"Rectangle": {"width": 100, "height": 50}}"#,
+    );
+    assert_eq!(
+        result.unwrap(),
+        json!({"Rectangle": {"width": 100, "height": 50}})
+    );
 }
 
 #[test]
@@ -667,4 +684,107 @@ fn test_roundtrip_complex_structure() {
     assert_eq!(user_obj["id"], json!(12345));
     assert_eq!(user_obj["name"], json!("Alice"));
     assert_eq!(user_obj["tags"], json!(["admin", "verified"]));
+}
+
+// ============================================================================
+// Bincode Deserialization Tests
+// ============================================================================
+
+use serde_reflection::{Tracer, TracerConfig};
+
+#[test]
+fn test_bincode_simple_struct() {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+
+    // Use tracer to extract the format
+    let mut tracer = Tracer::new(TracerConfig::default());
+    let (format, _) = tracer
+        .trace_type::<Point>(&serde_reflection::Samples::new())
+        .unwrap();
+    let registry = tracer.registry().unwrap();
+
+    // Serialize with bincode
+    let point = Point { x: 10, y: 20 };
+    let encoded = bincode::serialize(&point).unwrap();
+
+    // Deserialize using json_converter Context
+    let config = bincode::config::DefaultOptions::new();
+    let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
+
+    let context = Context {
+        format,
+        registry: &registry,
+        environment: &EmptyEnvironment,
+    };
+
+    let result = context.deserialize(&mut deserializer);
+    assert!(result.is_ok(), "Failed to deserialize: {:?}", result.err());
+    let value = result.unwrap();
+    assert_eq!(value["x"], json!(10));
+    assert_eq!(value["y"], json!(20));
+}
+
+#[test]
+fn test_bincode_enum() {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize)]
+    enum Message {
+        Quit,
+        Move { x: i32, y: i32 },
+        Write(String),
+    }
+
+    // Use tracer to extract the format
+    let mut tracer = Tracer::new(TracerConfig::default());
+    tracer.trace_simple_type::<Message>().unwrap();
+    let registry = tracer.registry().unwrap();
+    let format = Format::TypeName("Message".to_string());
+
+    // Test Unit variant
+    let msg = Message::Quit;
+    let encoded = bincode::serialize(&msg).unwrap();
+    let config = bincode::config::DefaultOptions::new();
+    let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
+    let context = Context {
+        format: format.clone(),
+        registry: &registry,
+        environment: &EmptyEnvironment,
+    };
+    let result = context.deserialize(&mut deserializer);
+    assert!(result.is_ok(), "Failed on Quit variant: {:?}", result.err());
+
+    // Test Struct variant
+    let msg = Message::Move { x: 5, y: 10 };
+    let encoded = bincode::serialize(&msg).unwrap();
+    let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
+    let context = Context {
+        format: format.clone(),
+        registry: &registry,
+        environment: &EmptyEnvironment,
+    };
+    let result = context.deserialize(&mut deserializer);
+    assert!(result.is_ok(), "Failed on Move variant: {:?}", result.err());
+
+    // Test NewType variant
+    let msg = Message::Write("Hello".to_string());
+    let encoded = bincode::serialize(&msg).unwrap();
+    let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
+    let context = Context {
+        format,
+        registry: &registry,
+        environment: &EmptyEnvironment,
+    };
+    let result = context.deserialize(&mut deserializer);
+    assert!(
+        result.is_ok(),
+        "Failed on Write variant: {:?}",
+        result.err()
+    );
 }
