@@ -1737,6 +1737,7 @@ dependencies = [
 name = "serde-reflection"
 version = "0.5.0"
 dependencies = [
+ "bcs",
  "bincode",
  "erased-discriminant",
  "once_cell",

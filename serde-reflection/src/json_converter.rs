@@ -5,13 +5,17 @@
 
 use crate::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use serde::de::{DeserializeSeed, MapAccess, SeqAccess, Visitor};
-use serde::{Deserialize, Deserializer};
+use serde::ser::{
+    SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant, SerializeTuple,
+    SerializeTupleStruct, SerializeTupleVariant,
+};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Number, Value};
 use std::collections::BTreeMap;
 
 /// A deserialization context to create a JSON value from a serialized object in a dynamic
 /// format.
-pub struct Context<'a, E> {
+pub struct DeserializationContext<'a, E> {
     /// The format of the main value.
     pub format: Format,
     /// The registry of container formats.
@@ -29,14 +33,9 @@ static GLOBAL_STRING_SET: Lazy<Mutex<HashSet<&'static str>>> =
 static GLOBAL_FIELDS_SET: Lazy<Mutex<HashSet<&'static [&'static str]>>> =
     Lazy::new(|| Mutex::new(HashSet::new()));
 
-/// The requirement for the `environment` object.
-pub trait Environment<'de> {
-    /// Deserialize a value of an external type `name`.
-    fn deserialize<D>(&self, name: String, deserializer: D) -> Result<Value, String>
-    where
-        D: Deserializer<'de>;
-
-    fn leak_name(&self, name: &str) -> &'static str {
+/// The requirement for an `environment` that manages a symbol table.
+pub trait SymbolTableEnvironment {
+    fn get_static_name(&self, name: &str) -> &'static str {
         let mut set = GLOBAL_STRING_SET.lock().unwrap();
         // TODO: use https://github.com/rust-lang/rust/issues/60896 when available
         if let Some(value) = set.get(name) {
@@ -47,13 +46,13 @@ pub trait Environment<'de> {
         }
     }
 
-    fn leak_fields<'a>(
+    fn get_static_fields<'a>(
         &self,
         fields: impl IntoIterator<Item = &'a str>,
     ) -> &'static [&'static str] {
         let fields = fields
             .into_iter()
-            .map(|name| self.leak_name(name))
+            .map(|name| self.get_static_name(name))
             .collect::<Vec<_>>();
         let mut set = GLOBAL_FIELDS_SET.lock().unwrap();
         // TODO: use https://github.com/rust-lang/rust/issues/60896 when available
@@ -66,9 +65,19 @@ pub trait Environment<'de> {
     }
 }
 
+/// The requirement for the `environment` objects to help with Deserialize.
+pub trait DeserializationEnvironment<'de>: SymbolTableEnvironment {
+    /// Deserialize a value of an external type `name`.
+    fn deserialize<D>(&self, name: String, deserializer: D) -> Result<Value, String>
+    where
+        D: Deserializer<'de>;
+}
+
 pub struct EmptyEnvironment;
 
-impl<'de> Environment<'de> for EmptyEnvironment {
+impl SymbolTableEnvironment for EmptyEnvironment {}
+
+impl<'de> DeserializationEnvironment<'de> for EmptyEnvironment {
     fn deserialize<D>(&self, name: String, _deserializer: D) -> Result<Value, String>
     where
         D: Deserializer<'de>,
@@ -77,9 +86,9 @@ impl<'de> Environment<'de> for EmptyEnvironment {
     }
 }
 
-impl<'a, 'de, E> DeserializeSeed<'de> for Context<'a, E>
+impl<'a, 'de, E> DeserializeSeed<'de> for DeserializationContext<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -250,7 +259,7 @@ struct OptionVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for OptionVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -269,7 +278,7 @@ where
     where
         D: Deserializer<'de>,
     {
-        let context = Context {
+        let context = DeserializationContext {
             format: self.format,
             registry: self.registry,
             environment: self.environment,
@@ -293,7 +302,7 @@ struct SeqVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for SeqVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -306,7 +315,7 @@ where
         A: SeqAccess<'de>,
     {
         let mut values = Vec::new();
-        while let Some(value) = seq.next_element_seed(Context {
+        while let Some(value) = seq.next_element_seed(DeserializationContext {
             format: self.format.clone(),
             registry: self.registry,
             environment: self.environment,
@@ -326,7 +335,7 @@ struct MapVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for MapVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -340,12 +349,12 @@ where
     {
         let mut object = serde_json::Map::new();
         while let Some((key, value)) = map.next_entry_seed(
-            Context {
+            DeserializationContext {
                 format: self.key_format.clone(),
                 registry: self.registry,
                 environment: self.environment,
             },
-            Context {
+            DeserializationContext {
                 format: self.value_format.clone(),
                 registry: self.registry,
                 environment: self.environment,
@@ -376,7 +385,7 @@ struct TupleVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for TupleVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -390,7 +399,7 @@ where
     {
         let mut values = Vec::new();
         for format in self.formats {
-            match seq.next_element_seed(Context {
+            match seq.next_element_seed(DeserializationContext {
                 format,
                 registry: self.registry,
                 environment: self.environment,
@@ -416,7 +425,7 @@ struct TupleArrayVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for TupleArrayVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -430,7 +439,7 @@ where
     {
         let mut values = Vec::new();
         for _ in 0..self.size {
-            match seq.next_element_seed(Context {
+            match seq.next_element_seed(DeserializationContext {
                 format: self.format.clone(),
                 registry: self.registry,
                 environment: self.environment,
@@ -456,7 +465,7 @@ fn deserialize_container_format<'a, 'de, E, D>(
     deserializer: D,
 ) -> Result<Value, D::Error>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
     D: Deserializer<'de>,
 {
     use ContainerFormat::*;
@@ -468,7 +477,7 @@ where
         }
         NewTypeStruct(format) => {
             // NewType structs unwrap to their inner value
-            let name = environment.leak_name(name);
+            let name = environment.get_static_name(name);
             let visitor = NewTypeStructVisitor {
                 format: (**format).clone(),
                 registry,
@@ -487,8 +496,9 @@ where
         }
         Struct(fields) => {
             // Named structs deserialize as maps
-            let name = environment.leak_name(name);
-            let static_fields = environment.leak_fields(fields.iter().map(|f| f.name.as_str()));
+            let name = environment.get_static_name(name);
+            let static_fields =
+                environment.get_static_fields(fields.iter().map(|f| f.name.as_str()));
             let visitor = StructVisitor {
                 fields: fields.clone(),
                 registry,
@@ -498,9 +508,9 @@ where
         }
         Enum(variants) => {
             // Enums need special handling
-            let name = environment.leak_name(name);
+            let name = environment.get_static_name(name);
             let static_fields =
-                environment.leak_fields(variants.iter().map(|(_, v)| v.name.as_str()));
+                environment.get_static_fields(variants.iter().map(|(_, v)| v.name.as_str()));
             let visitor = EnumVisitor {
                 variants: variants.clone(),
                 registry,
@@ -536,7 +546,7 @@ struct NewTypeStructVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for NewTypeStructVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -548,7 +558,7 @@ where
     where
         D: Deserializer<'de>,
     {
-        let context = Context {
+        let context = DeserializationContext {
             format: self.format,
             registry: self.registry,
             environment: self.environment,
@@ -565,7 +575,7 @@ struct TupleStructVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for TupleStructVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -579,7 +589,7 @@ where
     {
         let mut values = Vec::new();
         for format in self.formats {
-            match seq.next_element_seed(Context {
+            match seq.next_element_seed(DeserializationContext {
                 format,
                 registry: self.registry,
                 environment: self.environment,
@@ -604,7 +614,7 @@ struct StructVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for StructVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -618,7 +628,7 @@ where
     {
         let mut object = serde_json::Map::new();
         for field in self.fields {
-            match seq.next_element_seed(Context {
+            match seq.next_element_seed(DeserializationContext {
                 format: field.value,
                 registry: self.registry,
                 environment: self.environment,
@@ -649,7 +659,7 @@ where
 
         while let Some(key) = map.next_key::<String>()? {
             if let Some(format) = fields_map.get(&key) {
-                let value = map.next_value_seed(Context {
+                let value = map.next_value_seed(DeserializationContext {
                     format: format.clone(),
                     registry: self.registry,
                     environment: self.environment,
@@ -672,7 +682,7 @@ struct EnumVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for EnumVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -772,7 +782,7 @@ fn deserialize_variant_format<'a, 'de, E, A>(
     variant_data: A,
 ) -> Result<Value, A::Error>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
     A: serde::de::VariantAccess<'de>,
 {
     use VariantFormat::*;
@@ -786,7 +796,7 @@ where
             Ok(Value::Null)
         }
         NewType(format) => {
-            let context = Context {
+            let context = DeserializationContext {
                 format: (**format).clone(),
                 registry,
                 environment,
@@ -802,7 +812,8 @@ where
             variant_data.tuple_variant(formats.len(), visitor)
         }
         Struct(fields) => {
-            let static_fields = environment.leak_fields(fields.iter().map(|v| v.name.as_str()));
+            let static_fields =
+                environment.get_static_fields(fields.iter().map(|v| v.name.as_str()));
             let visitor = StructVariantVisitor {
                 fields: fields.clone(),
                 registry,
@@ -821,7 +832,7 @@ struct TupleVariantVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for TupleVariantVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -835,7 +846,7 @@ where
     {
         let mut values = Vec::new();
         for format in self.formats {
-            match seq.next_element_seed(Context {
+            match seq.next_element_seed(DeserializationContext {
                 format,
                 registry: self.registry,
                 environment: self.environment,
@@ -860,7 +871,7 @@ struct StructVariantVisitor<'a, E> {
 
 impl<'a, 'de, E> Visitor<'de> for StructVariantVisitor<'a, E>
 where
-    E: Environment<'de>,
+    E: DeserializationEnvironment<'de>,
 {
     type Value = Value;
 
@@ -874,7 +885,7 @@ where
     {
         let mut object = serde_json::Map::new();
         for field in self.fields {
-            match seq.next_element_seed(Context {
+            match seq.next_element_seed(DeserializationContext {
                 format: field.value,
                 registry: self.registry,
                 environment: self.environment,
@@ -905,7 +916,7 @@ where
 
         while let Some(key) = map.next_key::<String>()? {
             if let Some(format) = fields_map.get(&key) {
-                let value = map.next_value_seed(Context {
+                let value = map.next_value_seed(DeserializationContext {
                     format: format.clone(),
                     registry: self.registry,
                     environment: self.environment,
@@ -917,5 +928,508 @@ where
             }
         }
         Ok(Value::Object(object))
+    }
+}
+
+/// A serialization context to convert a JSON value to a serialized object in a dynamic format.
+pub struct SerializationContext<'a, E> {
+    /// The JSON value to serialize.
+    pub value: &'a Value,
+    /// The format to serialize to.
+    pub format: &'a Format,
+    /// The registry of container formats.
+    pub registry: &'a Registry,
+    /// The environment containing external serializers.
+    pub environment: &'a E,
+}
+
+/// The requirement for the `environment` object for serialization.
+pub trait SerializationEnvironment: SymbolTableEnvironment {
+    /// Serialize a value of an external type `name`.
+    fn serialize<S>(&self, name: &str, value: &Value, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer;
+}
+
+impl SerializationEnvironment for EmptyEnvironment {
+    fn serialize<S>(&self, name: &str, _value: &Value, _serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        Err(serde::ser::Error::custom(format!(
+            "No external serializer available for {name}"
+        )))
+    }
+}
+
+impl<'a, E> Serialize for SerializationContext<'a, E>
+where
+    E: SerializationEnvironment,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use Format::*;
+
+        match self.format {
+            Variable(_) => Err(serde::ser::Error::custom(
+                "Required formats cannot contain variables",
+            )),
+            TypeName(name) => {
+                if let Some(container_format) = self.registry.get(name) {
+                    serialize_container_format(
+                        name,
+                        container_format,
+                        self.value,
+                        self.registry,
+                        self.environment,
+                        serializer,
+                    )
+                } else {
+                    self.environment.serialize(name, self.value, serializer)
+                }
+            }
+            Unit => serializer.serialize_unit(),
+            Bool => match self.value {
+                Value::Bool(b) => serializer.serialize_bool(*b),
+                _ => Err(serde::ser::Error::custom("Expected bool value")),
+            },
+            I8 => serialize_integer::<S, i8>(self.value, serializer),
+            I16 => serialize_integer::<S, i16>(self.value, serializer),
+            I32 => serialize_integer::<S, i32>(self.value, serializer),
+            I64 => serialize_integer::<S, i64>(self.value, serializer),
+            I128 => serialize_integer_or_string::<S, i128>(self.value, serializer),
+            U8 => serialize_integer::<S, u8>(self.value, serializer),
+            U16 => serialize_integer::<S, u16>(self.value, serializer),
+            U32 => serialize_integer::<S, u32>(self.value, serializer),
+            U64 => serialize_integer::<S, u64>(self.value, serializer),
+            U128 => serialize_integer_or_string::<S, u128>(self.value, serializer),
+            F32 => serialize_f32(self.value, serializer),
+            F64 => serialize_f64(self.value, serializer),
+            Char => match self.value {
+                Value::String(s) => {
+                    let mut chars = s.chars();
+                    if let Some(c) = chars.next() {
+                        if chars.next().is_none() {
+                            serializer.serialize_char(c)
+                        } else {
+                            Err(serde::ser::Error::custom(
+                                "Expected single character string",
+                            ))
+                        }
+                    } else {
+                        Err(serde::ser::Error::custom("Expected non-empty string"))
+                    }
+                }
+                _ => Err(serde::ser::Error::custom("Expected string for char")),
+            },
+            Str => match self.value {
+                Value::String(s) => serializer.serialize_str(s),
+                _ => Err(serde::ser::Error::custom("Expected string value")),
+            },
+            Bytes => match self.value {
+                Value::Array(arr) => {
+                    let bytes: Result<Vec<u8>, _> = arr
+                        .iter()
+                        .map(|v| match v {
+                            Value::Number(n) => n
+                                .as_u64()
+                                .and_then(|n| u8::try_from(n).ok())
+                                .ok_or_else(|| {
+                                    serde::ser::Error::custom("Invalid byte value in array")
+                                }),
+                            _ => Err(serde::ser::Error::custom("Expected number in byte array")),
+                        })
+                        .collect();
+                    serializer.serialize_bytes(&bytes?)
+                }
+                _ => Err(serde::ser::Error::custom("Expected array for bytes")),
+            },
+            Option(inner_format) => match self.value {
+                Value::Null => serializer.serialize_none(),
+                _ => serializer.serialize_some(&SerializationContext {
+                    value: self.value,
+                    format: inner_format,
+                    registry: self.registry,
+                    environment: self.environment,
+                }),
+            },
+            Seq(inner_format) => match self.value {
+                Value::Array(arr) => {
+                    let mut seq = serializer.serialize_seq(Some(arr.len()))?;
+                    for item in arr {
+                        seq.serialize_element(&SerializationContext {
+                            value: item,
+                            format: inner_format,
+                            registry: self.registry,
+                            environment: self.environment,
+                        })?;
+                    }
+                    seq.end()
+                }
+                _ => Err(serde::ser::Error::custom("Expected array for sequence")),
+            },
+            Map { key, value } => match self.value {
+                Value::Object(obj) => {
+                    let mut map = serializer.serialize_map(Some(obj.len()))?;
+                    for (k, v) in obj {
+                        map.serialize_entry(
+                            &SerializationContext {
+                                value: &Value::String(k.clone()),
+                                format: key,
+                                registry: self.registry,
+                                environment: self.environment,
+                            },
+                            &SerializationContext {
+                                value: v,
+                                format: value,
+                                registry: self.registry,
+                                environment: self.environment,
+                            },
+                        )?;
+                    }
+                    map.end()
+                }
+                _ => Err(serde::ser::Error::custom("Expected object for map")),
+            },
+            Tuple(formats) => match self.value {
+                Value::Array(arr) => {
+                    if arr.len() != formats.len() {
+                        return Err(serde::ser::Error::custom(format!(
+                            "Expected tuple of length {}, got {}",
+                            formats.len(),
+                            arr.len()
+                        )));
+                    }
+                    let mut tuple = serializer.serialize_tuple(formats.len())?;
+                    for (item, format) in arr.iter().zip(formats.iter()) {
+                        tuple.serialize_element(&SerializationContext {
+                            value: item,
+                            format,
+                            registry: self.registry,
+                            environment: self.environment,
+                        })?;
+                    }
+                    tuple.end()
+                }
+                _ => Err(serde::ser::Error::custom("Expected array for tuple")),
+            },
+            TupleArray { content, size } => match self.value {
+                Value::Array(arr) => {
+                    if arr.len() != *size {
+                        return Err(serde::ser::Error::custom(format!(
+                            "Expected array of length {}, got {}",
+                            size,
+                            arr.len()
+                        )));
+                    }
+                    let mut tuple = serializer.serialize_tuple(*size)?;
+                    for item in arr {
+                        tuple.serialize_element(&SerializationContext {
+                            value: item,
+                            format: content,
+                            registry: self.registry,
+                            environment: self.environment,
+                        })?;
+                    }
+                    tuple.end()
+                }
+                _ => Err(serde::ser::Error::custom("Expected array for tuple array")),
+            },
+        }
+    }
+}
+
+fn serialize_integer<S, I>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    I: TryFrom<i64> + TryFrom<u64> + Serialize,
+{
+    match value {
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                let converted = I::try_from(i)
+                    .map_err(|_| serde::ser::Error::custom("Integer out of range"))?;
+                converted.serialize(serializer)
+            } else if let Some(u) = n.as_u64() {
+                let converted = I::try_from(u)
+                    .map_err(|_| serde::ser::Error::custom("Integer out of range"))?;
+                converted.serialize(serializer)
+            } else {
+                Err(serde::ser::Error::custom("Invalid number"))
+            }
+        }
+        _ => Err(serde::ser::Error::custom("Expected number")),
+    }
+}
+
+fn serialize_integer_or_string<S, I>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    I: TryFrom<i64> + TryFrom<u64> + std::str::FromStr + Serialize,
+{
+    match value {
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                let converted = I::try_from(i)
+                    .map_err(|_| serde::ser::Error::custom("Integer out of range"))?;
+                converted.serialize(serializer)
+            } else if let Some(u) = n.as_u64() {
+                let converted = I::try_from(u)
+                    .map_err(|_| serde::ser::Error::custom("Integer out of range"))?;
+                converted.serialize(serializer)
+            } else {
+                Err(serde::ser::Error::custom("Invalid number"))
+            }
+        }
+        Value::String(s) => {
+            let converted = s
+                .parse::<I>()
+                .map_err(|_| serde::ser::Error::custom("Invalid integer string"))?;
+            converted.serialize(serializer)
+        }
+        _ => Err(serde::ser::Error::custom("Expected number or string")),
+    }
+}
+
+fn serialize_f32<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        Value::Number(n) => {
+            if let Some(f) = n.as_f64() {
+                serializer.serialize_f32(f as f32)
+            } else {
+                Err(serde::ser::Error::custom("Invalid float"))
+            }
+        }
+        _ => Err(serde::ser::Error::custom("Expected number for float")),
+    }
+}
+
+fn serialize_f64<S>(value: &Value, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        Value::Number(n) => {
+            if let Some(f) = n.as_f64() {
+                serializer.serialize_f64(f)
+            } else {
+                Err(serde::ser::Error::custom("Invalid float"))
+            }
+        }
+        _ => Err(serde::ser::Error::custom("Expected number for float")),
+    }
+}
+
+fn serialize_container_format<S, E>(
+    name: &str,
+    container_format: &ContainerFormat,
+    value: &Value,
+    registry: &Registry,
+    environment: &E,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    E: SerializationEnvironment,
+{
+    use ContainerFormat::*;
+
+    let static_name = environment.get_static_name(name);
+
+    match container_format {
+        UnitStruct => serializer.serialize_unit_struct(static_name),
+        NewTypeStruct(format) => {
+            let context = SerializationContext {
+                value,
+                format,
+                registry,
+                environment,
+            };
+            serializer.serialize_newtype_struct(static_name, &context)
+        }
+        TupleStruct(formats) => match value {
+            Value::Array(arr) => {
+                if arr.len() != formats.len() {
+                    return Err(serde::ser::Error::custom(format!(
+                        "Expected tuple struct of length {}, got {}",
+                        formats.len(),
+                        arr.len()
+                    )));
+                }
+                let mut tuple_struct =
+                    serializer.serialize_tuple_struct(static_name, formats.len())?;
+                for (item, format) in arr.iter().zip(formats.iter()) {
+                    tuple_struct.serialize_field(&SerializationContext {
+                        value: item,
+                        format,
+                        registry,
+                        environment,
+                    })?;
+                }
+                tuple_struct.end()
+            }
+            _ => Err(serde::ser::Error::custom("Expected array for tuple struct")),
+        },
+        Struct(fields) => match value {
+            Value::Object(obj) => {
+                let mut struct_ser = serializer.serialize_struct(static_name, fields.len())?;
+                for field in fields {
+                    let field_value = obj.get(&field.name).ok_or_else(|| {
+                        serde::ser::Error::custom(format!("Missing field: {}", field.name))
+                    })?;
+                    let static_field_name = environment.get_static_name(&field.name);
+                    struct_ser.serialize_field(
+                        static_field_name,
+                        &SerializationContext {
+                            value: field_value,
+                            format: &field.value,
+                            registry,
+                            environment,
+                        },
+                    )?;
+                }
+                struct_ser.end()
+            }
+            _ => Err(serde::ser::Error::custom("Expected object for struct")),
+        },
+        Enum(variants) => match value {
+            Value::Object(obj) => {
+                if obj.len() != 1 {
+                    return Err(serde::ser::Error::custom(
+                        "Expected object with single variant key",
+                    ));
+                }
+                let (variant_name, variant_value) = obj.iter().next().unwrap();
+
+                // Find the variant by name
+                let (variant_index, variant_format) = variants
+                    .iter()
+                    .find(|(_, v)| v.name == *variant_name)
+                    .ok_or_else(|| {
+                        serde::ser::Error::custom(format!("Unknown variant: {}", variant_name))
+                    })?;
+
+                serialize_enum_variant(
+                    static_name,
+                    *variant_index,
+                    variant_name,
+                    &variant_format.value,
+                    variant_value,
+                    registry,
+                    environment,
+                    serializer,
+                )
+            }
+            _ => Err(serde::ser::Error::custom("Expected object for enum")),
+        },
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn serialize_enum_variant<S, E>(
+    enum_name: &'static str,
+    variant_index: u32,
+    variant_name: &str,
+    variant_format: &VariantFormat,
+    value: &Value,
+    registry: &Registry,
+    environment: &E,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    E: SerializationEnvironment,
+{
+    use VariantFormat::*;
+
+    let static_variant_name = environment.get_static_name(variant_name);
+
+    match variant_format {
+        Variable(_) => Err(serde::ser::Error::custom(
+            "Variant format cannot contain variables",
+        )),
+        Unit => match value {
+            Value::Null => {
+                serializer.serialize_unit_variant(enum_name, variant_index, static_variant_name)
+            }
+            _ => Err(serde::ser::Error::custom("Expected null for unit variant")),
+        },
+        NewType(format) => {
+            let context = SerializationContext {
+                value,
+                format,
+                registry,
+                environment,
+            };
+            serializer.serialize_newtype_variant(
+                enum_name,
+                variant_index,
+                static_variant_name,
+                &context,
+            )
+        }
+        Tuple(formats) => match value {
+            Value::Array(arr) => {
+                if arr.len() != formats.len() {
+                    return Err(serde::ser::Error::custom(format!(
+                        "Expected tuple variant of length {}, got {}",
+                        formats.len(),
+                        arr.len()
+                    )));
+                }
+                let mut tuple_variant = serializer.serialize_tuple_variant(
+                    enum_name,
+                    variant_index,
+                    static_variant_name,
+                    formats.len(),
+                )?;
+                for (item, format) in arr.iter().zip(formats.iter()) {
+                    tuple_variant.serialize_field(&SerializationContext {
+                        value: item,
+                        format,
+                        registry,
+                        environment,
+                    })?;
+                }
+                tuple_variant.end()
+            }
+            _ => Err(serde::ser::Error::custom(
+                "Expected array for tuple variant",
+            )),
+        },
+        Struct(fields) => match value {
+            Value::Object(obj) => {
+                let mut struct_variant = serializer.serialize_struct_variant(
+                    enum_name,
+                    variant_index,
+                    static_variant_name,
+                    fields.len(),
+                )?;
+                for field in fields {
+                    let field_value = obj.get(&field.name).ok_or_else(|| {
+                        serde::ser::Error::custom(format!("Missing field: {}", field.name))
+                    })?;
+                    let static_field_name = environment.get_static_name(&field.name);
+                    struct_variant.serialize_field(
+                        static_field_name,
+                        &SerializationContext {
+                            value: field_value,
+                            format: &field.value,
+                            registry,
+                            environment,
+                        },
+                    )?;
+                }
+                struct_variant.end()
+            }
+            _ => Err(serde::ser::Error::custom(
+                "Expected object for struct variant",
+            )),
+        },
     }
 }
