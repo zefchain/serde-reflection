@@ -4,6 +4,7 @@ members = [
     "serde-reflection",
     "serde-generate",
     "serde-generate-bin",
+	"suite/*"
 ]
 resolver = "2"
 
