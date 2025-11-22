@@ -361,6 +361,9 @@ mod ser;
 mod trace;
 mod value;
 
+#[cfg(feature = "json")]
+pub mod json_converter;
+
 pub use error::{Error, Result};
 pub use format::{ContainerFormat, Format, FormatHolder, Named, Variable, VariantFormat};
 pub use trace::{Registry, Samples, Tracer, TracerConfig};
