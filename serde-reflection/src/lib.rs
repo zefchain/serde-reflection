@@ -361,7 +361,9 @@ mod ser;
 mod trace;
 mod value;
 
+pub use de::Deserializer;
 pub use error::{Error, Result};
 pub use format::{ContainerFormat, Format, FormatHolder, Named, Variable, VariantFormat};
-pub use trace::{Registry, Samples, Tracer, TracerConfig};
+pub use ser::Serializer;
+pub use trace::{EnumProgress, Registry, Samples, Tracer, TracerConfig};
 pub use value::Value;
