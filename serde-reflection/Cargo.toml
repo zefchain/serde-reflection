@@ -10,20 +10,26 @@ readme = "README.md"
 keywords = ["data-structures", "serialization", "serde"]
 categories = ["encoding", "development-tools"]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.72"
 exclude = [
     # Readme template that doesn't need to be included.
     "README.tpl",
 ]
 
+[features]
+default = ["json"]
+json = ["serde_json"]
+
 [dependencies]
 erased-discriminant = "1"
 once_cell = "1.7.2"
 serde = { version = "1.0.126", features = ["derive"] }
+serde_json = { version = "1.0.64", optional = true }
 thiserror = "1.0.25"
 typeid = "1"
 
 [dev-dependencies]
+bcs = "0.1.6"
 bincode = "1.3.3"
 serde_json = "1.0.64"
 serde_yaml = "0.8.17"
