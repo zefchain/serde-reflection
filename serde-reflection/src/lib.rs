@@ -9,9 +9,13 @@
 //! Format descriptions are useful in several ways:
 //! * Stored under version control, formats can be tested to prevent unintended modifications
 //!   of binary serialization formats (e.g. by changing variant order).
+//!
 //! * Formats can be passed to [`serde-generate`](https://docs.rs/serde-generate)
 //!   in order to generate class definitions and provide Serde-compatible binary
 //!   serialization in other languages (C++, python, Java, etc).
+//!
+//! * Together with the module `json_converter`, formats allow dynamic translation of
+//!   binary-serialized values to JSON and from JSON.
 //!
 //! # Quick Start
 //!

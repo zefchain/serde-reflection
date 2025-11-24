@@ -59,6 +59,10 @@ One difficulty often associated with Serde is that small modifications in Rust m
 
 Thanks to `serde-reflection`, one can now solve this issue simply by committing Serde formats as a file in the version control system (VCS) and adding a non-regression test ([real-life example](https://github.com/diem/diem/tree/main/testsuite/generate-format/tests)).
 
+### Dynamic Introspection of Binary Values
+
+Given a recorded data format, the module `serde-reflection::json_converter` allows dynamic conversions of binary values to JSON or from JSON.
+
 ### Language Interoperability
 
 The data formats extracted by `serde-reflection` also serve as basis for code generation with the library and tool [`serde-generate`](serde-generate).
