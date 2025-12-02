@@ -20,5 +20,5 @@ class Bytes {
   }
 
   @override
-  int get hashCode => content.hashCode;
+  int get hashCode => Object.hashAll(content);
 }

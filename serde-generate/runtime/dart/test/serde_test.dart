@@ -1,6 +1,8 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+import 'dart:typed_data';
+
 import 'package:test/test.dart';
 
 import '../serde/serde.dart';
@@ -27,5 +29,17 @@ void main() {
     expect(Int128.parse('170').toString(), '170');
     expect(Int128.parse('170141183460469231731687303715884105727').toString(),
         '170141183460469231731687303715884105727');
+  });
+
+  test('Bytes', () {
+    final a = Bytes(Uint8List.fromList([0]));
+    final b = Bytes(Uint8List.fromList([0]));
+    final c = Bytes(Uint8List.fromList([1]));
+
+    expect(a, b, reason: 'a == b');
+    expect(a.hashCode, b.hashCode, reason: 'a and b have same hashCode');
+
+    expect(a, isNot(c), reason: 'a != c');
+    expect(a.hashCode, isNot(c.hashCode), reason: 'a and c have different hashCode');
   });
 }
