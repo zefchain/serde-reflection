@@ -277,7 +277,7 @@ impl Tracer {
             values.push(value);
             if let Format::TypeName(name) = &format {
                 if let Some(progress) = self.pend_enum(name) {
-                    debug_assert!(
+                    assert!(
                         !matches!(progress, EnumProgress::Pending),
                         "failed to make progress tracing enum {name}"
                     );
@@ -319,7 +319,7 @@ impl Tracer {
             values.push(value);
             if let Format::TypeName(name) = &format {
                 if let Some(progress) = self.pend_enum(name) {
-                    debug_assert!(
+                    assert!(
                         !matches!(progress, EnumProgress::Pending),
                         "failed to make progress tracing enum {name}"
                     );
