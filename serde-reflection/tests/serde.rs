@@ -545,12 +545,12 @@ fn test_deserializer() {
     // Now build a schema for S
 
     let mut tracer = Tracer::new(TracerConfig::default());
-    let mut samples = Samples::new();
+    let samples = Samples::new();
 
     let formats = ["e", "f"].map(|field| {
         loop {
             let mut format = Format::unknown();
-            let deserializer = Deserializer::new(&mut tracer, &mut samples, &mut format);
+            let deserializer = Deserializer::new(&mut tracer, &samples, &mut format);
             S::probe(field, deserializer).unwrap();
             format.reduce();
             if let Format::TypeName(name) = &format {
