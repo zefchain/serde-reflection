@@ -3,8 +3,8 @@
 
 use serde::{de::IntoDeserializer, Deserialize, Serialize};
 use serde_reflection::{
-    ContainerFormat, Error, Format, FormatHolder, Named, Samples, Tracer, TracerConfig, Value,
-    VariantFormat,
+    ContainerFormat, Deserializer, Error, Format, FormatHolder, Named, Samples, Tracer,
+    TracerConfig, Value, VariantFormat,
 };
 use std::collections::BTreeMap;
 
@@ -504,4 +504,103 @@ fn test_default_value_for_primitive_types() {
     let (format, value) = tracer.trace_type_once::<&str>(&samples).unwrap();
     assert_eq!(format, Format::Str);
     assert_eq!(value, "A borrowed str");
+}
+
+#[test]
+fn test_deserializer() {
+    #![allow(unused)]
+
+    // This shows using `serde_reflection::Deserializer` directly
+    // and not through `Tracer::trace_*()`.
+    // An analogous use case exists for `serde_reflection::Serializer`.
+
+    #[derive(Deserialize)]
+    enum E {
+        A,
+        B(f32),
+    }
+
+    struct S {
+        e: E,
+        f: i8,
+    }
+
+    impl S {
+        /// Set a field given name and deserializer
+        fn probe<'de, D>(key: &str, value: D) -> Result<(), D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            if key == "e" {
+                E::deserialize(value)?;
+            } else if key == "f" {
+                i8::deserialize(value)?;
+            } else {
+                unimplemented!()
+            }
+            Ok(())
+        }
+    }
+
+    // Now build a schema for S
+
+    let mut tracer = Tracer::new(TracerConfig::default());
+    let mut samples = Samples::new();
+
+    let formats = ["e", "f"].map(|field| {
+        loop {
+            let mut format = Format::unknown();
+            let deserializer = Deserializer::new(&mut tracer, &mut samples, &mut format);
+            S::probe(field, deserializer).unwrap();
+            format.reduce();
+            if let Format::TypeName(name) = &format {
+                if let Some(progress) = tracer.pend_enum(name) {
+                    // If an attempt is made at retreiving the registry at this point
+                    // the incomplete enum is still in incomplete_enums and we get an Err().
+                    // If we had removed it from incomplete_enums, a registry retrieval at this point
+                    // would (wrongly) succeed.
+                    // assert!(tracer.registry().is_err());
+                    assert!(
+                        !matches!(progress, serde_reflection::EnumProgress::Pending),
+                        "failed to make progress tracing enum {name}"
+                    );
+                    // Restart the analysis to find more variants.
+                    continue;
+                }
+            }
+            break (field, format);
+        }
+    });
+
+    assert_eq!(
+        formats,
+        [("e", Format::TypeName("E".into())), ("f", Format::I8)]
+    );
+
+    assert_eq!(
+        tracer.registry().unwrap(),
+        [(
+            "E".into(),
+            ContainerFormat::Enum(
+                [
+                    (
+                        0,
+                        Named {
+                            name: "A".into(),
+                            value: VariantFormat::Unit
+                        }
+                    ),
+                    (
+                        1,
+                        Named {
+                            name: "B".into(),
+                            value: VariantFormat::NewType(Format::F32.into())
+                        }
+                    )
+                ]
+                .into()
+            )
+        )]
+        .into()
+    );
 }
