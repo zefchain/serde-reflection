@@ -584,13 +584,13 @@ return obj;
             Enum(variants) => {
                 // When we find an enum with all Unit variants, we ser/de as a regular Dart enum.
                 if ((self.generator.config.enums.c_style
-                    && self.generator.config.enums.output_type.get(name) == None)
+                    && !self.generator.config.enums.output_type.contains_key(name))
                     || self.generator.config.enums.output_type.get(name) == Some(&"enum"))
                     && variants.values().all(|f| f.value == VariantFormat::Unit)
                 {
                     self.output_enum_container(name, variants)?;
                 } else if (self.generator.config.enums.sealed
-                    && self.generator.config.enums.output_type.get(name) == None)
+                    && !self.generator.config.enums.output_type.contains_key(name))
                     || self.generator.config.enums.output_type.get(name) == Some(&"sealed")
                 {
                     self.output_enum_class_container(name, variants, "sealed")?;
