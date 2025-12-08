@@ -526,17 +526,21 @@ fn test_deserializer() {
     }
 
     impl S {
-        /// Set a field given name and deserializer
+        const FIELDS: &[&str] = &["e", "f"];
+
+        /// Probe a field given name and deserializer
         fn probe<'de, D>(key: &str, value: D) -> Result<(), D::Error>
         where
             D: serde::Deserializer<'de>,
         {
-            if key == "e" {
-                E::deserialize(value)?;
-            } else if key == "f" {
-                i8::deserialize(value)?;
-            } else {
-                unimplemented!()
+            match key {
+                "e" => {
+                    E::deserialize(value)?;
+                }
+                "f" => {
+                    i8::deserialize(value)?;
+                }
+                _ => unimplemented!(),
             }
             Ok(())
         }
@@ -547,34 +551,37 @@ fn test_deserializer() {
     let mut tracer = Tracer::new(TracerConfig::default());
     let samples = Samples::new();
 
-    let formats = ["e", "f"].map(|field| {
-        loop {
-            let mut format = Format::unknown();
-            let deserializer = Deserializer::new(&mut tracer, &samples, &mut format);
-            S::probe(field, deserializer).unwrap();
-            format.reduce();
-            if let Format::TypeName(name) = &format {
-                if let Some(progress) = tracer.pend_enum(name) {
-                    // If an attempt is made at retreiving the registry at this point
-                    // the incomplete enum is still in incomplete_enums and we get an Err().
-                    // If we had removed it from incomplete_enums, a registry retrieval at this point
-                    // would (wrongly) succeed.
-                    // assert!(tracer.registry().is_err());
-                    assert!(
-                        !matches!(progress, serde_reflection::EnumProgress::Pending),
-                        "failed to make progress tracing enum {name}"
-                    );
-                    // Restart the analysis to find more variants.
-                    continue;
+    let formats: Vec<_> = S::FIELDS
+        .iter()
+        .map(|field| {
+            loop {
+                let mut format = Format::unknown();
+                let deserializer = Deserializer::new(&mut tracer, &samples, &mut format);
+                S::probe(field, deserializer).unwrap();
+                format.reduce();
+                if let Format::TypeName(name) = &format {
+                    if let Some(progress) = tracer.pend_enum(name) {
+                        // If an attempt is made at retreiving the registry at this point
+                        // the incomplete enum is still in incomplete_enums and we get an Err().
+                        // If we had removed it from incomplete_enums, a registry retrieval at this point
+                        // would (wrongly) succeed.
+                        // assert!(tracer.registry().is_err());
+                        assert!(
+                            !matches!(progress, serde_reflection::EnumProgress::Pending),
+                            "failed to make progress tracing enum {name}"
+                        );
+                        // Restart the analysis to find more variants.
+                        continue;
+                    }
                 }
+                break (*field, format);
             }
-            break (field, format);
-        }
-    });
+        })
+        .collect();
 
     assert_eq!(
         formats,
-        [("e", Format::TypeName("E".into())), ("f", Format::I8)]
+        vec![("e", Format::TypeName("E".into())), ("f", Format::I8)]
     );
 
     assert_eq!(
