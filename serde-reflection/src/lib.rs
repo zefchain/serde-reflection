@@ -368,7 +368,9 @@ mod value;
 #[cfg(feature = "json")]
 pub mod json_converter;
 
+pub use de::Deserializer;
 pub use error::{Error, Result};
 pub use format::{ContainerFormat, Format, FormatHolder, Named, Variable, VariantFormat};
-pub use trace::{Registry, Samples, Tracer, TracerConfig};
+pub use ser::Serializer;
+pub use trace::{IncompleteEnumReason, Registry, Samples, Tracer, TracerConfig};
 pub use value::Value;

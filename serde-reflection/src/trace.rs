@@ -30,14 +30,15 @@ pub struct Tracer {
 
     /// Enums that have detected to be yet incomplete (i.e. missing variants)
     /// while tracing deserialization.
-    pub(crate) incomplete_enums: BTreeMap<String, EnumProgress>,
+    pub(crate) incomplete_enums: BTreeMap<String, IncompleteEnumReason>,
 
     /// Discriminant associated with each variant of each enum.
     pub(crate) discriminants: BTreeMap<(TypeId, VariantId<'static>), Discriminant>,
 }
 
+/// Type of untraced enum variants
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum EnumProgress {
+pub enum IncompleteEnumReason {
     /// There are variant names that have not yet been traced.
     NamedVariantsRemaining,
     /// There are variant numbers that have not yet been traced.
@@ -243,6 +244,11 @@ impl Tracer {
         Ok((format, value))
     }
 
+    /// Read the status of an enum and reset the value.
+    pub fn check_incomplete_enum(&mut self, name: &str) -> Option<IncompleteEnumReason> {
+        self.incomplete_enums.remove(name)
+    }
+
     /// Same as `trace_type_once` but if `T` is an enum, we repeat the process
     /// until all variants of `T` are covered.
     /// We accumulate and return all the sampled values at the end.
@@ -255,10 +261,9 @@ impl Tracer {
             let (format, value) = self.trace_type_once::<T>(samples)?;
             values.push(value);
             if let Format::TypeName(name) = &format {
-                if let Some(&progress) = self.incomplete_enums.get(name) {
+                if let Some(reason) = self.check_incomplete_enum(name) {
                     // Restart the analysis to find more variants of T.
-                    self.incomplete_enums.remove(name);
-                    if let EnumProgress::NamedVariantsRemaining = progress {
+                    if let IncompleteEnumReason::NamedVariantsRemaining = reason {
                         values.pop().unwrap();
                     }
                     continue;
@@ -294,10 +299,9 @@ impl Tracer {
             let (format, value) = self.trace_type_once_with_seed(samples, seed.clone())?;
             values.push(value);
             if let Format::TypeName(name) = &format {
-                if let Some(&progress) = self.incomplete_enums.get(name) {
+                if let Some(reason) = self.check_incomplete_enum(name) {
                     // Restart the analysis to find more variants of T.
-                    self.incomplete_enums.remove(name);
-                    if let EnumProgress::NamedVariantsRemaining = progress {
+                    if let IncompleteEnumReason::NamedVariantsRemaining = reason {
                         values.pop().unwrap();
                     }
                     continue;

@@ -12,13 +12,14 @@ use serde::{ser, Serialize};
 /// Serialize a single value.
 /// The lifetime 'a is set by the serialization call site and the `&'a mut`
 /// references used to return tracing results and serialization samples.
-pub(crate) struct Serializer<'a> {
+pub struct Serializer<'a> {
     tracer: &'a mut Tracer,
     samples: &'a mut Samples,
 }
 
 impl<'a> Serializer<'a> {
-    pub(crate) fn new(tracer: &'a mut Tracer, samples: &'a mut Samples) -> Self {
+    /// Create a new Serializer
+    pub fn new(tracer: &'a mut Tracer, samples: &'a mut Samples) -> Self {
         Self { tracer, samples }
     }
 }
