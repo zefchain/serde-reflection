@@ -4,7 +4,7 @@
 use crate::{
     error::{Error, Result},
     format::{ContainerFormat, ContainerFormatEntry, Format, FormatHolder, Named, VariantFormat},
-    trace::{EnumProgress, Samples, Tracer, VariantId},
+    trace::{IncompleteEnumReason, Samples, Tracer, VariantId},
     value::IntoSeqDeserializer,
 };
 use erased_discriminant::Discriminant;
@@ -20,18 +20,15 @@ use std::collections::btree_map::{BTreeMap, Entry};
 ///   `&'a mut` references used to return tracing results.
 /// * The lifetime 'de is fixed and the `&'de` reference meant to let us
 ///   borrow values from previous serialization runs.
-pub(crate) struct Deserializer<'de, 'a> {
+pub struct Deserializer<'de, 'a> {
     tracer: &'a mut Tracer,
     samples: &'de Samples,
     format: &'a mut Format,
 }
 
 impl<'de, 'a> Deserializer<'de, 'a> {
-    pub(crate) fn new(
-        tracer: &'a mut Tracer,
-        samples: &'de Samples,
-        format: &'a mut Format,
-    ) -> Self {
+    /// Create a new Deserializer
+    pub fn new(tracer: &'a mut Tracer, samples: &'de Samples, format: &'a mut Format) -> Self {
         Deserializer {
             tracer,
             samples,
@@ -422,8 +419,8 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             _ => unreachable!(),
         };
 
-        // If the enum is already marked as incomplete, visit the first index, hoping
-        // to avoid recursion.
+        // If the enum is already marked as incomplete, visit the first index, hoping to
+        // avoid recursion.
         if self.tracer.incomplete_enums.contains_key(enum_name) {
             return visitor.visit_enum(EnumDeserializer::new(
                 self.tracer,
@@ -453,9 +450,10 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
                     name: variant_name.to_owned(),
                     value: VariantFormat::unknown(),
                 });
-            self.tracer
-                .incomplete_enums
-                .insert(enum_name.into(), EnumProgress::NamedVariantsRemaining);
+            self.tracer.incomplete_enums.insert(
+                enum_name.into(),
+                IncompleteEnumReason::NamedVariantsRemaining,
+            );
             // Compute the discriminant and format for this variant.
             let mut value = variant.value.clone();
             let enum_value = visitor.visit_enum(EnumDeserializer::new(
@@ -478,9 +476,10 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         // with index 0.
         let mut index = 0;
         if known_variants.range(provisional_min..).next().is_some() {
-            self.tracer
-                .incomplete_enums
-                .insert(enum_name.into(), EnumProgress::IndexedVariantsRemaining);
+            self.tracer.incomplete_enums.insert(
+                enum_name.into(),
+                IncompleteEnumReason::IndexedVariantsRemaining,
+            );
             while known_variants.contains_key(&index)
                 && self
                     .tracer
@@ -542,9 +541,10 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
         }
         if has_indexed_variants_remaining {
             // Signal that the top-level tracing must continue.
-            self.tracer
-                .incomplete_enums
-                .insert(enum_name.into(), EnumProgress::IndexedVariantsRemaining);
+            self.tracer.incomplete_enums.insert(
+                enum_name.into(),
+                IncompleteEnumReason::IndexedVariantsRemaining,
+            );
         } else {
             // Signal that the top-level tracing is complete for this enum.
             self.tracer.incomplete_enums.remove(enum_name);
