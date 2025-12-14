@@ -38,7 +38,7 @@ struct TypeScriptEmitter<'a, T> {
 impl<'a> CodeGenerator<'a> {
     /// Create a TypeScript code generator for the given config.
     pub fn new(config: &'a CodeGeneratorConfig) -> Self {
-        if config.c_style_enums {
+        if config.enums.c_style {
             panic!("TypeScript does not support generating c-style enums");
         }
         let mut external_qualified_names = HashMap::new();
