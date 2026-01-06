@@ -64,6 +64,13 @@ namespace Serde
 
         public void serialize_str(string value) => serialize_bytes(new ValueArray<byte>(utf8.GetBytes(value)));
 
+        public void serialize_vec_bytes(ValueArray<ValueArray<byte>> value) {
+            serialize_len(value.Count);
+            foreach (ValueArray<byte> v in value) {
+                serialize_bytes(v);
+            }
+        }
+
         public void serialize_bytes(ValueArray<byte> value)
         {
             serialize_len(value.Count);
