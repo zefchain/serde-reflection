@@ -43,8 +43,8 @@ pub struct EnumConfig {
     pub c_style: bool,
     // Generate sealed class if `true` or abstract class if `false`
     pub sealed: bool,
-    // If `sealed_enums` is true then the listed names will be abstract,
-    // if `sealed_enums` is false then the listed names will be sealed.
+    // If `sealed` is true then the listed names will be abstract,
+    // if `sealed` is false then the listed names will be sealed.
     pub output_type: HashMap<&'static str, &'static str>,
 }
 
@@ -142,7 +142,7 @@ impl CodeGeneratorConfig {
         self
     }
 
-    /// Generate abstract or sealed classes for data enums  based on `with_sealed_enums`
+    /// Generate abstract or sealed classes for data enums based on `with_sealed_enums`
     /// but allow item by item overrides.
     pub fn with_enum_type_overrides(
         mut self,
