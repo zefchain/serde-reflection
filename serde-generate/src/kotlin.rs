@@ -195,11 +195,24 @@ where
                 self.quote_type(key),
                 self.quote_type(value)
             ),
-            Tuple(formats) => format!(
-                "com.novi.serde.Tuple{}<{}>",
-                formats.len(),
-                self.quote_types(formats)
-            ),
+            Tuple(formats) => match formats.len() {
+                2 => format!(
+                    "Pair<{}, {}>",
+                    self.quote_type(&formats[0]),
+                    self.quote_type(&formats[1])
+                ),
+                3 => format!(
+                    "Triple<{}, {}, {}>",
+                    self.quote_type(&formats[0]),
+                    self.quote_type(&formats[1]),
+                    self.quote_type(&formats[2])
+                ),
+                _ => format!(
+                    "com.novi.serde.Tuple{}<{}>",
+                    formats.len(),
+                    self.quote_types(formats)
+                ),
+            },
             TupleArray { content, size: _ } => {
                 format!("kotlin.collections.List<{}>", self.quote_type(content))
             }
@@ -380,7 +393,20 @@ serializer.sort_map_entries(offsets)
             Tuple(formats) => {
                 writeln!(self.out)?;
                 for (index, format) in formats.iter().enumerate() {
-                    let expr = format!("value.field{}", index);
+                    let expr = match formats.len() {
+                        2 => match index {
+                            0 => "value.first".to_string(),
+                            1 => "value.second".to_string(),
+                            _ => unreachable!(),
+                        },
+                        3 => match index {
+                            0 => "value.first".to_string(),
+                            1 => "value.second".to_string(),
+                            2 => "value.third".to_string(),
+                            _ => unreachable!(),
+                        },
+                        _ => format!("value.field{}", index),
+                    };
                     writeln!(self.out, "{}", self.quote_serialize_value(&expr, format))?;
                 }
             }
@@ -485,13 +511,18 @@ return obj
             }
 
             Tuple(formats) => {
+                let constructor = match formats.len() {
+                    2 => "Pair".to_string(),
+                    3 => "Triple".to_string(),
+                    _ => self.quote_type(format0),
+                };
                 write!(
                     self.out,
                     r#"
 return {0}({1}
 )
 "#,
-                    self.quote_type(format0),
+                    constructor,
                     formats
                         .iter()
                         .map(|f| format!("\n    {}", self.quote_deserialize(f)))

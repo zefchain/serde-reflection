@@ -48,7 +48,6 @@ fn test_kotlin_runtime_on_simple_data(runtime: Runtime) {
         main,
         r#"
 import com.novi.serde.DeserializationError
-import com.novi.serde.Tuple2
 import testing.Choice
 import testing.Test
 
@@ -64,7 +63,7 @@ fun main() {{
     val value = Test.{1}Deserialize(input)
 
     val a = listOf(4u, 6u)
-    val b = Tuple2(-3L, 5uL)
+    val b = Pair(-3L, 5uL)
     val c = Choice.C(7.toUByte())
     val value2 = Test(a, b, c)
 
