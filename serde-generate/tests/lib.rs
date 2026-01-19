@@ -19,6 +19,10 @@ mod golang_runtime;
 mod java_generation;
 #[cfg(feature = "java")]
 mod java_runtime;
+#[cfg(feature = "kotlin")]
+mod kotlin_generation;
+#[cfg(feature = "kotlin")]
+mod kotlin_runtime;
 #[cfg(feature = "ocaml")]
 mod ocaml_generation;
 #[cfg(feature = "ocaml")]

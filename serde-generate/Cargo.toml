@@ -42,12 +42,13 @@ revm = "19.2.0"
 serde_json = "1.0.115"
 
 [features]
-default = ["cpp", "csharp", "dart", "golang", "java", "ocaml", "python3", "rust", "swift", "typescript", "solidity"]
+default = ["cpp", "csharp", "dart", "golang", "java", "kotlin", "ocaml", "python3", "rust", "swift", "typescript", "solidity"]
 cpp = []
 csharp = ["include_dir"]
 dart = ["include_dir"]
 golang = []
 java = ["include_dir"]
+kotlin = ["include_dir"]
 ocaml = ["phf", "include_dir"]
 python3 = []
 rust = []
