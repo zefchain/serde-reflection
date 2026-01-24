@@ -14,7 +14,7 @@
 //!   in order to generate class definitions and provide Serde-compatible binary
 //!   serialization in other languages (C++, python, Java, etc).
 //!
-//! * Together with the module `json_converter`, formats allow dynamic translation of
+//! * Together with the [`json_converter`] module, formats allow dynamic translation of
 //!   binary-serialized values to JSON and from JSON.
 //!
 //! # Quick Start
