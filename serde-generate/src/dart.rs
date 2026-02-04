@@ -192,7 +192,7 @@ where
     // in Dart enums cannot have a static method added to them
     // yet so we must call the extension class instead
     fn get_class(&self, name: &str) -> String {
-        if self.generator.config.c_style_enums {
+        if self.generator.config.enums.c_style {
             use ContainerFormat::Enum;
             match self.get_field_container_type(name) {
                 // if we have an enum AND all of that enum's members are Unit
@@ -583,12 +583,19 @@ return obj;
             Struct(fields) => fields.clone(),
             Enum(variants) => {
                 // When we find an enum with all Unit variants, we ser/de as a regular Dart enum.
-                if self.generator.config.c_style_enums
+                if ((self.generator.config.enums.c_style
+                    && !self.generator.config.enums.output_type.contains_key(name))
+                    || self.generator.config.enums.output_type.get(name) == Some(&"enum"))
                     && variants.values().all(|f| f.value == VariantFormat::Unit)
                 {
                     self.output_enum_container(name, variants)?;
+                } else if (self.generator.config.enums.sealed
+                    && !self.generator.config.enums.output_type.contains_key(name))
+                    || self.generator.config.enums.output_type.get(name) == Some(&"sealed")
+                {
+                    self.output_enum_class_container(name, variants, "sealed")?;
                 } else {
-                    self.output_enum_class_container(name, variants)?;
+                    self.output_enum_class_container(name, variants, "abstract")?;
                 }
                 return Ok(());
             }
@@ -1052,12 +1059,14 @@ switch (this) {{"#,
         &mut self,
         name: &str,
         variants: &BTreeMap<u32, Named<VariantFormat>>,
+        class_type: &str,
     ) -> Result<()> {
         writeln!(self.out)?;
         self.output_comment(name)?;
         writeln!(
             self.out,
-            "abstract class {} {{",
+            "{} class {} {{",
+            class_type,
             self.quote_qualified_name(name)
         )?;
         self.enter_class(name);

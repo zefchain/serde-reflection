@@ -83,7 +83,7 @@ impl<'a> CodeGenerator<'a> {
         // When we find an enum with all Unit variants, we ser/de as a regular C# enum.
         // We keep track of this so we can use the enum's extension class for ser/de since enums can't have methods.
         let mut cstyle_enum_names = Vec::new();
-        if self.config.c_style_enums {
+        if self.config.enums.c_style {
             for (name, format) in registry {
                 if let ContainerFormat::Enum(variants) = format {
                     if variants.values().all(|f| f.value == VariantFormat::Unit) {
@@ -1214,7 +1214,7 @@ impl crate::SourceInstaller for Installer {
         <PackageReference Include="System.ValueTuple" Version="4.5.0" />
     </ItemGroup>
     <ItemGroup>
-{}    
+{}
     </ItemGroup>
 </Project>
 "#,
