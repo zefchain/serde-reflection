@@ -1210,7 +1210,11 @@ impl SolRegistry {
             loop {
                 let mut new_level = HashSet::new();
                 for key in level {
-                    for depend in self.names.get(&key).unwrap().get_dependency() {
+                    let name = self.names.get(&key);
+                    let Some(name) = name else {
+                        panic!("The key {key:?} is absent from the list of names");
+                    };
+                    for depend in name.get_dependency() {
                         if depend == *start_key {
                             return true;
                         }
@@ -1455,7 +1459,7 @@ impl SolRegistry {
 impl<'a> CodeGenerator<'a> {
     /// Create a solidity code generator for the given config.
     pub fn new(config: &'a CodeGeneratorConfig) -> Self {
-        if config.c_style_enums {
+        if config.enums.c_style {
             panic!("Solidity does not support generating c-style enums");
         }
         Self { config }

@@ -1,7 +1,65 @@
 // Copyright (c) Zefchain Labs, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! Dynamic conversion to JSON values
+//! Dynamic conversion between binary-serialized data and JSON values.
+//!
+//! This module provides dynamic conversion between binary-serialized data and JSON values.
+//! This is useful when you need to inspect or manipulate serialized data without having
+//! access to the original Rust types at compile time.
+//!
+//! # Example
+//!
+//! ```rust
+//! use bincode::Options;
+//! use serde::{Serialize, Deserialize};
+//! use serde_reflection::{Tracer, TracerConfig, Samples};
+//! use serde_reflection::json_converter::{DeserializationContext, SerializationContext, EmptyEnvironment};
+//! use serde_json::json;
+//!
+//! #[derive(Serialize, Deserialize)]
+//! struct Point {
+//!     x: i32,
+//!     y: i32,
+//! }
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Use tracer to extract the format
+//! let mut tracer = Tracer::new(TracerConfig::default());
+//! let (format, _) = tracer
+//!     .trace_type::<Point>(&Samples::new())?;
+//! let registry = tracer.registry()?;
+//!
+//! // Serialize with bincode
+//! let config = bincode::DefaultOptions::new();
+//! let point = Point { x: 10, y: 20 };
+//! let encoded = config.serialize(&point)?;
+//!
+//! // Deserialize to JSON using DeserializationContext
+//! let mut deserializer = bincode::Deserializer::from_slice(&encoded, config);
+//! let context = DeserializationContext {
+//!     format: format.clone(),
+//!     registry: &registry,
+//!     environment: &EmptyEnvironment,
+//! };
+//! let value: serde_json::Value = serde::de::DeserializeSeed::deserialize(context, &mut deserializer)?;
+//! assert_eq!(value["x"], json!(10));
+//! assert_eq!(value["y"], json!(20));
+//!
+//! // Serialize JSON back to binary using SerializationContext
+//! let context = SerializationContext {
+//!     value: &value,
+//!     format: &format,
+//!     registry: &registry,
+//!     environment: &EmptyEnvironment,
+//! };
+//! let bytes = config.serialize(&context)?;
+//! assert_eq!(encoded, bytes);
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! This approach is particularly useful for cryptographic applications where you need to
+//! compute hashes of JSON values using a binary format like [BCS](https://github.com/diem/bcs).
 
 use crate::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use serde::de::{DeserializeSeed, MapAccess, SeqAccess, Visitor};
