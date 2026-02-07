@@ -55,6 +55,26 @@ jobs:
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
+      - name: Ensure Kotlin/Native Directory Exists
+        run: mkdir -p /home/runner/.kotlin-native
+      - name: Cache Kotlin/Native
+        id: cache-kotlin-native
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.kotlin-native
+          key: kotlin-native-v2.3.10-linux-x86_64
+      - name: Setup Additional Languages (kotlin/native)
+        if: ${{ steps.cache-kotlin-native.outputs.cache-hit != 'true' }}
+        run: |
+          KOTLIN_NATIVE_URL="https://github.com/JetBrains/kotlin/releases/download/v2.3.10/kotlin-native-prebuilt-linux-x86_64-2.3.10.tar.gz"
+          curl --fail --location --silent --show-error \
+            --retry 5 --retry-delay 2 --retry-all-errors \
+            --output /tmp/kotlin-native.tar.gz \
+            "${KOTLIN_NATIVE_URL}"
+          tar -xzf /tmp/kotlin-native.tar.gz -C /home/runner/.kotlin-native
+      - name: Add Kotlin/Native to PATH
+        run: echo "/home/runner/.kotlin-native/kotlin-native-prebuilt-linux-x86_64-2.3.10/bin" >> $GITHUB_PATH
+
       - name: Setup Additional Languages (solidity)
         uses: foundry-rs/foundry-toolchain@v1.2.0
       - name: Ensure Solc Directory Exists
@@ -145,6 +165,7 @@ jobs:
           deno --version
           dart --version
           swift --version
+          kotlinc-native -version
           eval $(opam env)
           ocaml --version
 

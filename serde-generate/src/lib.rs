@@ -156,6 +156,9 @@ pub mod golang;
 /// Support for code-generation in Java
 #[cfg(feature = "java")]
 pub mod java;
+/// Support for code-generation in Kotlin
+#[cfg(feature = "kotlin")]
+pub mod kotlin;
 /// Support for code-generation in OCaml
 #[cfg(feature = "ocaml")]
 pub mod ocaml;
