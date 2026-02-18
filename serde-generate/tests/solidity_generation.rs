@@ -127,6 +127,13 @@ pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow
     Ok(Bytes::copy_from_slice(&object))
 }
 
+fn generate_solidity(config: &CodeGeneratorConfig, registry: &Registry) -> String {
+    let mut output = Vec::new();
+    let generator = solidity::CodeGenerator::new(config);
+    generator.output(&mut output, registry).unwrap();
+    String::from_utf8(output).unwrap()
+}
+
 pub fn get_registry_from_type<T: Serialize + DeserializeOwned>() -> Registry {
     let mut tracer = Tracer::new(TracerConfig::default());
     let samples = Samples::new();
@@ -149,4 +156,670 @@ fn test_solidity_compilation() {
     }
 
     get_bytecode(path, "test.sol", "test").unwrap();
+}
+
+#[test]
+fn test_external_definitions_struct() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "owner".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+    registry.insert(
+        "Payment".into(),
+        ContainerFormat::Struct(vec![
+            Named {
+                name: "recipient".into(),
+                value: Format::TypeName("Address".into()),
+            },
+            Named {
+                name: "amount".into(),
+                value: Format::U64,
+            },
+        ]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // External type definition should NOT be generated
+    assert!(
+        !output.contains("struct Address"),
+        "should not contain struct Address definition"
+    );
+    assert!(
+        !output.contains("function bcs_serialize_Address"),
+        "should not contain Address serializer"
+    );
+    assert!(
+        !output.contains("function bcs_deserialize_offset_Address"),
+        "should not contain Address deserializer"
+    );
+
+    // Local type should reference external type with module prefix
+    assert!(
+        output.contains("BaseTypes.Address recipient;"),
+        "Payment struct fields should qualify Address with module: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Address("),
+        "serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Address("),
+        "deserialization should call qualified function: {output}"
+    );
+
+    // Import statement
+    assert!(
+        output.contains("import \"BaseTypes.sol\";"),
+        "should contain import statement: {output}"
+    );
+
+    // Local type definition should still be generated
+    assert!(
+        output.contains("struct Payment"),
+        "should contain local struct Payment: {output}"
+    );
+}
+
+#[test]
+fn test_external_definitions_in_array() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "owner".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+    registry.insert(
+        "Batch".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "recipients".into(),
+            value: Format::Seq(Box::new(Format::TypeName("Address".into()))),
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // Array field should use qualified type name
+    assert!(
+        output.contains("BaseTypes.Address[] recipients;"),
+        "array field should use qualified inner type: {output}"
+    );
+    // Seq ser/deser should use qualified function calls
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Address("),
+        "seq serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Address("),
+        "seq deserialization should call qualified function: {output}"
+    );
+}
+
+#[test]
+fn test_external_definitions_in_enum() {
+    use serde_reflection::{ContainerFormat, Format, Named, VariantFormat};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "owner".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+    registry.insert(
+        "Action".into(),
+        ContainerFormat::Enum(BTreeMap::from([
+            (
+                0,
+                Named {
+                    name: "Deliver".into(),
+                    value: VariantFormat::NewType(Box::new(Format::TypeName("Address".into()))),
+                },
+            ),
+            (
+                1,
+                Named {
+                    name: "Noop".into(),
+                    value: VariantFormat::Unit,
+                },
+            ),
+        ])),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // Enum variant should use qualified type name
+    assert!(
+        output.contains("BaseTypes.Address deliver;"),
+        "enum variant field should use qualified type: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Address("),
+        "enum serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Address("),
+        "enum deserialization should call qualified function: {output}"
+    );
+}
+
+#[test]
+fn test_external_definitions_no_import_when_empty() {
+    let registry = get_solidity_registry().unwrap();
+    let config = CodeGeneratorConfig::new("test".into());
+    let output = generate_solidity(&config, &registry);
+
+    assert!(
+        !output.contains("import "),
+        "should not have any imports without external definitions: {output}"
+    );
+}
+
+#[test]
+fn test_external_definitions_in_option() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "owner".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+    registry.insert(
+        "MaybePayee".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "recipient".into(),
+            value: Format::Option(Box::new(Format::TypeName("Address".into()))),
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // External type definition should NOT be generated
+    assert!(
+        !output.contains("struct Address"),
+        "should not contain struct Address definition"
+    );
+
+    // Option wrapper should exist locally, but its payload type must be qualified
+    assert!(
+        output.contains("struct opt_Address"),
+        "should contain local opt_Address wrapper: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.Address value;"),
+        "opt_Address.value should be qualified: {output}"
+    );
+
+    // Option ser/de should call qualified functions for the external payload type
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Address("),
+        "option serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Address("),
+        "option deserialization should call qualified function: {output}"
+    );
+
+    // Import statement
+    assert!(
+        output.contains("import \"BaseTypes.sol\";"),
+        "should contain import statement: {output}"
+    );
+}
+
+#[test]
+fn test_external_definitions_in_tuplearray() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "owner".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+    registry.insert(
+        "Recipients4".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "recipients".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::TypeName("Address".into())),
+                size: 4,
+            },
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // The tuplearray helper struct name is tuplearray{size}_{inner_key}
+    assert!(
+        output.contains("struct tuplearray4_Address"),
+        "should contain tuplearray4_Address helper struct: {output}"
+    );
+
+    // The tuplearray helper payload array type must be qualified
+    assert!(
+        output.contains("BaseTypes.Address[] values;"),
+        "tuplearray values type should be qualified: {output}"
+    );
+
+    // Serialization/deserialization loops should call qualified functions
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Address("),
+        "tuplearray serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Address("),
+        "tuplearray deserialization should call qualified function: {output}"
+    );
+}
+
+/// Types reachable *only* through external types should not be emitted locally.
+/// This validates the core purpose of `locally_needed_types()`.
+#[test]
+fn test_external_definitions_excludes_transitive_only_through_external() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+
+    // AddressInner exists in the registry and is a dependency of Address.
+    registry.insert(
+        "AddressInner".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "bytes".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+
+    // Address depends on AddressInner.
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "inner".into(),
+            value: Format::TypeName("AddressInner".into()),
+        }]),
+    );
+
+    // Local type uses Address.
+    registry.insert(
+        "Payment".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "recipient".into(),
+            value: Format::TypeName("Address".into()),
+        }]),
+    );
+
+    // Mark Address as external, but NOT AddressInner.
+    // AddressInner should not be emitted locally because it is only
+    // reachable via the external Address type.
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // External Address should not be generated.
+    assert!(
+        !output.contains("struct Address"),
+        "should not contain struct Address definition"
+    );
+
+    // AddressInner should ALSO not be generated (reachable only through external Address).
+    assert!(
+        !output.contains("struct AddressInner"),
+        "should not contain struct AddressInner definition: {output}"
+    );
+    assert!(
+        !output.contains("function bcs_serialize_AddressInner"),
+        "should not contain AddressInner serializer: {output}"
+    );
+    assert!(
+        !output.contains("function bcs_deserialize_offset_AddressInner"),
+        "should not contain AddressInner deserializer: {output}"
+    );
+
+    // Local Payment should still be generated and reference qualified external Address.
+    assert!(
+        output.contains("struct Payment"),
+        "should contain local struct Payment: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.Address recipient;"),
+        "Payment should qualify Address with module: {output}"
+    );
+
+    // Import statement should exist.
+    assert!(
+        output.contains("import \"BaseTypes.sol\";"),
+        "should contain import statement: {output}"
+    );
+}
+
+#[test]
+fn test_external_definitions_in_map_key() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "owner".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+    registry.insert(
+        "Balances".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "entries".into(),
+            value: Format::Map {
+                key: Box::new(Format::TypeName("Address".into())),
+                value: Box::new(Format::U64),
+            },
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // The synthetic key_values struct should qualify the external key type
+    assert!(
+        output.contains("BaseTypes.Address key;"),
+        "map key field should be qualified: {output}"
+    );
+    // Serialization/deserialization of the key should use qualified functions
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Address("),
+        "map key serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Address("),
+        "map key deserialization should call qualified function: {output}"
+    );
+    // External Address definition should not be generated
+    assert!(
+        !output.contains("struct Address"),
+        "should not contain struct Address definition"
+    );
+}
+
+#[test]
+fn test_external_definitions_in_map_value() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Token".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "id".into(),
+            value: Format::U64,
+        }]),
+    );
+    registry.insert(
+        "Portfolio".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "holdings".into(),
+            value: Format::Map {
+                key: Box::new(Format::U64),
+                value: Box::new(Format::TypeName("Token".into())),
+            },
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into())
+        .with_external_definitions(BTreeMap::from([("BaseTypes".into(), vec!["Token".into()])]));
+    let output = generate_solidity(&config, &registry);
+
+    // The synthetic key_values struct should qualify the external value type
+    assert!(
+        output.contains("BaseTypes.Token value;"),
+        "map value field should be qualified: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Token("),
+        "map value serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Token("),
+        "map value deserialization should call qualified function: {output}"
+    );
+    assert!(
+        !output.contains("struct Token"),
+        "should not contain struct Token definition"
+    );
+}
+
+#[test]
+fn test_external_definitions_in_tuple() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "owner".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+    registry.insert(
+        "Transfer".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "pair".into(),
+            value: Format::Tuple(vec![Format::TypeName("Address".into()), Format::U64]),
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // The synthetic tuple struct should qualify the external element type
+    assert!(
+        output.contains("BaseTypes.Address entry0;"),
+        "tuple element should be qualified: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Address("),
+        "tuple serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Address("),
+        "tuple deserialization should call qualified function: {output}"
+    );
+    assert!(
+        !output.contains("struct Address"),
+        "should not contain struct Address definition"
+    );
+}
+
+#[test]
+fn test_external_definitions_in_option_seq() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "owner".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 32,
+            },
+        }]),
+    );
+    registry.insert(
+        "MaybeBatch".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "recipients".into(),
+            value: Format::Option(Box::new(Format::Seq(Box::new(Format::TypeName(
+                "Address".into(),
+            ))))),
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // The option wrapper's value field should be a qualified Seq type
+    assert!(
+        output.contains("BaseTypes.Address[] value;"),
+        "option of seq should qualify inner array type: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_serialize_Address("),
+        "nested serialization should call qualified function: {output}"
+    );
+    assert!(
+        output.contains("BaseTypes.bcs_deserialize_offset_Address("),
+        "nested deserialization should call qualified function: {output}"
+    );
+    assert!(
+        !output.contains("struct Address"),
+        "should not contain struct Address definition"
+    );
+}
+
+#[test]
+fn test_external_definitions_helper_only_through_external_not_emitted() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+
+    // Helper type used only by the external type
+    registry.insert(
+        "Checksum".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "value".into(),
+            value: Format::TupleArray {
+                content: Box::new(Format::U8),
+                size: 4,
+            },
+        }]),
+    );
+
+    // External type depends on Checksum
+    registry.insert(
+        "Address".into(),
+        ContainerFormat::Struct(vec![
+            Named {
+                name: "data".into(),
+                value: Format::TupleArray {
+                    content: Box::new(Format::U8),
+                    size: 20,
+                },
+            },
+            Named {
+                name: "checksum".into(),
+                value: Format::TypeName("Checksum".into()),
+            },
+        ]),
+    );
+
+    // Local type uses the external Address
+    registry.insert(
+        "Payment".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "to".into(),
+            value: Format::TypeName("Address".into()),
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("ExtTypes".into()).with_external_definitions(
+        BTreeMap::from([("BaseTypes".into(), vec!["Address".into()])]),
+    );
+    let output = generate_solidity(&config, &registry);
+
+    // Checksum is only referenced by external Address, so it must NOT be emitted
+    assert!(
+        !output.contains("struct Checksum"),
+        "Checksum (only reachable through external) should not be emitted: {output}"
+    );
+    assert!(
+        !output.contains("bcs_serialize_Checksum"),
+        "Checksum serializer should not be emitted: {output}"
+    );
+
+    // Payment should still exist
+    assert!(
+        output.contains("struct Payment"),
+        "local Payment should be emitted: {output}"
+    );
+}
+
+#[test]
+#[should_panic(expected = "not a valid Solidity identifier")]
+fn test_external_definitions_rejects_invalid_module_name() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    let mut registry = Registry::new();
+    registry.insert(
+        "Foo".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "x".into(),
+            value: Format::U64,
+        }]),
+    );
+
+    // "path/to/module" is not a valid Solidity identifier
+    let config = CodeGeneratorConfig::new("Test".into()).with_external_definitions(BTreeMap::from(
+        [("path/to/module".into(), vec!["Foo".into()])],
+    ));
+    let _ = generate_solidity(&config, &registry);
 }
