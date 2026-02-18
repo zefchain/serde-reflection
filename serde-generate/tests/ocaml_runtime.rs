@@ -12,7 +12,7 @@ fn quote_bytes(bytes: &[u8]) -> String {
         "\"{}\"",
         bytes
             .iter()
-            .map(|x| format!("\\{:03}", x))
+            .map(|x| format!("\\{x:03}"))
             .collect::<Vec<_>>()
             .join("")
     )
@@ -66,14 +66,13 @@ fn test_ocaml_runtime_on_simple_data(runtime: Runtime) {
  (name testing)
  (modules testing)
  (preprocess (pps ppx))
- (libraries {}_runtime))
+ (libraries {runtime_str}_runtime))
 
 (executable
  (name main)
  (modules main)
  (libraries serde testing))
-"#,
-        runtime_str
+"#
     )
     .unwrap();
 
@@ -102,7 +101,7 @@ open Stdint
 exception Unexpected_success
 
 let () =
-  let input = Bytes.of_string {0} in
+  let input = Bytes.of_string {reference_bytes} in
   let value = Deserialize.apply Testing.test_de input in
   let a = List.map Uint32.of_int [4; 6] in
   let b = -3L, Uint64.of_int 5 in
@@ -111,15 +110,14 @@ let () =
   assert (value = value2);
   let output = Serialize.apply Testing.test_ser value2 in
   assert (input = output);
-  let input2 = Bytes.of_string ({0} ^ "\001") in
+  let input2 = Bytes.of_string ({reference_bytes} ^ "\001") in
   try
     let _ = Deserialize.apply Testing.test_de input2 in
     raise Unexpected_success
   with
   | Unexpected_success -> assert false
   | _ -> ()
-"#,
-        reference_bytes
+"#
     )
     .unwrap();
 
@@ -181,14 +179,13 @@ fn test_ocaml_runtime_on_supported_types(runtime: Runtime) {
  (name test)
  (modules test)
  (preprocess (pps ppx)) 
- (libraries {}_runtime))
-"#,
-        runtime_str
+ (libraries {runtime_str}_runtime))
+"#
     )
     .unwrap();
 
     let source_path = dir_path.join("test.ml");
-    println!("{:?}", source_path);
+    println!("{source_path:?}");
     let mut source = File::create(&source_path).unwrap();
     let generator = ocaml::CodeGenerator::new(&config);
     generator.output(&mut source, &registry).unwrap();

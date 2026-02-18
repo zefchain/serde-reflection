@@ -21,7 +21,7 @@ fn test_that_ocaml_code_compiles_with_config(
     let mut source = File::create(&source_path).unwrap();
 
     if let Some(s) = more {
-        writeln!(source, "{}", s).unwrap()
+        writeln!(source, "{s}").unwrap()
     };
 
     let generator = ocaml::CodeGenerator::new(config);
@@ -58,8 +58,7 @@ fn test_that_ocaml_code_compiles_with_config(
 (library
  (name test)
  (modules test)
- (preprocess (pps ppx)){})"#,
-        runtime_str
+ (preprocess (pps ppx)){runtime_str})"#
     )
     .unwrap();
 

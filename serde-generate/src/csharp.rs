@@ -49,8 +49,7 @@ impl<'a> CodeGenerator<'a> {
         let mut external_qualified_names = HashMap::new();
         for (namespace, names) in &config.external_definitions {
             for name in names {
-                external_qualified_names
-                    .insert(name.to_string(), format!("{}.{}", namespace, name));
+                external_qualified_names.insert(name.to_string(), format!("{namespace}.{name}"));
             }
         }
         Self {
@@ -230,7 +229,7 @@ using System.Numerics;"
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, "/// ").replace("\n\n", "\n///\n");
-            write!(self.out, "{}", text)?;
+            write!(self.out, "{text}")?;
         }
         Ok(())
     }
@@ -242,7 +241,7 @@ using System.Numerics;"
             .custom_code
             .get(&self.current_namespace)
         {
-            writeln!(self.out, "\n{}", code)?;
+            writeln!(self.out, "\n{code}")?;
         }
         Ok(())
     }
@@ -361,24 +360,24 @@ using System.Numerics;"
     fn quote_serialize_value(&self, value: &str, format: &Format) -> String {
         use Format::*;
         match format {
-            TypeName(_) => format!("{}.Serialize(serializer);", value),
-            Unit => format!("serializer.serialize_unit({});", value),
-            Bool => format!("serializer.serialize_bool({});", value),
-            I8 => format!("serializer.serialize_i8({});", value),
-            I16 => format!("serializer.serialize_i16({});", value),
-            I32 => format!("serializer.serialize_i32({});", value),
-            I64 => format!("serializer.serialize_i64({});", value),
-            I128 => format!("serializer.serialize_i128({});", value),
-            U8 => format!("serializer.serialize_u8({});", value),
-            U16 => format!("serializer.serialize_u16({});", value),
-            U32 => format!("serializer.serialize_u32({});", value),
-            U64 => format!("serializer.serialize_u64({});", value),
-            U128 => format!("serializer.serialize_u128({});", value),
-            F32 => format!("serializer.serialize_f32({});", value),
-            F64 => format!("serializer.serialize_f64({});", value),
-            Char => format!("serializer.serialize_char({});", value),
-            Str => format!("serializer.serialize_str({});", value),
-            Bytes => format!("serializer.serialize_bytes({});", value),
+            TypeName(_) => format!("{value}.Serialize(serializer);"),
+            Unit => format!("serializer.serialize_unit({value});"),
+            Bool => format!("serializer.serialize_bool({value});"),
+            I8 => format!("serializer.serialize_i8({value});"),
+            I16 => format!("serializer.serialize_i16({value});"),
+            I32 => format!("serializer.serialize_i32({value});"),
+            I64 => format!("serializer.serialize_i64({value});"),
+            I128 => format!("serializer.serialize_i128({value});"),
+            U8 => format!("serializer.serialize_u8({value});"),
+            U16 => format!("serializer.serialize_u16({value});"),
+            U32 => format!("serializer.serialize_u32({value});"),
+            U64 => format!("serializer.serialize_u64({value});"),
+            U128 => format!("serializer.serialize_u128({value});"),
+            F32 => format!("serializer.serialize_f32({value});"),
+            F64 => format!("serializer.serialize_f64({value});"),
+            Char => format!("serializer.serialize_char({value});"),
+            Str => format!("serializer.serialize_str({value});"),
+            Bytes => format!("serializer.serialize_bytes({value});"),
             _ => format!(
                 "{}.serialize_{}({}, serializer);",
                 self.quote_qualified_name("TraitHelpers"),
@@ -649,7 +648,7 @@ return new Serde.ValueArray<{0}>(obj);
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect(),
@@ -683,16 +682,14 @@ return new Serde.ValueArray<{0}>(obj);
             self.output_comment(name)?;
             writeln!(
                 self.out,
-                "public sealed class {0}: {1}, IEquatable<{0}>, ICloneable {{",
-                name, base
+                "public sealed class {name}: {base}, IEquatable<{name}>, ICloneable {{"
             )?;
             "override "
         } else {
             self.output_comment(name)?;
             writeln!(
                 self.out,
-                "public sealed class {0}: IEquatable<{0}>, ICloneable {{",
-                name
+                "public sealed class {name}: IEquatable<{name}>, ICloneable {{"
             )?;
             ""
         };
@@ -742,13 +739,12 @@ return new Serde.ValueArray<{0}>(obj);
         if self.generator.config.serialization {
             writeln!(
                 self.out,
-                "\npublic {}void Serialize(Serde.ISerializer serializer) {{",
-                fn_mods
+                "\npublic {fn_mods}void Serialize(Serde.ISerializer serializer) {{"
             )?;
             self.out.indent();
             writeln!(self.out, "serializer.increase_container_depth();")?;
             if let Some(index) = variant_index {
-                writeln!(self.out, "serializer.serialize_variant_index({});", index)?;
+                writeln!(self.out, "serializer.serialize_variant_index({index});")?;
             }
             for field in fields {
                 writeln!(
@@ -773,14 +769,12 @@ return new Serde.ValueArray<{0}>(obj);
             if variant_index.is_none() {
                 writeln!(
                     self.out,
-                    "\npublic static {}{} Deserialize(Serde.IDeserializer deserializer) {{",
-                    fn_mods, name,
+                    "\npublic static {fn_mods}{name} Deserialize(Serde.IDeserializer deserializer) {{",
                 )?;
             } else {
                 writeln!(
                     self.out,
-                    "\ninternal static {} Load(Serde.IDeserializer deserializer) {{",
-                    name,
+                    "\ninternal static {name} Load(Serde.IDeserializer deserializer) {{",
                 )?;
             }
             self.out.indent();
@@ -809,21 +803,18 @@ return new Serde.ValueArray<{0}>(obj);
         // Equality
         writeln!(
             self.out,
-            "public override bool Equals(object obj) => obj is {} other && Equals(other);\n",
-            name
+            "public override bool Equals(object obj) => obj is {name} other && Equals(other);\n"
         )?;
         writeln!(
             self.out,
-            "public static bool operator ==({0} left, {0} right) => Equals(left, right);\n",
-            name
+            "public static bool operator ==({name} left, {name} right) => Equals(left, right);\n"
         )?;
         writeln!(
             self.out,
-            "public static bool operator !=({0} left, {0} right) => !Equals(left, right);\n",
-            name
+            "public static bool operator !=({name} left, {name} right) => !Equals(left, right);\n"
         )?;
 
-        writeln!(self.out, "public bool Equals({} other) {{", name)?;
+        writeln!(self.out, "public bool Equals({name} other) {{")?;
         self.out.indent();
         writeln!(self.out, "if (other == null) return false;")?;
         writeln!(self.out, "if (ReferenceEquals(this, other)) return true;")?;
@@ -866,8 +857,7 @@ return new Serde.ValueArray<{0}>(obj);
             )?;
             writeln!(
                 self.out,
-                "public {0} Clone() => ({0})MemberwiseClone();\n",
-                name
+                "public {name} Clone() => ({name})MemberwiseClone();\n"
             )?;
             writeln!(self.out, "object ICloneable.Clone() => Clone();\n")?;
         }
@@ -889,8 +879,7 @@ return new Serde.ValueArray<{0}>(obj);
         self.output_comment(name)?;
         writeln!(
             self.out,
-            "public abstract class {0}: IEquatable<{0}>, ICloneable {{",
-            name
+            "public abstract class {name}: IEquatable<{name}>, ICloneable {{"
         )?;
         let reserved_names = variants
             .values()
@@ -906,8 +895,7 @@ return new Serde.ValueArray<{0}>(obj);
             )?;
             write!(
                 self.out,
-                "\npublic static {} Deserialize(Serde.IDeserializer deserializer) {{",
-                name
+                "\npublic static {name} Deserialize(Serde.IDeserializer deserializer) {{"
             )?;
             self.out.indent();
             writeln!(
@@ -926,8 +914,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                r#"default: throw new Serde.DeserializationException("Unknown variant index for {}: " + index);"#,
-                name,
+                r#"default: throw new Serde.DeserializationException("Unknown variant index for {name}: " + index);"#,
             )?;
             self.out.unindent();
             writeln!(self.out, "}}")?;
@@ -958,11 +945,10 @@ switch (index) {{"#,
         // Equals
         writeln!(
             self.out,
-            "public override bool Equals(object obj) => obj is {} other && Equals(other);\n",
-            name
+            "public override bool Equals(object obj) => obj is {name} other && Equals(other);\n"
         )?;
 
-        writeln!(self.out, "public bool Equals({} other) {{", name)?;
+        writeln!(self.out, "public bool Equals({name} other) {{")?;
         self.out.indent();
         writeln!(self.out, "if (other == null) return false;")?;
         writeln!(self.out, "if (ReferenceEquals(this, other)) return true;")?;
@@ -990,8 +976,7 @@ switch (index) {{"#,
         )?;
         writeln!(
             self.out,
-            "public {0} Clone() => ({0})MemberwiseClone();\n",
-            name
+            "public {name} Clone() => ({name})MemberwiseClone();\n"
         )?;
         writeln!(self.out, "object ICloneable.Clone() => Clone();\n")?;
 
@@ -1007,7 +992,7 @@ switch (index) {{"#,
     ) -> Result<()> {
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "public enum {} {{", name)?;
+        writeln!(self.out, "public enum {name} {{")?;
         self.out.indent();
         for (index, variant) in variants {
             writeln!(self.out, "{} = {},", variant.name, index)?;
@@ -1017,28 +1002,27 @@ switch (index) {{"#,
 
         if self.generator.config.serialization {
             let ext_name = format!("{}Extensions", name.to_camel_case());
-            writeln!(self.out, "public static class {} {{", ext_name)?;
+            writeln!(self.out, "public static class {ext_name} {{")?;
             self.enter_class(&ext_name, &[]);
 
             writeln!(
                 self.out,
                 r#"
-public static void Serialize(this {0} value, Serde.ISerializer serializer) {{
+public static void Serialize(this {name} value, Serde.ISerializer serializer) {{
     serializer.increase_container_depth();
     serializer.serialize_variant_index((int)value);
     serializer.decrease_container_depth();
 }}
 
-public static {0} Deserialize(Serde.IDeserializer deserializer) {{
+public static {name} Deserialize(Serde.IDeserializer deserializer) {{
     deserializer.increase_container_depth();
     int index = deserializer.deserialize_variant_index();
-    if (!Enum.IsDefined(typeof({0}), index))
-        throw new Serde.DeserializationException("Unknown variant index for {}: " + index);
-    {0} value = ({0})index;
+    if (!Enum.IsDefined(typeof({name}), index))
+        throw new Serde.DeserializationException("Unknown variant index for {name}: " + index);
+    {name} value = ({name})index;
     deserializer.decrease_container_depth();
     return value;
-}}"#,
-                name
+}}"#
             )?;
 
             for encoding in &self.generator.config.encodings {
@@ -1122,7 +1106,7 @@ public static {0} {1}Deserialize(ArraySegment<byte> input) {{
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect::<Vec<_>>(),
@@ -1196,8 +1180,7 @@ impl crate::SourceInstaller for Installer {
         for dep in deps {
             writeln!(
                 &mut dependencies,
-                "        <ProjectReference Include=\"{1}{0}\\{0}.csproj\" />",
-                dep, back_path
+                "        <ProjectReference Include=\"{back_path}{dep}\\{dep}.csproj\" />"
             )?;
         }
         let mut proj = std::fs::File::create(dir_path.join(name + ".csproj"))?;
@@ -1214,11 +1197,10 @@ impl crate::SourceInstaller for Installer {
         <PackageReference Include="System.ValueTuple" Version="4.5.0" />
     </ItemGroup>
     <ItemGroup>
-{}
+{dependencies}
     </ItemGroup>
 </Project>
-"#,
-            dependencies
+"#
         )?;
 
         Ok(())

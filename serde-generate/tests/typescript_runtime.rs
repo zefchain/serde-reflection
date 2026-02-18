@@ -59,7 +59,7 @@ Deno.test("{1} serialization matches deserialization", () => {{
 "#,
         reference
             .iter()
-            .map(|x| format!("{}", x))
+            .map(|x| format!("{x}"))
             .collect::<Vec<_>>()
             .join(", "),
         runtime.name().to_lowercase(),

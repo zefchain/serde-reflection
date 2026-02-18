@@ -1,10 +1,11 @@
 use crate::solidity_generation::{get_bytecode, get_registry_from_type};
 use alloy_sol_types::sol;
 use alloy_sol_types::SolCall as _;
-use revm::db::InMemoryDB;
 use revm::{
-    primitives::{Bytes, ExecutionResult, Output, TxKind},
-    Evm,
+    context::result::{ExecutionResult, Output},
+    database::{CacheDB, EmptyDB},
+    primitives::{Address, Bytes, TxKind, U256},
+    Context, ExecuteCommitEvm, MainBuilder, MainContext,
 };
 use serde::{
     de::DeserializeOwned,
@@ -14,19 +15,35 @@ use serde_generate::{solidity, CodeGeneratorConfig};
 use std::{fmt::Display, fs::File, io::Write};
 use tempfile::tempdir;
 
-fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
-    let mut database = InMemoryDB::default();
-    let contract_address = {
-        let mut evm: Evm<'_, (), _> = Evm::builder()
-            .with_ref_db(&mut database)
-            .modify_tx_env(|tx| {
-                tx.clear();
-                tx.transact_to = TxKind::Create;
-                tx.data = bytecode;
-            })
-            .build();
+fn nonce(database: &CacheDB<EmptyDB>, addr: &Address) -> u64 {
+    database
+        .cache
+        .accounts
+        .get(addr)
+        .map_or(0, |info| info.info.nonce)
+}
 
-        let result: ExecutionResult = evm.transact_commit().unwrap();
+fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
+    let mut database = CacheDB::new(EmptyDB::default());
+    let deployer = Address::ZERO;
+    let contract_address = {
+        let deploy_nonce = nonce(&database, &deployer);
+        let result = Context::mainnet()
+            .with_db(&mut database)
+            .modify_cfg_chained(|cfg| {
+                cfg.limit_contract_code_size = Some(usize::MAX);
+            })
+            .modify_tx_chained(|tx| {
+                tx.caller = deployer;
+                tx.nonce = deploy_nonce;
+                tx.kind = TxKind::Create;
+                tx.data = bytecode;
+                tx.gas_limit = u64::MAX;
+                tx.value = U256::ZERO;
+            })
+            .build_mainnet()
+            .replay_commit()
+            .unwrap();
 
         let ExecutionResult::Success { output, .. } = result else {
             panic!("The TxKind::Create execution failed");
@@ -37,15 +54,23 @@ fn test_contract(bytecode: Bytes, encoded_args: Bytes) {
         contract_address
     };
 
-    let mut evm: Evm<'_, (), _> = Evm::builder()
-        .with_ref_db(&mut database)
-        .modify_tx_env(|tx| {
-            tx.transact_to = TxKind::Call(contract_address);
-            tx.data = encoded_args;
+    let call_nonce = nonce(&database, &deployer);
+    let result = Context::mainnet()
+        .with_db(&mut database)
+        .modify_cfg_chained(|cfg| {
+            cfg.limit_contract_code_size = Some(usize::MAX);
         })
-        .build();
-
-    let result: ExecutionResult = evm.transact_commit().unwrap();
+        .modify_tx_chained(|tx| {
+            tx.caller = deployer;
+            tx.nonce = call_nonce;
+            tx.kind = TxKind::Call(contract_address);
+            tx.data = encoded_args;
+            tx.gas_limit = u64::MAX;
+            tx.value = U256::ZERO;
+        })
+        .build_mainnet()
+        .replay_commit()
+        .unwrap();
 
     let ExecutionResult::Success { .. } = result else {
         panic!("The TxKind::Call execution failed");

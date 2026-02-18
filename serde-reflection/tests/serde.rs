@@ -167,8 +167,7 @@ impl<'de> Deserialize<'de> for Name {
             Ok(Name(value))
         } else {
             Err(<D::Error as ::serde::de::Error>::custom(format!(
-                "Invalid name {}",
-                value
+                "Invalid name {value}"
             )))
         }
     }

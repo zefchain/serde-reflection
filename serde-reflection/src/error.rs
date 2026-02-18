@@ -31,13 +31,13 @@ pub enum Error {
 
 impl ser::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
-        Error::Custom(format!("Failed to serialize value: \"{}\"", msg))
+        Error::Custom(format!("Failed to serialize value: \"{msg}\""))
     }
 }
 
 impl de::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
-        Error::Custom(format!("Failed to deserialize value: \"{}\"", msg))
+        Error::Custom(format!("Failed to deserialize value: \"{msg}\""))
     }
 }
 
@@ -98,7 +98,7 @@ This internal error is returned should not be surfaced during tracing.
             }
             UnknownFormatInContainer(name) => {
                 format!(r#"
-A final registry was requested but some formats are still unknown within the container {}. This can
+A final registry was requested but some formats are still unknown within the container {name}. This can
 happen if `tracer.trace_value` was called on a value `foo` which does not reveal some of the underlying
 formats. E.g. if a field `x` of struct `Foo` has type `Option<String>` and `foo` is value of type
 `Foo` such that `foo.x == None`, then tracing the value `foo` may result in a format `Option<Unknown>`
@@ -106,18 +106,16 @@ for the field `x`. The same applies to empty vectors and empty maps.
 
 To fix this, avoid `trace_value` and prefer `trace_type` when possible, or make sure to trace at
 least one value `foo` such that `foo.x` is not empty.
-"#,
-                name)
+"#)
             }
             MissingVariants(names) => {
                 format!(r#"
 A registry was requested with `tracer.registry()` but some variants have not been analyzed yet
-inside the given enums {:?}.
+inside the given enums {names:?}.
 
 To fix this, make sure to call `tracer.trace_type<T>(..)` at least once for each enum type `T` in the
 corpus of definitions. You may also use `tracer.registry_unchecked()` for debugging.
-"#,
-                names)
+"#)
             }
         }
     }

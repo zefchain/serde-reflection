@@ -47,8 +47,7 @@ fn assert_deno_info(ts_path: &Path) {
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         !is_error_output(stdout.as_str()),
-        "deno info detected an error\n{}",
-        stdout
+        "deno info detected an error\n{stdout}"
     );
 }
 

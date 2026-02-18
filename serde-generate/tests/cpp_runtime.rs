@@ -70,7 +70,7 @@ int main() {{
 "#,
         reference
             .iter()
-            .map(|x| format!("0x{:02x}", x))
+            .map(|x| format!("0x{x:02x}"))
             .collect::<Vec<_>>()
             .join(", "),
         runtime.name(),
@@ -107,7 +107,7 @@ fn quote_bytes(bytes: &[u8]) -> String {
         "std::vector<uint8_t>{{{}}}",
         bytes
             .iter()
-            .map(|x| format!("0x{:02x}", x))
+            .map(|x| format!("0x{x:02x}"))
             .collect::<Vec<_>>()
             .join(", ")
     )

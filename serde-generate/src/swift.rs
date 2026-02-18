@@ -53,8 +53,7 @@ impl<'a> CodeGenerator<'a> {
                 }
             };
             for name in names {
-                external_qualified_names
-                    .insert(name.to_string(), format!("{}.{}", package_name, name));
+                external_qualified_names.insert(name.to_string(), format!("{package_name}.{name}"));
             }
         }
         Self {
@@ -116,7 +115,7 @@ where
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, "// ").replace("\n\n", "\n//\n");
-            write!(self.out, "{}", text)?;
+            write!(self.out, "{text}")?;
         }
         Ok(())
     }
@@ -125,7 +124,7 @@ where
         let mut path = self.current_namespace.clone();
         path.push(name.to_string());
         if let Some(code) = self.generator.config.custom_code.get(&path) {
-            writeln!(self.out, "\n{}", code)?;
+            writeln!(self.out, "\n{code}")?;
         }
         Ok(())
     }
@@ -219,24 +218,24 @@ where
     fn quote_serialize_value(&self, value: &str, format: &Format) -> String {
         use Format::*;
         match format {
-            TypeName(_) => format!("try {}.serialize(serializer: serializer)", value),
-            Unit => format!("try serializer.serialize_unit(value: {})", value),
-            Bool => format!("try serializer.serialize_bool(value: {})", value),
-            I8 => format!("try serializer.serialize_i8(value: {})", value),
-            I16 => format!("try serializer.serialize_i16(value: {})", value),
-            I32 => format!("try serializer.serialize_i32(value: {})", value),
-            I64 => format!("try serializer.serialize_i64(value: {})", value),
-            I128 => format!("try serializer.serialize_i128(value: {})", value),
-            U8 => format!("try serializer.serialize_u8(value: {})", value),
-            U16 => format!("try serializer.serialize_u16(value: {})", value),
-            U32 => format!("try serializer.serialize_u32(value: {})", value),
-            U64 => format!("try serializer.serialize_u64(value: {})", value),
-            U128 => format!("try serializer.serialize_u128(value: {})", value),
-            F32 => format!("try serializer.serialize_f32(value: {})", value),
-            F64 => format!("try serializer.serialize_f64(value: {})", value),
-            Char => format!("try serializer.serialize_char(value: {})", value),
-            Str => format!("try serializer.serialize_str(value: {})", value),
-            Bytes => format!("try serializer.serialize_bytes(value: {})", value),
+            TypeName(_) => format!("try {value}.serialize(serializer: serializer)"),
+            Unit => format!("try serializer.serialize_unit(value: {value})"),
+            Bool => format!("try serializer.serialize_bool(value: {value})"),
+            I8 => format!("try serializer.serialize_i8(value: {value})"),
+            I16 => format!("try serializer.serialize_i16(value: {value})"),
+            I32 => format!("try serializer.serialize_i32(value: {value})"),
+            I64 => format!("try serializer.serialize_i64(value: {value})"),
+            I128 => format!("try serializer.serialize_i128(value: {value})"),
+            U8 => format!("try serializer.serialize_u8(value: {value})"),
+            U16 => format!("try serializer.serialize_u16(value: {value})"),
+            U32 => format!("try serializer.serialize_u32(value: {value})"),
+            U64 => format!("try serializer.serialize_u64(value: {value})"),
+            U128 => format!("try serializer.serialize_u128(value: {value})"),
+            F32 => format!("try serializer.serialize_f32(value: {value})"),
+            F64 => format!("try serializer.serialize_f64(value: {value})"),
+            Char => format!("try serializer.serialize_char(value: {value})"),
+            Str => format!("try serializer.serialize_str(value: {value})"),
+            Bytes => format!("try serializer.serialize_bytes(value: {value})"),
             _ => format!(
                 "try serialize_{}(value: {}, serializer: serializer)",
                 common::mangle_type(format),
@@ -337,7 +336,7 @@ serializer.sort_map_entries(offsets: offsets)
             Tuple(formats) => {
                 writeln!(self.out)?;
                 for (index, format) in formats.iter().enumerate() {
-                    let expr = format!("value.field{}", index);
+                    let expr = format!("value.field{index}");
                     writeln!(self.out, "{}", self.quote_serialize_value(&expr, format))?;
                 }
             }
@@ -472,21 +471,21 @@ return obj
         let name = common::lowercase_first_letter(name).to_mixed_case();
         match variant {
             Unit => {
-                writeln!(self.out, "case {}", name)?;
+                writeln!(self.out, "case {name}")?;
             }
             NewType(format) => {
                 writeln!(self.out, "case {}({})", name, self.quote_type(format))?;
             }
             Tuple(formats) => {
                 if formats.is_empty() {
-                    writeln!(self.out, "case {}", name)?;
+                    writeln!(self.out, "case {name}")?;
                 } else {
                     writeln!(self.out, "case {}({})", name, self.quote_types(formats))?;
                 }
             }
             Struct(fields) => {
                 if fields.is_empty() {
-                    writeln!(self.out, "case {}", name)?;
+                    writeln!(self.out, "case {name}")?;
                 } else {
                     writeln!(
                         self.out,
@@ -518,7 +517,7 @@ return obj
                 .into_iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("x{}", i),
+                    name: format!("x{i}"),
                     value: f,
                 })
                 .collect(),
@@ -531,7 +530,7 @@ return obj
         // Struct
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "public struct {}: Hashable {{", name)?;
+        writeln!(self.out, "public struct {name}: Hashable {{")?;
         self.enter_class(name);
         for field in fields {
             self.output_comment(&field.name)?;
@@ -585,8 +584,7 @@ return obj
         if self.generator.config.serialization {
             writeln!(
                 self.out,
-                "\npublic static func deserialize<D: Deserializer>(deserializer: D) throws -> {} {{",
-                name,
+                "\npublic static func deserialize<D: Deserializer>(deserializer: D) throws -> {name} {{",
             )?;
             self.out.indent();
             writeln!(self.out, "try deserializer.increase_container_depth()")?;
@@ -666,7 +664,7 @@ public static func {1}Deserialize(input: [UInt8]) throws -> {0} {{
     ) -> Result<()> {
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "indirect public enum {}: Hashable {{", name)?;
+        writeln!(self.out, "indirect public enum {name}: Hashable {{")?;
         self.current_namespace.push(name.to_string());
         self.out.indent();
         for variant in variants.values() {
@@ -687,7 +685,7 @@ public static func {1}Deserialize(input: [UInt8]) throws -> {0} {{
                 let formatted_variant_name =
                     common::lowercase_first_letter(&variant.name).to_mixed_case();
                 if fields.is_empty() {
-                    writeln!(self.out, "case .{}:", formatted_variant_name)?;
+                    writeln!(self.out, "case .{formatted_variant_name}:")?;
                 } else {
                     writeln!(
                         self.out,
@@ -703,8 +701,7 @@ public static func {1}Deserialize(input: [UInt8]) throws -> {0} {{
                 self.out.indent();
                 writeln!(
                     self.out,
-                    "try serializer.serialize_variant_index(value: {})",
-                    index
+                    "try serializer.serialize_variant_index(value: {index})"
                 )?;
                 for field in fields {
                     writeln!(
@@ -728,8 +725,7 @@ public static func {1}Deserialize(input: [UInt8]) throws -> {0} {{
         if self.generator.config.serialization {
             write!(
                 self.out,
-                "\npublic static func deserialize<D: Deserializer>(deserializer: D) throws -> {0} {{",
-                name
+                "\npublic static func deserialize<D: Deserializer>(deserializer: D) throws -> {name} {{"
             )?;
             self.out.indent();
             writeln!(
@@ -740,14 +736,14 @@ try deserializer.increase_container_depth()
 switch index {{"#,
             )?;
             for (index, variant) in variants {
-                writeln!(self.out, "case {}:", index)?;
+                writeln!(self.out, "case {index}:")?;
                 self.out.indent();
                 let formatted_variant_name =
                     common::lowercase_first_letter(&variant.name).to_mixed_case();
                 let fields = Self::variant_fields(&variant.value);
                 if fields.is_empty() {
                     writeln!(self.out, "try deserializer.decrease_container_depth()")?;
-                    writeln!(self.out, "return .{}", formatted_variant_name)?;
+                    writeln!(self.out, "return .{formatted_variant_name}")?;
                     self.out.unindent();
                     continue;
                 }
@@ -772,17 +768,12 @@ switch index {{"#,
                         .collect::<Vec<_>>()
                         .join(", "),
                 };
-                writeln!(
-                    self.out,
-                    "return .{}({})",
-                    formatted_variant_name, init_values
-                )?;
+                writeln!(self.out, "return .{formatted_variant_name}({init_values})")?;
                 self.out.unindent();
             }
             writeln!(
                 self.out,
-                "default: throw DeserializationError.invalidInput(issue: \"Unknown variant index for {}: \\(index)\")",
-                name,
+                "default: throw DeserializationError.invalidInput(issue: \"Unknown variant index for {name}: \\(index)\")",
             )?;
             writeln!(self.out, "}}")?;
             self.out.unindent();
@@ -813,7 +804,7 @@ switch index {{"#,
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect(),

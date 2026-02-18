@@ -119,7 +119,7 @@ import {{ Optional, Seq, Tuple, ListTuple, unit, bool, int8, int16, int32, int64
         let path = vec![name.to_string()];
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, " * ").replace("\n\n", "\n *\n");
-            writeln!(self.out, "/**\n{} */", text)?;
+            writeln!(self.out, "/**\n{text} */")?;
         }
         Ok(())
     }
@@ -205,24 +205,24 @@ import {{ Optional, Seq, Tuple, ListTuple, unit, bool, int8, int16, int32, int64
         let this_str = if use_this { "this." } else { "" };
 
         match format {
-            TypeName(_) => format!("{}{}.serialize(serializer);", this_str, value),
-            Unit => format!("serializer.serializeUnit({}{});", this_str, value),
-            Bool => format!("serializer.serializeBool({}{});", this_str, value),
-            I8 => format!("serializer.serializeI8({}{});", this_str, value),
-            I16 => format!("serializer.serializeI16({}{});", this_str, value),
-            I32 => format!("serializer.serializeI32({}{});", this_str, value),
-            I64 => format!("serializer.serializeI64({}{});", this_str, value),
-            I128 => format!("serializer.serializeI128({}{});", this_str, value),
-            U8 => format!("serializer.serializeU8({}{});", this_str, value),
-            U16 => format!("serializer.serializeU16({}{});", this_str, value),
-            U32 => format!("serializer.serializeU32({}{});", this_str, value),
-            U64 => format!("serializer.serializeU64({}{});", this_str, value),
-            U128 => format!("serializer.serializeU128({}{});", this_str, value),
-            F32 => format!("serializer.serializeF32({}{});", this_str, value),
-            F64 => format!("serializer.serializeF64({}{});", this_str, value),
-            Char => format!("serializer.serializeChar({}{});", this_str, value),
-            Str => format!("serializer.serializeStr({}{});", this_str, value),
-            Bytes => format!("serializer.serializeBytes({}{});", this_str, value),
+            TypeName(_) => format!("{this_str}{value}.serialize(serializer);"),
+            Unit => format!("serializer.serializeUnit({this_str}{value});"),
+            Bool => format!("serializer.serializeBool({this_str}{value});"),
+            I8 => format!("serializer.serializeI8({this_str}{value});"),
+            I16 => format!("serializer.serializeI16({this_str}{value});"),
+            I32 => format!("serializer.serializeI32({this_str}{value});"),
+            I64 => format!("serializer.serializeI64({this_str}{value});"),
+            I128 => format!("serializer.serializeI128({this_str}{value});"),
+            U8 => format!("serializer.serializeU8({this_str}{value});"),
+            U16 => format!("serializer.serializeU16({this_str}{value});"),
+            U32 => format!("serializer.serializeU32({this_str}{value});"),
+            U64 => format!("serializer.serializeU64({this_str}{value});"),
+            U128 => format!("serializer.serializeU128({this_str}{value});"),
+            F32 => format!("serializer.serializeF32({this_str}{value});"),
+            F64 => format!("serializer.serializeF64({this_str}{value});"),
+            Char => format!("serializer.serializeChar({this_str}{value});"),
+            Str => format!("serializer.serializeStr({this_str}{value});"),
+            Bytes => format!("serializer.serializeBytes({this_str}{value});"),
             _ => format!(
                 "Helpers.serialize{}({}{}, serializer);",
                 common::mangle_type(format).to_camel_case(),
@@ -324,7 +324,7 @@ serializer.sortMapEntries(offsets);
             Tuple(formats) => {
                 writeln!(self.out)?;
                 for (index, format) in formats.iter().enumerate() {
-                    let expr = format!("value[{}]", index);
+                    let expr = format!("value[{index}]");
                     writeln!(
                         self.out,
                         "{}",
@@ -482,7 +482,7 @@ return list;
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect(),
@@ -518,13 +518,12 @@ return list;
             self.output_comment(name)?;
             writeln!(
                 self.out,
-                "export class {0}Variant{1} extends {0} {{",
-                base, name
+                "export class {base}Variant{name} extends {base} {{"
             )?;
-            variant_base_name = format!("{0}Variant", base);
+            variant_base_name = format!("{base}Variant");
         } else {
             self.output_comment(name)?;
-            writeln!(self.out, "export class {} {{", name)?;
+            writeln!(self.out, "export class {name} {{")?;
         }
         if !fields.is_empty() {
             writeln!(self.out)?;
@@ -553,7 +552,7 @@ return list;
             )?;
             self.out.indent();
             if let Some(index) = variant_index {
-                writeln!(self.out, "serializer.serializeVariantIndex({});", index)?;
+                writeln!(self.out, "serializer.serializeVariantIndex({index});")?;
             }
             for field in fields {
                 writeln!(
@@ -570,14 +569,12 @@ return list;
             if variant_index.is_none() {
                 writeln!(
                     self.out,
-                    "static deserialize(deserializer: Deserializer): {} {{",
-                    name,
+                    "static deserialize(deserializer: Deserializer): {name} {{",
                 )?;
             } else {
                 writeln!(
                     self.out,
-                    "static load(deserializer: Deserializer): {}{} {{",
-                    variant_base_name, name,
+                    "static load(deserializer: Deserializer): {variant_base_name}{name} {{",
                 )?;
             }
             self.out.indent();
@@ -612,7 +609,7 @@ return list;
         variants: &BTreeMap<u32, Named<VariantFormat>>,
     ) -> Result<()> {
         self.output_comment(name)?;
-        writeln!(self.out, "export abstract class {} {{", name)?;
+        writeln!(self.out, "export abstract class {name} {{")?;
         if self.generator.config.serialization {
             writeln!(
                 self.out,
@@ -620,8 +617,7 @@ return list;
             )?;
             write!(
                 self.out,
-                "static deserialize(deserializer: Deserializer): {} {{",
-                name
+                "static deserialize(deserializer: Deserializer): {name} {{"
             )?;
             self.out.indent();
             writeln!(
@@ -640,8 +636,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                "default: throw new Error(\"Unknown variant index for {}: \" + index);",
-                name,
+                "default: throw new Error(\"Unknown variant index for {name}: \" + index);",
             )?;
             self.out.unindent();
             writeln!(self.out, "}}")?;
@@ -665,7 +660,7 @@ switch (index) {{"#,
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect::<Vec<_>>(),

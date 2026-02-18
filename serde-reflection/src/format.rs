@@ -189,7 +189,7 @@ where
     T1: std::fmt::Debug,
     T2: std::fmt::Debug,
 {
-    Error::Incompatible(format!("{:?}", v1), format!("{:?}", v2))
+    Error::Incompatible(format!("{v1:?}"), format!("{v2:?}"))
 }
 
 impl FormatHolder for VariantFormat {

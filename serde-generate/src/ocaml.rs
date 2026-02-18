@@ -100,7 +100,7 @@ where
         if let Some(doc) = self.generator.config.comments.get(&path) {
             writeln!(self.out, "(*")?;
             self.out.indent();
-            write!(self.out, "{}", doc)?;
+            write!(self.out, "{doc}")?;
             self.out.unindent();
             writeln!(self.out, "*)")?;
         }
@@ -111,7 +111,7 @@ where
         let mut path = self.current_namespace.clone();
         path.push(name.to_string());
         if let Some(code) = self.generator.config.custom_code.get(&path) {
-            write!(self.out, "\n{}", code)?;
+            write!(self.out, "\n{code}")?;
         }
         Ok(())
     }
@@ -172,7 +172,7 @@ where
             TupleArray { content, size } => {
                 write!(self.out, "(")?;
                 self.output_format(content, false)?;
-                write!(self.out, " array [@length {}])", size)?
+                write!(self.out, " array [@length {size}])")?
             }
         }
         if is_struct {
@@ -262,12 +262,12 @@ where
         self.out.indent();
         let c = if cyclic { " [@cyclic]" } else { "" };
         formats
-            .iter()
-            .map(|(_, f)| {
+            .values()
+            .map(|f| {
                 self.output_comment(&f.name)?;
                 write!(self.out, "| {}_{}", name, f.name)?;
                 self.output_variant(&f.value)?;
-                writeln!(self.out, "{}", c)
+                writeln!(self.out, "{c}")
             })
             .collect::<Result<Vec<_>>>()?;
         self.out.unindent();
@@ -399,12 +399,11 @@ impl crate::SourceInstaller for Installer {
             writeln!(
                 dune_file,
                 "(env (_ (flags (:standard -w -30-42 -warn-error -a))))\n\n\
-                (library\n (name {0})\n (modules {0})\n (preprocess (pps ppx)){1})",
-                name, runtime_str
+                (library\n (name {name})\n (modules {name})\n (preprocess (pps ppx)){runtime_str})"
             )?;
         }
 
-        let source_path = dir_path.join(format!("{}.ml", name));
+        let source_path = dir_path.join(format!("{name}.ml"));
         let mut file = std::fs::File::create(source_path)?;
         let generator = CodeGenerator::new(config);
         generator.output(&mut file, registry)?;

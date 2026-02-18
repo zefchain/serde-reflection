@@ -83,7 +83,7 @@ func main() {{
 "#,
         reference
             .iter()
-            .map(|x| format!("{}", x))
+            .map(|x| format!("{x}"))
             .collect::<Vec<_>>()
             .join(", "),
         runtime.name().to_camel_case(),
@@ -142,7 +142,7 @@ fn quote_bytes(bytes: &[u8]) -> String {
         "{{{}}}",
         bytes
             .iter()
-            .map(|x| format!("{}", x))
+            .map(|x| format!("{x}"))
             .collect::<Vec<_>>()
             .join(", ")
     )

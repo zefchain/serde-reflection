@@ -53,8 +53,7 @@ impl<'a> CodeGenerator<'a> {
                 }
             };
             for name in names {
-                external_qualified_names
-                    .insert(name.to_string(), format!("{}.{}", package_name, name));
+                external_qualified_names.insert(name.to_string(), format!("{package_name}.{name}"));
             }
         }
         Self {
@@ -137,7 +136,7 @@ where
             }
         }
         for path in self.generator.config.external_definitions.keys() {
-            writeln!(self.out, "\"{}\"", path)?;
+            writeln!(self.out, "\"{path}\"")?;
         }
         self.out.unindent();
         writeln!(self.out, ")\n")?;
@@ -185,7 +184,7 @@ where
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, "// ").replace("\n\n", "\n//\n");
-            write!(self.out, "{}", text)?;
+            write!(self.out, "{text}")?;
         }
         Ok(())
     }
@@ -194,7 +193,7 @@ where
         let mut path = self.current_namespace.clone();
         path.push(name.to_string());
         if let Some(code) = self.generator.config.custom_code.get(&path) {
-            write!(self.out, "\n{}", code)?;
+            write!(self.out, "\n{code}")?;
         }
         Ok(())
     }
@@ -281,31 +280,31 @@ where
     fn quote_serialize_value(&self, value: &str, format: &Format) -> String {
         use Format::*;
         let expr = match format {
-            TypeName(_) => format!("{}.Serialize(serializer)", value),
-            Unit => format!("serializer.SerializeUnit({})", value),
-            Bool => format!("serializer.SerializeBool({})", value),
-            I8 => format!("serializer.SerializeI8({})", value),
-            I16 => format!("serializer.SerializeI16({})", value),
-            I32 => format!("serializer.SerializeI32({})", value),
-            I64 => format!("serializer.SerializeI64({})", value),
-            I128 => format!("serializer.SerializeI128({})", value),
-            U8 => format!("serializer.SerializeU8({})", value),
-            U16 => format!("serializer.SerializeU16({})", value),
-            U32 => format!("serializer.SerializeU32({})", value),
-            U64 => format!("serializer.SerializeU64({})", value),
-            U128 => format!("serializer.SerializeU128({})", value),
-            F32 => format!("serializer.SerializeF32({})", value),
-            F64 => format!("serializer.SerializeF64({})", value),
-            Char => format!("serializer.SerializeChar({})", value),
-            Str => format!("serializer.SerializeStr({})", value),
-            Bytes => format!("serializer.SerializeBytes({})", value),
+            TypeName(_) => format!("{value}.Serialize(serializer)"),
+            Unit => format!("serializer.SerializeUnit({value})"),
+            Bool => format!("serializer.SerializeBool({value})"),
+            I8 => format!("serializer.SerializeI8({value})"),
+            I16 => format!("serializer.SerializeI16({value})"),
+            I32 => format!("serializer.SerializeI32({value})"),
+            I64 => format!("serializer.SerializeI64({value})"),
+            I128 => format!("serializer.SerializeI128({value})"),
+            U8 => format!("serializer.SerializeU8({value})"),
+            U16 => format!("serializer.SerializeU16({value})"),
+            U32 => format!("serializer.SerializeU32({value})"),
+            U64 => format!("serializer.SerializeU64({value})"),
+            U128 => format!("serializer.SerializeU128({value})"),
+            F32 => format!("serializer.SerializeF32({value})"),
+            F64 => format!("serializer.SerializeF64({value})"),
+            Char => format!("serializer.SerializeChar({value})"),
+            Str => format!("serializer.SerializeStr({value})"),
+            Bytes => format!("serializer.SerializeBytes({value})"),
             _ => format!(
                 "serialize_{}({}, serializer)",
                 common::mangle_type(format),
                 value
             ),
         };
-        format!("if err := {}; err != nil {{ return err }}", expr)
+        format!("if err := {expr}; err != nil {{ return err }}")
     }
 
     fn quote_deserialize(&self, format: &Format, dest: &str, fail: &str) -> String {
@@ -335,8 +334,7 @@ where
             _ => format!("deserialize_{}(deserializer)", common::mangle_type(format)),
         };
         format!(
-            "if val, err := {}; err == nil {{ {} = val }} else {{ return {}, err }}",
-            expr, dest, fail
+            "if val, err := {expr}; err == nil {{ {dest} = val }} else {{ return {fail}, err }}"
         )
     }
 
@@ -402,7 +400,7 @@ serializer.SortMapEntries(offsets);
             Tuple(formats) => {
                 writeln!(self.out)?;
                 for (index, format) in formats.iter().enumerate() {
-                    let expr = format!("value.Field{}", index);
+                    let expr = format!("value.Field{index}");
                     writeln!(self.out, "{}", self.quote_serialize_value(&expr, format))?;
                 }
             }
@@ -515,7 +513,7 @@ return obj, nil
                     formats
                         .iter()
                         .enumerate()
-                        .map(|(i, f)| self.quote_deserialize(f, &format!("obj.Field{}", i), "obj"))
+                        .map(|(i, f)| self.quote_deserialize(f, &format!("obj.Field{i}"), "obj"))
                         .collect::<Vec<_>>()
                         .join("\n")
                 )?;
@@ -579,7 +577,7 @@ return obj, nil
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("Field{}", i),
+                    name: format!("Field{i}"),
                     value: f.clone(),
                 })
                 .collect(),
@@ -604,12 +602,12 @@ return obj, nil
     ) -> Result<()> {
         let full_name = match variant_base {
             None => name.to_string(),
-            Some(base) => format!("{}__{}", base, name),
+            Some(base) => format!("{base}__{name}"),
         };
         // Struct
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "type {} struct {{", full_name)?;
+        writeln!(self.out, "type {full_name} struct {{")?;
         self.enter_class(name);
         for field in fields {
             self.output_comment(&field.name)?;
@@ -620,15 +618,14 @@ return obj, nil
 
         // Link to base interface.
         if let Some(base) = variant_base {
-            writeln!(self.out, "\nfunc (*{}) is{}() {{}}", full_name, base)?;
+            writeln!(self.out, "\nfunc (*{full_name}) is{base}() {{}}")?;
         }
 
         // Serialize
         if self.generator.config.serialization {
             writeln!(
                 self.out,
-                "\nfunc (obj *{}) Serialize(serializer serde.Serializer) error {{",
-                full_name
+                "\nfunc (obj *{full_name}) Serialize(serializer serde.Serializer) error {{"
             )?;
             self.out.indent();
             writeln!(
@@ -636,7 +633,7 @@ return obj, nil
                 "if err := serializer.IncreaseContainerDepth(); err != nil {{ return err }}"
             )?;
             if let Some(index) = variant_index {
-                writeln!(self.out, "serializer.SerializeVariantIndex({})", index)?;
+                writeln!(self.out, "serializer.SerializeVariantIndex({index})")?;
             }
             for field in fields {
                 writeln!(
@@ -667,7 +664,7 @@ return obj, nil
                 full_name,
             )?;
             self.out.indent();
-            writeln!(self.out, "var obj {}", full_name)?;
+            writeln!(self.out, "var obj {full_name}")?;
             writeln!(
                 self.out,
                 "if err := deserializer.IncreaseContainerDepth(); err != nil {{ return obj, err }}"
@@ -706,7 +703,7 @@ return obj, nil
     ) -> Result<()> {
         let full_name = match variant_base {
             None => name.to_string(),
-            Some(base) => format!("{}__{}", base, name),
+            Some(base) => format!("{base}__{name}"),
         };
         // Struct
         writeln!(self.out)?;
@@ -715,15 +712,14 @@ return obj, nil
 
         // Link to base interface.
         if let Some(base) = variant_base {
-            writeln!(self.out, "\nfunc (*{}) is{}() {{}}", full_name, base)?;
+            writeln!(self.out, "\nfunc (*{full_name}) is{base}() {{}}")?;
         }
 
         // Serialize
         if self.generator.config.serialization {
             writeln!(
                 self.out,
-                "\nfunc (obj *{}) Serialize(serializer serde.Serializer) error {{",
-                full_name
+                "\nfunc (obj *{full_name}) Serialize(serializer serde.Serializer) error {{"
             )?;
             self.out.indent();
             writeln!(
@@ -731,7 +727,7 @@ return obj, nil
                 "if err := serializer.IncreaseContainerDepth(); err != nil {{ return err }}"
             )?;
             if let Some(index) = variant_index {
-                writeln!(self.out, "serializer.SerializeVariantIndex({})", index)?;
+                writeln!(self.out, "serializer.SerializeVariantIndex({index})")?;
             }
             writeln!(
                 self.out,
@@ -764,14 +760,14 @@ return obj, nil
             )?;
             self.out.indent();
             writeln!(self.out, "var obj {}", self.quote_type(format))?;
-            writeln!(self.out, "if err := deserializer.IncreaseContainerDepth(); err != nil {{ return ({})(obj), err }}", full_name)?;
+            writeln!(self.out, "if err := deserializer.IncreaseContainerDepth(); err != nil {{ return ({full_name})(obj), err }}")?;
             writeln!(
                 self.out,
                 "{}",
-                self.quote_deserialize(format, "obj", &format!("(({})(obj))", full_name))
+                self.quote_deserialize(format, "obj", &format!("(({full_name})(obj))"))
             )?;
             writeln!(self.out, "deserializer.DecreaseContainerDepth()")?;
-            writeln!(self.out, "return ({})(obj), nil", full_name)?;
+            writeln!(self.out, "return ({full_name})(obj), nil")?;
             self.out.unindent();
             writeln!(self.out, "}}")?;
 
@@ -841,10 +837,10 @@ func {2}Deserialize{0}(input []byte) ({0}, error) {{
     ) -> Result<()> {
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "type {} interface {{", name)?;
+        writeln!(self.out, "type {name} interface {{")?;
         self.current_namespace.push(name.to_string());
         self.out.indent();
-        writeln!(self.out, "is{}()", name)?;
+        writeln!(self.out, "is{name}()")?;
         if self.generator.config.serialization {
             writeln!(self.out, "Serialize(serializer serde.Serializer) error")?;
             for encoding in &self.generator.config.encodings {
@@ -861,8 +857,7 @@ func {2}Deserialize{0}(input []byte) ({0}, error) {{
         if self.generator.config.serialization {
             write!(
                 self.out,
-                "\nfunc Deserialize{0}(deserializer serde.Deserializer) ({0}, error) {{",
-                name
+                "\nfunc Deserialize{name}(deserializer serde.Deserializer) ({name}, error) {{"
             )?;
             self.out.indent();
             writeln!(
@@ -889,8 +884,7 @@ switch index {{"#,
             writeln!(
                 self.out,
                 "default:
-	return nil, fmt.Errorf(\"Unknown variant index for {}: %d\", index)",
-                name,
+	return nil, fmt.Errorf(\"Unknown variant index for {name}: %d\", index)",
             )?;
             writeln!(self.out, "}}")?;
             self.out.unindent();
@@ -929,7 +923,7 @@ switch index {{"#,
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("Field{}", i),
+                    name: format!("Field{i}"),
                     value: f.clone(),
                 })
                 .collect(),
@@ -980,7 +974,7 @@ impl Installer {
             "Not installing sources for published package {}{}",
             match &self.serde_module_path {
                 None => String::new(),
-                Some(path) => format!("{}/", path),
+                Some(path) => format!("{path}/"),
             },
             name
         );

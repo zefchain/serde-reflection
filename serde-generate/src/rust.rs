@@ -163,7 +163,7 @@ where
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, "/// ").replace("\n\n", "\n///\n");
-            write!(self.out, "\n{}", text)?;
+            write!(self.out, "\n{text}")?;
         }
         Ok(())
     }
@@ -172,7 +172,7 @@ where
         let mut path = self.current_namespace.clone();
         path.push(name.to_string());
         if let Some(code) = self.generator.config.custom_code.get(&path) {
-            write!(self.out, "\n{}", code)?;
+            write!(self.out, "\n{code}")?;
         }
         Ok(())
     }
@@ -221,7 +221,7 @@ where
             TypeName(x) => {
                 if let Some(set) = known_sizes {
                     if !set.contains(x.as_str()) {
-                        return format!("Box<{}>", x);
+                        return format!("Box<{x}>");
                     }
                 }
                 x.to_string()
@@ -292,7 +292,7 @@ where
         self.output_comment(name)?;
         use VariantFormat::*;
         match variant {
-            Unit => writeln!(self.out, "{},", name),
+            Unit => writeln!(self.out, "{name},"),
             NewType(format) => writeln!(
                 self.out,
                 "{}({}),",
@@ -306,7 +306,7 @@ where
                 Self::quote_types(formats, Some(&self.known_sizes))
             ),
             Struct(fields) => {
-                writeln!(self.out, "{} {{", name)?;
+                writeln!(self.out, "{name} {{")?;
                 self.current_namespace.push(name.to_string());
                 self.out.indent();
                 self.output_fields(&[base, name], fields)?;
@@ -351,7 +351,7 @@ where
 
         use ContainerFormat::*;
         match format {
-            UnitStruct => writeln!(self.out, "{}struct {};\n", prefix, name)?,
+            UnitStruct => writeln!(self.out, "{prefix}struct {name};\n")?,
             NewTypeStruct(format) => writeln!(
                 self.out,
                 "{}struct {}({}{});\n",
@@ -372,7 +372,7 @@ where
                 Self::quote_types(formats, Some(&self.known_sizes))
             )?,
             Struct(fields) => {
-                writeln!(self.out, "{}struct {} {{", prefix, name)?;
+                writeln!(self.out, "{prefix}struct {name} {{")?;
                 self.current_namespace.push(name.to_string());
                 self.out.indent();
                 self.output_fields(&[name], fields)?;
@@ -381,7 +381,7 @@ where
                 writeln!(self.out, "}}\n")?;
             }
             Enum(variants) => {
-                writeln!(self.out, "{}enum {} {{", prefix, name)?;
+                writeln!(self.out, "{prefix}enum {name} {{")?;
                 self.current_namespace.push(name.to_string());
                 self.out.indent();
                 self.output_variants(name, variants)?;
@@ -405,7 +405,7 @@ impl Installer {
     }
 
     fn runtime_installation_message(name: &str) {
-        eprintln!("Not installing sources for published crate {}", name);
+        eprintln!("Not installing sources for published crate {name}");
     }
 }
 
@@ -434,15 +434,14 @@ impl crate::SourceInstaller for Installer {
             write!(
                 cargo,
                 r#"[package]
-name = "{}"
-version = "{}"
+name = "{name}"
+version = "{version}"
 edition = "2018"
 
 [dependencies]
 serde = {{ version = "1.0", features = ["derive"] }}
 serde_bytes = "0.11"
 "#,
-                name, version,
             )?;
         }
 

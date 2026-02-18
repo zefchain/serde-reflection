@@ -46,8 +46,7 @@ impl<'a> CodeGenerator<'a> {
         let mut external_qualified_names = HashMap::new();
         for (namespace, names) in &config.external_definitions {
             for name in names {
-                external_qualified_names
-                    .insert(name.to_string(), format!("{}::{}", namespace, name));
+                external_qualified_names.insert(name.to_string(), format!("{namespace}::{name}"));
             }
         }
         Self {
@@ -157,7 +156,7 @@ where
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, "/// ").replace("\n\n", "\n///\n");
-            write!(self.out, "{}", text)?;
+            write!(self.out, "{text}")?;
         }
         Ok(())
     }
@@ -169,7 +168,7 @@ where
             .custom_code
             .get(&self.current_namespace)
         {
-            write!(self.out, "\n{}", code)?;
+            write!(self.out, "\n{code}")?;
         }
         Ok(())
     }
@@ -191,7 +190,7 @@ where
                 if require_known_size && !self.known_sizes.contains(x.as_str()) {
                     // Cannot use unique_ptr because we need a copy constructor (e.g. for vectors)
                     // and in-depth equality.
-                    format!("serde::value_ptr<{}>", qname)
+                    format!("serde::value_ptr<{qname}>")
                 } else {
                     qname
                 }
@@ -253,7 +252,7 @@ where
     ) -> Result<()> {
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "struct {} {{", name)?;
+        writeln!(self.out, "struct {name} {{")?;
         self.enter_class(name);
         for field in fields {
             self.output_comment(&field.name)?;
@@ -292,7 +291,7 @@ where
     }
 
     fn output_container_forward_definition(&mut self, name: &str) -> Result<()> {
-        writeln!(self.out, "\nstruct {};", name)
+        writeln!(self.out, "\nstruct {name};")
     }
 
     fn output_enum_container(
@@ -302,7 +301,7 @@ where
     ) -> Result<()> {
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "struct {} {{", name)?;
+        writeln!(self.out, "struct {name} {{")?;
         self.enter_class(name);
         for (expected_index, (index, variant)) in variants.iter().enumerate() {
             assert_eq!(*index, expected_index as u32);
@@ -312,8 +311,8 @@ where
             self.out,
             "\nstd::variant<{}> value;",
             variants
-                .iter()
-                .map(|(_, v)| v.name.clone())
+                .values()
+                .map(|v| v.name.clone())
                 .collect::<Vec<_>>()
                 .join(", "),
         )?;
@@ -327,8 +326,7 @@ where
     fn output_class_method_declarations(&mut self, name: &str) -> Result<()> {
         writeln!(
             self.out,
-            "friend bool operator==(const {}&, const {}&);",
-            name, name
+            "friend bool operator==(const {name}&, const {name}&);"
         )?;
         if self.generator.config.serialization {
             for encoding in &self.generator.config.encodings {
@@ -372,15 +370,13 @@ where
     fn output_struct_equality_test(&mut self, name: &str, fields: &[&str]) -> Result<()> {
         writeln!(
             self.out,
-            "\ninline bool operator==(const {0} &lhs, const {0} &rhs) {{",
-            name,
+            "\ninline bool operator==(const {name} &lhs, const {name} &rhs) {{",
         )?;
         self.out.indent();
         for field in fields {
             writeln!(
                 self.out,
-                "if (!(lhs.{0} == rhs.{0})) {{ return false; }}",
-                field,
+                "if (!(lhs.{field} == rhs.{field})) {{ return false; }}",
             )?;
         }
         writeln!(self.out, "return true;")?;
@@ -443,8 +439,7 @@ inline {} {}::{}Deserialize(std::vector<uint8_t> input) {{
             r#"
 template <>
 template <typename Serializer>
-void serde::Serializable<{0}>::serialize(const {0} &obj, Serializer &serializer) {{"#,
-            name,
+void serde::Serializable<{name}>::serialize(const {name} &obj, Serializer &serializer) {{"#,
         )?;
         self.out.indent();
         if is_container {
@@ -453,8 +448,7 @@ void serde::Serializable<{0}>::serialize(const {0} &obj, Serializer &serializer)
         for field in fields {
             writeln!(
                 self.out,
-                "serde::Serializable<decltype(obj.{0})>::serialize(obj.{0}, serializer);",
-                field,
+                "serde::Serializable<decltype(obj.{field})>::serialize(obj.{field}, serializer);",
             )?;
         }
         if is_container {
@@ -475,19 +469,17 @@ void serde::Serializable<{0}>::serialize(const {0} &obj, Serializer &serializer)
             r#"
 template <>
 template <typename Deserializer>
-{0} serde::Deserializable<{0}>::deserialize(Deserializer &deserializer) {{"#,
-            name,
+{name} serde::Deserializable<{name}>::deserialize(Deserializer &deserializer) {{"#,
         )?;
         self.out.indent();
         if is_container {
             writeln!(self.out, "deserializer.increase_container_depth();")?;
         }
-        writeln!(self.out, "{} obj;", name)?;
+        writeln!(self.out, "{name} obj;")?;
         for field in fields {
             writeln!(
                 self.out,
-                "obj.{0} = serde::Deserializable<decltype(obj.{0})>::deserialize(deserializer);",
-                field,
+                "obj.{field} = serde::Deserializable<decltype(obj.{field})>::deserialize(deserializer);",
             )?;
         }
         if is_container {

@@ -224,8 +224,7 @@ pub fn get_sample_values(has_canonical_maps: bool, has_floats: bool) -> Vec<Serd
         f_tuple: (4, 5),
         f_stringmap: BTreeMap::new(),
         f_intset: if has_canonical_maps {
-            std::iter::repeat(())
-                .take(10)
+            std::iter::repeat_n((), 10)
                 .enumerate()
                 .map(|(i, ())| (i as u64, ()))
                 .collect()
