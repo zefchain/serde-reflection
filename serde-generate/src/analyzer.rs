@@ -82,7 +82,7 @@ where
         // (If possible, visit children by increasing key.)
         queue.push(node.clone());
         if !children.contains_key(&node) {
-            panic!("The node {:?} is missing", node);
+            panic!("The node {node:?} is missing");
         }
         for child in children[&node].iter().rev() {
             if !seen.contains(child) {

@@ -38,7 +38,7 @@ fn test_dart_runtime_autotest() {
         .unwrap();
     if !output.status.success() {
         let error_output = String::from_utf8_lossy(&output.stdout);
-        eprintln!("{}", error_output);
+        eprintln!("{error_output}");
     }
     assert!(output.status.success());
 }
@@ -120,7 +120,7 @@ void main() {{
         .unwrap();
     if !output.status.success() {
         let error_output = String::from_utf8_lossy(&output.stdout);
-        eprintln!("{}", error_output);
+        eprintln!("{error_output}");
     }
     assert!(output.status.success());
 }
@@ -140,7 +140,7 @@ fn quote_bytes(bytes: &[u8]) -> String {
         "Uint8List.fromList([{}])",
         bytes
             .iter()
-            .map(|x| format!("{}", x))
+            .map(|x| format!("{x}"))
             .collect::<Vec<_>>()
             .join(", ")
     )
@@ -255,7 +255,7 @@ void main() {{
         .unwrap();
     if !output.status.success() {
         let error_output = String::from_utf8_lossy(&output.stdout);
-        eprintln!("{}", error_output);
+        eprintln!("{error_output}");
     }
     assert!(output.status.success());
 }

@@ -48,8 +48,7 @@ impl<'a> CodeGenerator<'a> {
         let mut external_qualified_names = HashMap::new();
         for (namespace, names) in &config.external_definitions {
             for name in names {
-                external_qualified_names
-                    .insert(name.to_string(), format!("{}.{}", namespace, name));
+                external_qualified_names.insert(name.to_string(), format!("{namespace}.{name}"));
             }
         }
         Self {
@@ -170,7 +169,7 @@ where
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, " * ").replace("\n\n", "\n *\n");
-            writeln!(self.out, "/**\n{} */", text)?;
+            writeln!(self.out, "/**\n{text} */")?;
         }
         Ok(())
     }
@@ -182,7 +181,7 @@ where
             .custom_code
             .get(&self.current_namespace)
         {
-            writeln!(self.out, "\n{}", code)?;
+            writeln!(self.out, "\n{code}")?;
         }
         Ok(())
     }
@@ -296,24 +295,24 @@ where
     fn quote_serialize_value(&self, value: &str, format: &Format) -> String {
         use Format::*;
         match format {
-            TypeName(_) => format!("{}.serialize(serializer);", value),
-            Unit => format!("serializer.serialize_unit({});", value),
-            Bool => format!("serializer.serialize_bool({});", value),
-            I8 => format!("serializer.serialize_i8({});", value),
-            I16 => format!("serializer.serialize_i16({});", value),
-            I32 => format!("serializer.serialize_i32({});", value),
-            I64 => format!("serializer.serialize_i64({});", value),
-            I128 => format!("serializer.serialize_i128({});", value),
-            U8 => format!("serializer.serialize_u8({});", value),
-            U16 => format!("serializer.serialize_u16({});", value),
-            U32 => format!("serializer.serialize_u32({});", value),
-            U64 => format!("serializer.serialize_u64({});", value),
-            U128 => format!("serializer.serialize_u128({});", value),
-            F32 => format!("serializer.serialize_f32({});", value),
-            F64 => format!("serializer.serialize_f64({});", value),
-            Char => format!("serializer.serialize_char({});", value),
-            Str => format!("serializer.serialize_str({});", value),
-            Bytes => format!("serializer.serialize_bytes({});", value),
+            TypeName(_) => format!("{value}.serialize(serializer);"),
+            Unit => format!("serializer.serialize_unit({value});"),
+            Bool => format!("serializer.serialize_bool({value});"),
+            I8 => format!("serializer.serialize_i8({value});"),
+            I16 => format!("serializer.serialize_i16({value});"),
+            I32 => format!("serializer.serialize_i32({value});"),
+            I64 => format!("serializer.serialize_i64({value});"),
+            I128 => format!("serializer.serialize_i128({value});"),
+            U8 => format!("serializer.serialize_u8({value});"),
+            U16 => format!("serializer.serialize_u16({value});"),
+            U32 => format!("serializer.serialize_u32({value});"),
+            U64 => format!("serializer.serialize_u64({value});"),
+            U128 => format!("serializer.serialize_u128({value});"),
+            F32 => format!("serializer.serialize_f32({value});"),
+            F64 => format!("serializer.serialize_f64({value});"),
+            Char => format!("serializer.serialize_char({value});"),
+            Str => format!("serializer.serialize_str({value});"),
+            Bytes => format!("serializer.serialize_bytes({value});"),
             _ => format!(
                 "{}.serialize_{}({}, serializer);",
                 self.quote_qualified_name("TraitHelpers"),
@@ -419,7 +418,7 @@ serializer.sort_map_entries(offsets);
             Tuple(formats) => {
                 writeln!(self.out)?;
                 for (index, format) in formats.iter().enumerate() {
-                    let expr = format!("value.field{}", index);
+                    let expr = format!("value.field{index}");
                     writeln!(self.out, "{}", self.quote_serialize_value(&expr, format))?;
                 }
             }
@@ -576,7 +575,7 @@ return obj;
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect(),
@@ -610,12 +609,11 @@ return obj;
             self.output_comment(name)?;
             writeln!(
                 self.out,
-                "public static final class {} extends {} {{",
-                name, base
+                "public static final class {name} extends {base} {{"
             )?;
         } else {
             self.output_comment(name)?;
-            writeln!(self.out, "public final class {} {{", name)?;
+            writeln!(self.out, "public final class {name} {{")?;
         }
         let reserved_names = &["Builder"];
         self.enter_class(name, reserved_names);
@@ -665,7 +663,7 @@ return obj;
             self.out.indent();
             writeln!(self.out, "serializer.increase_container_depth();")?;
             if let Some(index) = variant_index {
-                writeln!(self.out, "serializer.serialize_variant_index({});", index)?;
+                writeln!(self.out, "serializer.serialize_variant_index({index});")?;
             }
             for field in fields {
                 writeln!(
@@ -689,14 +687,12 @@ return obj;
             if variant_index.is_none() {
                 writeln!(
                     self.out,
-                    "\npublic static {} deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {{",
-                    name,
+                    "\npublic static {name} deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {{",
                 )?;
             } else {
                 writeln!(
                     self.out,
-                    "\nstatic {} load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {{",
-                    name,
+                    "\nstatic {name} load(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {{",
                 )?;
             }
             self.out.indent();
@@ -730,8 +726,7 @@ return obj;
 if (this == obj) return true;
 if (obj == null) return false;
 if (getClass() != obj.getClass()) return false;
-{0} other = ({0}) obj;"#,
-            name,
+{name} other = ({name}) obj;"#,
         )?;
         for field in fields {
             writeln!(
@@ -816,7 +811,7 @@ if (getClass() != obj.getClass()) return false;
     ) -> Result<()> {
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "public abstract class {} {{", name)?;
+        writeln!(self.out, "public abstract class {name} {{")?;
         let reserved_names = variants
             .values()
             .map(|v| v.name.as_str())
@@ -829,8 +824,7 @@ if (getClass() != obj.getClass()) return false;
             )?;
             write!(
                 self.out,
-                "\npublic static {} deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {{",
-                name
+                "\npublic static {name} deserialize(com.novi.serde.Deserializer deserializer) throws com.novi.serde.DeserializationError {{"
             )?;
             self.out.indent();
             writeln!(
@@ -849,8 +843,7 @@ switch (index) {{"#,
             }
             writeln!(
                 self.out,
-                "default: throw new com.novi.serde.DeserializationError(\"Unknown variant index for {}: \" + index);",
-                name,
+                "default: throw new com.novi.serde.DeserializationError(\"Unknown variant index for {name}: \" + index);",
             )?;
             self.out.unindent();
             writeln!(self.out, "}}")?;
@@ -919,7 +912,7 @@ public static {0} {1}Deserialize(byte[] input) throws com.novi.serde.Deserializa
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect::<Vec<_>>(),

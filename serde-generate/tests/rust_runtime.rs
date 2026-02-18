@@ -51,7 +51,7 @@ serde_bytes = "0.11"
     let encodings: Vec<_> = runtime
         .get_positive_samples()
         .iter()
-        .map(|bytes| format!("vec!{:?}", bytes))
+        .map(|bytes| format!("vec!{bytes:?}"))
         .collect();
 
     writeln!(

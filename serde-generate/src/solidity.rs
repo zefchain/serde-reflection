@@ -719,7 +719,7 @@ impl SolFormat {
             Option(format) => {
                 let key_name = format.key_name();
                 let code_name = format.code_name();
-                let full_name = format!("opt_{}", key_name);
+                let full_name = format!("opt_{key_name}");
                 let data_location = sol_registry.data_location(format);
                 writeln!(
                     out,
@@ -762,7 +762,7 @@ function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input)
                 let inner_key_name = format.key_name();
                 let inner_code_name = format.code_name();
                 let code_name = format!("{}[]", format.code_name());
-                let key_name = format!("seq_{}", format.key_name());
+                let key_name = format!("seq_{inner_key_name}");
                 let data_location = sol_registry.data_location(format);
                 writeln!(
                     out,
@@ -803,7 +803,7 @@ function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input)
             TupleArray { format, size } => {
                 let inner_key_name = format.key_name();
                 let inner_code_name = format.code_name();
-                let struct_name = format!("tuplearray{}_{}", size, inner_key_name);
+                let struct_name = format!("tuplearray{size}_{inner_key_name}");
                 writeln!(
                     out,
                     r#"
@@ -1394,7 +1394,7 @@ impl SolRegistry {
                     for (_key, value) in map {
                         use VariantFormat::*;
                         let name_red = value.name;
-                        let concat_name = format!("{}_{}", name, name_red);
+                        let concat_name = format!("{name}_{name_red}");
                         let entry = match value.value {
                             VariantFormat::Unit => None,
                             NewType(format) => Some(self.parse_format(*format)),
@@ -1605,7 +1605,7 @@ impl Installer {
     }
 
     fn runtime_installation_message(name: &str) {
-        eprintln!("Not installing sources for published crate {}", name);
+        eprintln!("Not installing sources for published crate {name}");
     }
 }
 

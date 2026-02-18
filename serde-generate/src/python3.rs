@@ -51,7 +51,7 @@ impl<'a> CodeGenerator<'a> {
                 }
             };
             for name in names {
-                external_qualified_names.insert(name.to_string(), format!("{}.{}", module, name));
+                external_qualified_names.insert(name.to_string(), format!("{module}.{name}"));
             }
         }
         Self {
@@ -95,7 +95,7 @@ where
     fn quote_import(&self, module: &str) -> String {
         let mut parts = module.split('.').collect::<Vec<_>>();
         if parts.len() <= 1 {
-            format!("import {}", module)
+            format!("import {module}")
         } else {
             let module_name = parts.pop().unwrap();
             format!("from {} import {}", parts.join("."), module_name)
@@ -105,15 +105,14 @@ where
     fn output_preamble(&mut self) -> Result<()> {
         let from_serde_package = match &self.generator.serde_package_name {
             None => "".to_string(),
-            Some(name) => format!("from {} ", name),
+            Some(name) => format!("from {name} "),
         };
         writeln!(
             self.out,
             r#"# pyre-strict
 from dataclasses import dataclass
 import typing
-{}import serde_types as st"#,
-            from_serde_package,
+{from_serde_package}import serde_types as st"#,
         )?;
         for encoding in &self.generator.config.encodings {
             writeln!(self.out, "{}import {}", from_serde_package, encoding.name())?;
@@ -133,7 +132,7 @@ import typing
             .cloned()
             .unwrap_or_else(|| {
                 // Need quotes because of circular dependencies.
-                format!("\"{}\"", name)
+                format!("\"{name}\"")
             })
     }
 
@@ -194,7 +193,7 @@ import typing
         let mut path = self.current_namespace.clone();
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
-            writeln!(self.out, "\"\"\"{}\"\"\"", doc)?;
+            writeln!(self.out, "\"\"\"{doc}\"\"\"")?;
         }
         Ok(())
     }
@@ -207,7 +206,7 @@ import typing
             .get(&self.current_namespace)
         {
             Some(code) => {
-                writeln!(self.out, "\n{}", code)?;
+                writeln!(self.out, "\n{code}")?;
                 Ok(true)
             }
             None => Ok(false),
@@ -255,13 +254,12 @@ import typing
         // Regarding comments, we pretend the namespace is `[module, base, name]`.
         writeln!(
             self.out,
-            "\n@dataclass(frozen=True)\nclass {0}__{1}({0}):",
-            base, name
+            "\n@dataclass(frozen=True)\nclass {base}__{name}({base}):"
         )?;
         self.out.indent();
         self.output_comment(name)?;
         if self.generator.config.serialization {
-            writeln!(self.out, "INDEX = {}  # type: int", index)?;
+            writeln!(self.out, "INDEX = {index}  # type: int")?;
         }
         self.current_namespace.push(name.to_string());
         self.output_fields(&fields)?;
@@ -276,15 +274,14 @@ import typing
         name: &str,
         variants: &BTreeMap<u32, Named<VariantFormat>>,
     ) -> Result<()> {
-        writeln!(self.out, "\nclass {}:", name)?;
+        writeln!(self.out, "\nclass {name}:")?;
         self.out.indent();
         self.output_comment(name)?;
         self.current_namespace.push(name.to_string());
         if self.generator.config.serialization {
             writeln!(
                 self.out,
-                "VARIANTS = []  # type: typing.Sequence[typing.Type[{}]]",
-                name
+                "VARIANTS = []  # type: typing.Sequence[typing.Type[{name}]]"
             )?;
             for encoding in &self.generator.config.encodings {
                 self.output_serialize_method_for_encoding(name, *encoding)?;
@@ -309,8 +306,8 @@ import typing
                 "{}.VARIANTS = [\n{}]\n",
                 name,
                 variants
-                    .iter()
-                    .map(|(_, v)| format!("    {}__{},\n", name, v.name))
+                    .values()
+                    .map(|v| format!("    {name}__{},\n", v.name))
                     .collect::<Vec<_>>()
                     .join("")
             )?;
@@ -372,7 +369,7 @@ def {0}_deserialize(input: bytes) -> '{1}':
             }
         };
         // Struct case.
-        writeln!(self.out, "\n@dataclass(frozen=True)\nclass {}:", name)?;
+        writeln!(self.out, "\n@dataclass(frozen=True)\nclass {name}:")?;
         self.out.indent();
         self.output_comment(name)?;
         self.current_namespace.push(name.to_string());
@@ -414,11 +411,11 @@ impl Installer {
             Some(name) => content
                 .replace(
                     "import serde_types",
-                    &format!("from {} import serde_types", name),
+                    &format!("from {name} import serde_types"),
                 )
                 .replace(
                     "import serde_binary",
-                    &format!("from {} import serde_binary", name),
+                    &format!("from {name} import serde_binary"),
                 ),
         }
     }

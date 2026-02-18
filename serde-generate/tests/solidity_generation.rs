@@ -102,7 +102,7 @@ pub fn get_bytecode(path: &Path, file_name: &str, contract_name: &str) -> anyhow
 
     let contents = std::fs::read_to_string(output_path)?;
     let json_data: serde_json::Value = serde_json::from_str(&contents)?;
-    println!("json_data={}", json_data);
+    println!("json_data={json_data}");
     let contracts = json_data
         .get("contracts")
         .ok_or(anyhow::anyhow!("failed to get contract"))?;

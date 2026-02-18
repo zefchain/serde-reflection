@@ -614,7 +614,7 @@ impl<'de> DeserializationEnvironment<'de> for CustomEnvironment {
         if name == "ExternalType" {
             Ok(self.external_value.clone())
         } else {
-            Err(format!("Unknown external type: {}", name))
+            Err(format!("Unknown external type: {name}"))
         }
     }
 }

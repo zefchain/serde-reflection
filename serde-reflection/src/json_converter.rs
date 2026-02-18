@@ -568,7 +568,7 @@ where
             // Enums need special handling
             let name = environment.get_static_name(name);
             let static_fields =
-                environment.get_static_fields(variants.iter().map(|(_, v)| v.name.as_str()));
+                environment.get_static_fields(variants.values().map(|v| v.name.as_str()));
             let visitor = EnumVisitor {
                 variants: variants.clone(),
                 registry,
@@ -805,7 +805,7 @@ impl<'de> Visitor<'de> for VariantIdentifierVisitor<'_> {
         let variant = self
             .variants
             .get(&(value as u32))
-            .ok_or_else(|| serde::de::Error::custom(format!("Unknown variant index: {}", value)))?;
+            .ok_or_else(|| serde::de::Error::custom(format!("Unknown variant index: {value}")))?;
         Ok((variant.name.clone(), variant.clone()))
     }
 
@@ -818,7 +818,7 @@ impl<'de> Visitor<'de> for VariantIdentifierVisitor<'_> {
             .variants
             .values()
             .find(|v| v.name == value)
-            .ok_or_else(|| serde::de::Error::custom(format!("Unknown variant: {}", value)))?;
+            .ok_or_else(|| serde::de::Error::custom(format!("Unknown variant: {value}")))?;
         Ok((variant.name.clone(), variant.clone()))
     }
 
@@ -1369,7 +1369,7 @@ where
                     .iter()
                     .find(|(_, v)| v.name == *variant_name)
                     .ok_or_else(|| {
-                        serde::ser::Error::custom(format!("Unknown variant: {}", variant_name))
+                        serde::ser::Error::custom(format!("Unknown variant: {variant_name}"))
                     })?;
 
                 serialize_enum_variant(

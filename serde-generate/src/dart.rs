@@ -39,8 +39,7 @@ impl<'a> CodeGenerator<'a> {
         let mut external_qualified_names = HashMap::new();
         for (namespace, names) in &config.external_definitions {
             for name in names {
-                external_qualified_names
-                    .insert(name.to_string(), format!("{}.{}", namespace, name));
+                external_qualified_names.insert(name.to_string(), format!("{namespace}.{name}"));
             }
         }
         Self { config }
@@ -114,7 +113,7 @@ import '../serde/serde.dart';"#,
 
         if let Some(files) = &self.config.external_definitions.get("import") {
             for file in *files {
-                writeln!(&mut emitter.out, "import '{0}';", file)?;
+                writeln!(&mut emitter.out, "import '{file}';")?;
             }
         }
 
@@ -200,7 +199,7 @@ where
                 Some(Enum(variants))
                     if variants.values().all(|f| f.value == VariantFormat::Unit) =>
                 {
-                    format!("{}Extension", name)
+                    format!("{name}Extension")
                 }
                 _ => name.to_string(),
             }
@@ -269,24 +268,24 @@ where
     fn quote_serialize_value(&self, value: &str, format: &Format) -> String {
         use Format::*;
         match format {
-            TypeName(_) => format!("{}.serialize(serializer);", value),
-            Unit => format!("serializer.serializeUnit({});", value),
-            Bool => format!("serializer.serializeBool({});", value),
-            I8 => format!("serializer.serializeInt8({});", value),
-            I16 => format!("serializer.serializeInt16({});", value),
-            I32 => format!("serializer.serializeInt32({});", value),
-            I64 => format!("serializer.serializeInt64({});", value),
-            I128 => format!("serializer.serializeInt128({});", value),
-            U8 => format!("serializer.serializeUint8({});", value),
-            U16 => format!("serializer.serializeUint16({});", value),
-            U32 => format!("serializer.serializeUint32({});", value),
-            U64 => format!("serializer.serializeUint64({});", value),
-            U128 => format!("serializer.serializeUint128({});", value),
-            F32 => format!("serializer.serializeFloat32({});", value),
-            F64 => format!("serializer.serializeFloat64({});", value),
-            Char => format!("serializer.serializeChar({});", value),
-            Str => format!("serializer.serializeString({});", value),
-            Bytes => format!("serializer.serializeBytes({});", value),
+            TypeName(_) => format!("{value}.serialize(serializer);"),
+            Unit => format!("serializer.serializeUnit({value});"),
+            Bool => format!("serializer.serializeBool({value});"),
+            I8 => format!("serializer.serializeInt8({value});"),
+            I16 => format!("serializer.serializeInt16({value});"),
+            I32 => format!("serializer.serializeInt32({value});"),
+            I64 => format!("serializer.serializeInt64({value});"),
+            I128 => format!("serializer.serializeInt128({value});"),
+            U8 => format!("serializer.serializeUint8({value});"),
+            U16 => format!("serializer.serializeUint16({value});"),
+            U32 => format!("serializer.serializeUint32({value});"),
+            U64 => format!("serializer.serializeUint64({value});"),
+            U128 => format!("serializer.serializeUint128({value});"),
+            F32 => format!("serializer.serializeFloat32({value});"),
+            F64 => format!("serializer.serializeFloat64({value});"),
+            Char => format!("serializer.serializeChar({value});"),
+            Str => format!("serializer.serializeString({value});"),
+            Bytes => format!("serializer.serializeBytes({value});"),
             _ => format!(
                 "{}.serialize{}({}, serializer);",
                 self.quote_qualified_name("TraitHelpers"),
@@ -576,7 +575,7 @@ return obj;
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect::<Vec<_>>(),
@@ -642,8 +641,8 @@ return obj;
         for field in fields.iter() {
             let field_name = self.quote_field(&field.name.to_mixed_case());
             match &field.value {
-                Format::Option(_) => writeln!(self.out, "this.{},", field_name)?,
-                _ => writeln!(self.out, "required this.{},", field_name)?,
+                Format::Option(_) => writeln!(self.out, "this.{field_name},")?,
+                _ => writeln!(self.out, "required this.{field_name},")?,
             }
         }
         self.out.unindent();
@@ -719,7 +718,7 @@ return obj;
             writeln!(self.out)?;
 
             let cls_name = self.quote_qualified_name(name);
-            writeln!(self.out, "{} copyWith({{", cls_name)?;
+            writeln!(self.out, "{cls_name} copyWith({{")?;
             self.out.indent();
             for field in fields {
                 let field_name = self.quote_field(&field.name.to_mixed_case());
@@ -727,25 +726,26 @@ return obj;
 
                 match field.value {
                     Format::Option(_) => {
-                        writeln!(self.out, "{} Function()? {},", field_type, field_name)?
+                        writeln!(self.out, "{field_type} Function()? {field_name},")?
                     }
-                    _ => writeln!(self.out, "{}? {},", field_type, field_name)?,
+                    _ => writeln!(self.out, "{field_type}? {field_name},")?,
                 }
             }
             self.out.unindent();
             writeln!(self.out, "}}) {{")?;
             self.out.indent();
-            writeln!(self.out, "return {}(", cls_name)?;
+            writeln!(self.out, "return {cls_name}(")?;
             self.out.indent();
 
             for field in fields {
                 let field_name = self.quote_field(&field.name.to_mixed_case());
 
                 match field.value {
-                    Format::Option(_) => {
-                        writeln!(self.out, "{0}: {0} == null ? this.{0} : {0}(),", field_name)?
-                    }
-                    _ => writeln!(self.out, "{0}: {0} ?? this.{0},", field_name)?,
+                    Format::Option(_) => writeln!(
+                        self.out,
+                        "{field_name}: {field_name} == null ? this.{field_name} : {field_name}(),"
+                    )?,
+                    _ => writeln!(self.out, "{field_name}: {field_name} ?? this.{field_name},")?,
                 }
             }
             self.out.unindent();
@@ -760,7 +760,7 @@ return obj;
             self.out.indent();
             writeln!(self.out, "serializer.increaseContainerDepth();")?;
             if let Some(index) = variant_index {
-                writeln!(self.out, "serializer.serializeVariantIndex({});", index)?;
+                writeln!(self.out, "serializer.serializeVariantIndex({index});")?;
             }
             for field in fields {
                 writeln!(
@@ -793,7 +793,7 @@ return obj;
             self.out,
             "if (other.runtimeType != runtimeType) return false;"
         )?;
-        write!(self.out, "\nreturn other is {}", name)?;
+        write!(self.out, "\nreturn other is {name}")?;
 
         self.out.indent();
         for field in fields.iter() {
@@ -831,7 +831,7 @@ return obj;
                 ),
             };
 
-            write!(self.out, "\n&& {}", stmt)?;
+            write!(self.out, "\n&& {stmt}")?;
         }
         writeln!(self.out, ";")?;
         self.out.unindent();
@@ -910,7 +910,7 @@ return obj;
         writeln!(self.out, "return true;")?;
         self.out.unindent();
         writeln!(self.out, "}}());")?;
-        writeln!(self.out, "\nreturn fullString ?? '{}';", name)?;
+        writeln!(self.out, "\nreturn fullString ?? '{name}';")?;
         self.out.unindent();
         writeln!(self.out, "}}")?;
 
@@ -1155,7 +1155,7 @@ switch (index) {{"#,
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect(),
@@ -1175,7 +1175,7 @@ switch (index) {{"#,
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, "/// ").replace("\n\n", "\n///\n");
-            write!(self.out, "{}", text)?;
+            write!(self.out, "{text}")?;
         }
         Ok(())
     }
@@ -1210,7 +1210,7 @@ impl Installer {
         let mut out = IndentedWriter::new(&mut file, IndentConfig::Space(2));
         writeln!(
             &mut out,
-            r#"name: {}
+            r#"name: {module_name}
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -1218,8 +1218,7 @@ environment:
 dependencies:
   meta: ^1.0.0
   tuple: ^2.0.0
-"#,
-            module_name
+"#
         )?;
         Ok(())
     }

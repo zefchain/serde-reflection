@@ -29,19 +29,19 @@ fn create_test_dir(test_name: &'static str) -> (PathBuf, Option<tempfile::TempDi
             let test_dir_name = if tries == 0 {
                 test_name.into()
             } else {
-                format!("{}_{}", test_name, tries)
+                format!("{test_name}_{tries}")
             };
             let dir = Path::new("tests").join(test_dir_name).to_path_buf();
             match std::fs::create_dir(&dir) {
                 Ok(()) => return (dir, None),
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => tries += 1,
-                Err(e) => panic!("Error creating test directory: {:?}", e),
+                Err(e) => panic!("Error creating test directory: {e:?}"),
             }
         }
         panic!("Error creating test directory: Too many existing test directories");
     } else {
         let tempdir = tempfile::Builder::new()
-            .suffix(&format!("_{}", test_name))
+            .suffix(&format!("_{test_name}"))
             .tempdir()
             .unwrap();
         (tempdir.path().to_path_buf(), Some(tempdir))
@@ -76,7 +76,7 @@ fn make_test_project(
 ) -> std::io::Result<PathBuf> {
     let test_dir = tmp_dir.join(test_name.replace('.', "/"));
     std::fs::create_dir(&test_dir)?;
-    let mut proj = std::fs::File::create(test_dir.join(format!("{}.csproj", test_name)))?;
+    let mut proj = std::fs::File::create(test_dir.join(format!("{test_name}.csproj")))?;
     write!(
         proj,
         r#"
