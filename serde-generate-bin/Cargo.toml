@@ -10,7 +10,7 @@ readme = "README.md"
 keywords = ["data-structures", "serialization", "serde"]
 categories = ["encoding", "development-tools"]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.70"
 
 [dependencies]
 serde-generate = { path = "../serde-generate", version = "0.32.0" }
