@@ -9,7 +9,7 @@ use heck::SnakeCase;
 use phf::phf_set;
 use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     io::{Result, Write},
     path::PathBuf,
 };
@@ -97,6 +97,20 @@ fn safe_variable(s: &str) -> String {
     } else {
         s.to_string()
     }
+}
+
+/// Returns true if `s` is a valid Solidity identifier: matches
+/// `[a-zA-Z_$][a-zA-Z0-9_$]*` and is not a reserved keyword.
+fn is_solidity_identifier(s: &str) -> bool {
+    if s.is_empty() || KEYWORDS.contains(s) {
+        return false;
+    }
+    let mut chars = s.chars();
+    let first = chars.next().unwrap();
+    if !first.is_ascii_alphabetic() && first != '_' && first != '$' {
+        return false;
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -676,14 +690,6 @@ enum SolFormat {
 }
 
 impl SolFormat {
-    pub fn code_name(&self) -> String {
-        use SolFormat::*;
-        if let Seq(format) = self {
-            return format!("{}[]", format.code_name());
-        }
-        self.key_name()
-    }
-
     pub fn key_name(&self) -> String {
         use SolFormat::*;
         match self {
@@ -718,15 +724,17 @@ impl SolFormat {
             }
             Option(format) => {
                 let key_name = format.key_name();
-                let code_name = format.code_name();
+                let qualified_code_name = sol_registry.qualified_code_name(format);
                 let full_name = format!("opt_{key_name}");
                 let data_location = sol_registry.data_location(format);
+                let ser_fn = sol_registry.qualified_fn_name("bcs_serialize", &key_name);
+                let deser_fn = sol_registry.qualified_fn_name("bcs_deserialize_offset", &key_name);
                 writeln!(
                     out,
                     r#"
 struct {full_name} {{
     bool has_value;
-    {code_name} value;
+    {qualified_code_name} value;
 }}
 
 function bcs_serialize_{full_name}({full_name} memory input)
@@ -735,7 +743,7 @@ function bcs_serialize_{full_name}({full_name} memory input)
     returns (bytes memory)
 {{
     if (input.has_value) {{
-        return abi.encodePacked(uint8(1), bcs_serialize_{key_name}(input.value));
+        return abi.encodePacked(uint8(1), {ser_fn}(input.value));
     }} else {{
         return abi.encodePacked(uint8(0));
     }}
@@ -749,9 +757,9 @@ function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input)
     uint256 new_pos;
     bool has_value;
     (new_pos, has_value) = bcs_deserialize_offset_bool(pos, input);
-    {code_name}{data_location} value;
+    {qualified_code_name}{data_location} value;
     if (has_value) {{
-        (new_pos, value) = bcs_deserialize_offset_{key_name}(new_pos, input);
+        (new_pos, value) = {deser_fn}(new_pos, input);
     }}
     return (new_pos, {full_name}(has_value, value));
 }}"#
@@ -760,10 +768,13 @@ function bcs_deserialize_offset_{full_name}(uint256 pos, bytes memory input)
             }
             Seq(format) => {
                 let inner_key_name = format.key_name();
-                let inner_code_name = format.code_name();
-                let code_name = format!("{}[]", format.code_name());
+                let qualified_inner_code_name = sol_registry.qualified_code_name(format);
+                let code_name = format!("{qualified_inner_code_name}[]");
                 let key_name = format!("seq_{inner_key_name}");
                 let data_location = sol_registry.data_location(format);
+                let inner_ser_fn = sol_registry.qualified_fn_name("bcs_serialize", &inner_key_name);
+                let inner_deser_fn =
+                    sol_registry.qualified_fn_name("bcs_deserialize_offset", &inner_key_name);
                 writeln!(
                     out,
                     r#"
@@ -775,7 +786,7 @@ function bcs_serialize_{key_name}({code_name} memory input)
     uint256 len = input.length;
     bytes memory result = bcs_serialize_len(len);
     for (uint256 i=0; i<len; i++) {{
-        result = abi.encodePacked(result, bcs_serialize_{inner_key_name}(input[i]));
+        result = abi.encodePacked(result, {inner_ser_fn}(input[i]));
     }}
     return result;
 }}
@@ -788,11 +799,11 @@ function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input)
     uint256 len;
     uint256 new_pos;
     (new_pos, len) = bcs_deserialize_offset_len(pos, input);
-    {inner_code_name}[] memory result;
-    result = new {inner_code_name}[](len);
-    {inner_code_name}{data_location} value;
+    {qualified_inner_code_name}[] memory result;
+    result = new {qualified_inner_code_name}[](len);
+    {qualified_inner_code_name}{data_location} value;
     for (uint256 i=0; i<len; i++) {{
-        (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);
+        (new_pos, value) = {inner_deser_fn}(new_pos, input);
         result[i] = value;
     }}
     return (new_pos, result);
@@ -802,13 +813,16 @@ function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input)
             }
             TupleArray { format, size } => {
                 let inner_key_name = format.key_name();
-                let inner_code_name = format.code_name();
+                let qualified_inner_code_name = sol_registry.qualified_code_name(format);
                 let struct_name = format!("tuplearray{size}_{inner_key_name}");
+                let inner_ser_fn = sol_registry.qualified_fn_name("bcs_serialize", &inner_key_name);
+                let inner_deser_fn =
+                    sol_registry.qualified_fn_name("bcs_deserialize_offset", &inner_key_name);
                 writeln!(
                     out,
                     r#"
 struct {struct_name} {{
-    {inner_code_name}[] values;
+    {qualified_inner_code_name}[] values;
 }}
 
 function bcs_serialize_{struct_name}({struct_name} memory input)
@@ -818,7 +832,7 @@ function bcs_serialize_{struct_name}({struct_name} memory input)
 {{
     bytes memory result;
     for (uint i=0; i<{size}; i++) {{
-        result = abi.encodePacked(result, bcs_serialize_{inner_key_name}(input.values[i]));
+        result = abi.encodePacked(result, {inner_ser_fn}(input.values[i]));
     }}
     return result;
 }}
@@ -829,11 +843,11 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
     returns (uint256, {struct_name} memory)
 {{
     uint256 new_pos = pos;
-    {inner_code_name} value;
-    {inner_code_name}[] memory values;
-    values = new {inner_code_name}[]({size});
+    {qualified_inner_code_name} value;
+    {qualified_inner_code_name}[] memory values;
+    values = new {qualified_inner_code_name}[]({size});
     for (uint i=0; i<{size}; i++) {{
-        (new_pos, value) = bcs_deserialize_offset_{inner_key_name}(new_pos, input);
+        (new_pos, value) = {inner_deser_fn}(new_pos, input);
         values[i] = value;
     }}
     return (new_pos, {struct_name}(values));
@@ -848,7 +862,7 @@ function bcs_deserialize_offset_{struct_name}(uint256 pos, bytes memory input)
                     writeln!(
                         out,
                         "    {} {};",
-                        named_format.value.code_name(),
+                        sol_registry.qualified_code_name(&named_format.value),
                         safe_variable(&named_format.name)
                     )?;
                 }
@@ -865,7 +879,8 @@ function bcs_serialize_{name}({name} memory input)
                 for (index, named_format) in formats.iter().enumerate() {
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
-                    let block = format!("bcs_serialize_{key_name}(input.{safe_name})");
+                    let ser_fn = sol_registry.qualified_fn_name("bcs_serialize", &key_name);
+                    let block = format!("{ser_fn}(input.{safe_name})");
                     let block = if formats.len() > 1 {
                         if index == 0 {
                             format!("bytes memory result = {block}")
@@ -892,12 +907,17 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 )?;
                 for (index, named_format) in formats.iter().enumerate() {
                     let data_location = sol_registry.data_location(&named_format.value);
-                    let code_name = named_format.value.code_name();
+                    let qualified_code_name = sol_registry.qualified_code_name(&named_format.value);
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
                     let start_pos = if index == 0 { "pos" } else { "new_pos" };
-                    writeln!(out, "    {code_name}{data_location} {safe_name};")?;
-                    writeln!(out, "    (new_pos, {safe_name}) = bcs_deserialize_offset_{key_name}({start_pos}, input);")?;
+                    let deser_fn =
+                        sol_registry.qualified_fn_name("bcs_deserialize_offset", &key_name);
+                    writeln!(out, "    {qualified_code_name}{data_location} {safe_name};")?;
+                    writeln!(
+                        out,
+                        "    (new_pos, {safe_name}) = {deser_fn}({start_pos}, input);"
+                    )?;
                 }
                 writeln!(
                     out,
@@ -960,12 +980,12 @@ struct {name} {{
     uint8 choice;"#
                 )?;
                 for (idx, named_format) in formats.iter().enumerate() {
-                    let name = named_format.name.clone();
-                    writeln!(out, "    // choice={idx} corresponds to {name}")?;
+                    let variant_name = named_format.name.clone();
+                    writeln!(out, "    // choice={idx} corresponds to {variant_name}")?;
                     if let Some(format) = &named_format.value {
-                        let code_name = format.code_name();
+                        let qualified_code_name = sol_registry.qualified_code_name(format);
                         let snake_name = safe_variable(&named_format.name.to_snake_case());
-                        writeln!(out, "    {code_name} {snake_name};")?;
+                        writeln!(out, "    {qualified_code_name} {snake_name};")?;
                     }
                 }
                 writeln!(out, "}}")?;
@@ -975,8 +995,8 @@ struct {name} {{
                     if let Some(format) = &named_format.value {
                         let data_location = sol_registry.data_location(format);
                         let snake_name = safe_variable(&named_format.name.to_snake_case());
-                        let code_name = format.code_name();
-                        let type_var = format!("{code_name}{data_location} {snake_name}");
+                        let qualified_code_name = sol_registry.qualified_code_name(format);
+                        let type_var = format!("{qualified_code_name}{data_location} {snake_name}");
                         type_vars.push(type_var);
                         entries.push(snake_name);
                     } else {
@@ -1017,8 +1037,9 @@ function bcs_serialize_{name}({name} memory input)
                     if let Some(format) = &named_format.value {
                         let key_name = format.key_name();
                         let snake_name = safe_variable(&named_format.name.to_snake_case());
+                        let ser_fn = sol_registry.qualified_fn_name("bcs_serialize", &key_name);
                         writeln!(out, "    if (input.choice == {idx}) {{")?;
-                        writeln!(out, "        return abi.encodePacked(input.choice, bcs_serialize_{key_name}(input.{snake_name}));")?;
+                        writeln!(out, "        return abi.encodePacked(input.choice, {ser_fn}(input.{snake_name}));")?;
                         writeln!(out, "    }}")?;
                     }
                 }
@@ -1041,11 +1062,19 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                     if let Some(format) = &named_format.value {
                         let data_location = sol_registry.data_location(format);
                         let snake_name = safe_variable(&named_format.name.to_snake_case());
-                        let code_name = format.code_name();
+                        let qualified_code_name = sol_registry.qualified_code_name(format);
                         let key_name = format.key_name();
-                        writeln!(out, "    {code_name}{data_location} {snake_name};")?;
+                        let deser_fn =
+                            sol_registry.qualified_fn_name("bcs_deserialize_offset", &key_name);
+                        writeln!(
+                            out,
+                            "    {qualified_code_name}{data_location} {snake_name};"
+                        )?;
                         writeln!(out, "    if (choice == {idx}) {{")?;
-                        writeln!(out, "        (new_pos, {snake_name}) = bcs_deserialize_offset_{key_name}(new_pos, input);")?;
+                        writeln!(
+                            out,
+                            "        (new_pos, {snake_name}) = {deser_fn}(new_pos, input);"
+                        )?;
                         writeln!(out, "    }}")?;
                         entries.push(snake_name);
                     }
@@ -1132,10 +1161,20 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
         Ok(())
     }
 
+    /// Returns the key_names of types this format's generated code calls into.
+    /// Used by `locally_needed_types` to determine which types must be emitted.
     fn get_dependency(&self) -> Vec<String> {
         use SolFormat::*;
         match self {
-            Primitive(_) => vec![],
+            // Signed integer serializers delegate to their unsigned counterparts,
+            // e.g. bcs_serialize_int32 calls bcs_serialize_uint32 internally.
+            Primitive(p) => match p {
+                crate::solidity::Primitive::I16 => vec!["uint16".into()],
+                crate::solidity::Primitive::I32 => vec!["uint32".into()],
+                crate::solidity::Primitive::I64 => vec!["uint64".into()],
+                crate::solidity::Primitive::I128 => vec!["uint128".into()],
+                _ => vec![],
+            },
             TypeName(name) => vec![name.to_string()],
             Seq(format) => vec![format.key_name()],
             SimpleEnum { name: _, names: _ } => vec![],
@@ -1143,15 +1182,21 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 .iter()
                 .map(|format| format.value.key_name())
                 .collect(),
-            Option(format) => vec![format.key_name()],
+            // Option deserializer calls bcs_deserialize_offset_bool for the tag.
+            Option(format) => vec![format.key_name(), "bool".to_string()],
             TupleArray { format, size: _ } => vec![format.key_name()],
-            Enum { name: _, formats } => formats
-                .iter()
-                .flat_map(|format| match &format.value {
-                    None => vec![],
-                    Some(format) => vec![format.key_name()],
-                })
-                .collect(),
+            // Enum deserializer calls bcs_deserialize_offset_uint8 for the choice tag.
+            Enum { name: _, formats } => {
+                let mut deps: Vec<String> = formats
+                    .iter()
+                    .flat_map(|format| match &format.value {
+                        None => vec![],
+                        Some(format) => vec![format.key_name()],
+                    })
+                    .collect();
+                deps.push("uint8".to_string());
+                deps
+            }
             BytesN { size: _ } => vec![],
             OptionBool => vec![],
         }
@@ -1161,6 +1206,9 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
 #[derive(Default)]
 struct SolRegistry {
     names: BTreeMap<String, SolFormat>,
+    /// Maps external type key_names to their qualified module prefix.
+    /// e.g., "Account" → "BridgeTypes"
+    external_modules: HashMap<String, String>,
 }
 
 impl SolRegistry {
@@ -1202,6 +1250,38 @@ impl SolRegistry {
         }
     }
 
+    /// Returns true if the type is defined in an external module.
+    fn is_external(&self, key_name: &str) -> bool {
+        self.external_modules.contains_key(key_name)
+    }
+
+    /// Qualifies a type name: "Account" → "BridgeTypes.Account" for external types,
+    /// or returns the name unchanged for local types.
+    fn qualified_type_name(&self, key_name: &str) -> String {
+        match self.external_modules.get(key_name) {
+            Some(module) => format!("{module}.{key_name}"),
+            None => key_name.to_string(),
+        }
+    }
+
+    /// Qualifies a function name: "bcs_serialize" + "Account" → "BridgeTypes.bcs_serialize_Account"
+    /// for external types, or "bcs_serialize_Account" for local types.
+    fn qualified_fn_name(&self, fn_prefix: &str, type_key: &str) -> String {
+        match self.external_modules.get(type_key) {
+            Some(module) => format!("{module}.{fn_prefix}_{type_key}"),
+            None => format!("{fn_prefix}_{type_key}"),
+        }
+    }
+
+    /// Qualifies a code_name, handling Seq types by qualifying the inner type.
+    /// e.g., for external Account: "Account[]" → "BridgeTypes.Account[]"
+    fn qualified_code_name(&self, format: &SolFormat) -> String {
+        match format {
+            SolFormat::Seq(inner) => format!("{}[]", self.qualified_code_name(inner)),
+            other => self.qualified_type_name(&other.key_name()),
+        }
+    }
+
     fn has_circular_dependency(&self) -> bool {
         for start_key in self.names.keys() {
             let mut level = HashSet::<String>::new();
@@ -1210,9 +1290,11 @@ impl SolRegistry {
             loop {
                 let mut new_level = HashSet::new();
                 for key in level {
-                    let name = self.names.get(&key);
-                    let Some(name) = name else {
-                        panic!("The key {key:?} is absent from the list of names");
+                    // Skip dependencies not in self.names (e.g. implicit primitive
+                    // deps like "bool" or "uint8" that may not have been parsed).
+                    // Primitives have no outgoing dependencies so can't form cycles.
+                    let Some(name) = self.names.get(&key) else {
+                        continue;
                     };
                     for depend in name.get_dependency() {
                         if depend == *start_key {
@@ -1454,6 +1536,67 @@ impl SolRegistry {
     fn data_location(&self, sol_format: &SolFormat) -> String {
         get_data_location(self.need_memory(sol_format))
     }
+
+    /// Returns the set of type key_names that are transitively needed by at least
+    /// one non-external registry type. Types only reachable through external types
+    /// are excluded.
+    ///
+    /// The algorithm works in two steps:
+    /// 1. Identify "roots": non-external registry keys that are not depended upon
+    ///    by any other type in the registry. These are the entry-point types that
+    ///    the generated library exposes.
+    /// 2. Walk forward from roots through non-external dependencies to find all
+    ///    transitively needed types.
+    ///
+    /// This ensures that types only reachable through external types (e.g. a helper
+    /// struct used exclusively by an imported type) are not emitted locally.
+    fn locally_needed_types(&self, registry_keys: &[&str]) -> HashSet<String> {
+        // Collect all type key_names that are depended upon by ANY type in the
+        // registry (including internal types like variant structs and Seq wrappers).
+        let mut has_dependents: HashSet<String> = HashSet::new();
+        for format in self.names.values() {
+            for dep in format.get_dependency() {
+                has_dependents.insert(dep);
+            }
+        }
+
+        // Seed with non-external registry keys that are true roots
+        // (not a dependency of any other type).
+        let mut needed = HashSet::new();
+        let mut frontier: Vec<String> = registry_keys
+            .iter()
+            .filter(|k| !self.is_external(k) && !has_dependents.contains(**k))
+            .map(|k| k.to_string())
+            .collect();
+        while let Some(key) = frontier.pop() {
+            if !needed.insert(key.clone()) {
+                continue;
+            }
+            if let Some(format) = self.names.get(&key) {
+                for dep in format.get_dependency() {
+                    if !needed.contains(&dep) && !self.is_external(&dep) {
+                        frontier.push(dep);
+                    }
+                }
+            }
+        }
+        needed
+    }
+
+    /// Returns true if any locally-needed type uses the `bcs_serialize_len` /
+    /// `bcs_deserialize_offset_len` preamble functions (Seq, Str, Bytes).
+    fn needs_preamble(&self, needed: &HashSet<String>) -> bool {
+        needed.iter().any(|key| {
+            self.names.get(key).is_some_and(|f| {
+                matches!(
+                    f,
+                    SolFormat::Seq(_)
+                        | SolFormat::Primitive(Primitive::Str)
+                        | SolFormat::Primitive(Primitive::Bytes)
+                )
+            })
+        })
+    }
 }
 
 impl<'a> CodeGenerator<'a> {
@@ -1475,11 +1618,24 @@ impl<'a> CodeGenerator<'a> {
             generator: self,
         };
 
-        emitter.output_license()?;
-        emitter.output_open_library()?;
-        emitter.output_preamble()?;
-
         let mut sol_registry = SolRegistry::default();
+        // External definitions: module name → list of type names defined in that module.
+        // Types present in both the registry and external_definitions are treated as
+        // external — they are imported rather than generated locally. This is the
+        // intended usage: the registry describes ALL types (for dependency analysis),
+        // while external_definitions marks which ones live in another module.
+        for (module_name, type_names) in &self.config.external_definitions {
+            assert!(
+                is_solidity_identifier(module_name),
+                "external module name {module_name:?} is not a valid Solidity identifier \
+                 (must match [a-zA-Z_$][a-zA-Z0-9_$]* and not be a reserved keyword)"
+            );
+            for type_name in type_names {
+                sol_registry
+                    .external_modules
+                    .insert(type_name.clone(), module_name.clone());
+            }
+        }
         for (key, container_format) in registry {
             let container_format = Named {
                 name: key.to_string(),
@@ -1490,8 +1646,20 @@ impl<'a> CodeGenerator<'a> {
         if sol_registry.has_circular_dependency() {
             panic!("solidity does not allow for circular dependencies");
         }
+        let registry_keys: Vec<&str> = registry.keys().map(|k| k.as_str()).collect();
+        let needed = sol_registry.locally_needed_types(&registry_keys);
+
+        emitter.output_license()?;
+        emitter.output_imports()?;
+        emitter.output_open_library()?;
+        if sol_registry.needs_preamble(&needed) {
+            emitter.output_preamble()?;
+        }
         for sol_format in sol_registry.names.values() {
-            sol_format.output(&mut emitter.out, &sol_registry)?;
+            let key = sol_format.key_name();
+            if needed.contains(&key) && !sol_registry.is_external(&key) {
+                sol_format.output(&mut emitter.out, &sol_registry)?;
+            }
         }
 
         emitter.output_close_library()?;
@@ -1509,6 +1677,20 @@ where
             r#"/// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;"#
         )?;
+        Ok(())
+    }
+
+    fn output_imports(&mut self) -> Result<()> {
+        let modules: BTreeSet<&str> = self
+            .generator
+            .config
+            .external_definitions
+            .keys()
+            .map(|s| s.as_str())
+            .collect();
+        for module in modules {
+            writeln!(self.out, "import \"{module}.sol\";")?;
+        }
         Ok(())
     }
 
