@@ -43,8 +43,7 @@ impl<'a> CodeGenerator<'a> {
         let mut external_qualified_names = HashMap::new();
         for (namespace, names) in &config.external_definitions {
             for name in names {
-                external_qualified_names
-                    .insert(name.to_string(), format!("{}.{}", namespace, name));
+                external_qualified_names.insert(name.to_string(), format!("{namespace}.{name}"));
             }
         }
         Self {
@@ -142,7 +141,7 @@ where
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
             let text = textwrap::indent(doc, "// ").replace("\n\n", "\n//\n");
-            write!(self.out, "{}", text)?;
+            write!(self.out, "{text}")?;
         }
         Ok(())
     }
@@ -154,7 +153,7 @@ where
             .custom_code
             .get(&self.current_namespace)
         {
-            writeln!(self.out, "\n{}", code)?;
+            writeln!(self.out, "\n{code}")?;
         }
         Ok(())
     }
@@ -186,7 +185,7 @@ where
                 if inner.ends_with('?') {
                     inner
                 } else {
-                    format!("{}?", inner)
+                    format!("{inner}?")
                 }
             }
             Seq(format) => format!("kotlin.collections.List<{}>", self.quote_type(format)),
@@ -275,24 +274,24 @@ where
     fn quote_serialize_value(&self, value: &str, format: &Format) -> String {
         use Format::*;
         match format {
-            TypeName(_) => format!("{}.serialize(serializer)", value),
-            Unit => format!("serializer.serialize_unit({})", value),
-            Bool => format!("serializer.serialize_bool({})", value),
-            I8 => format!("serializer.serialize_i8({})", value),
-            I16 => format!("serializer.serialize_i16({})", value),
-            I32 => format!("serializer.serialize_i32({})", value),
-            I64 => format!("serializer.serialize_i64({})", value),
-            I128 => format!("serializer.serialize_i128({})", value),
-            U8 => format!("serializer.serialize_u8({})", value),
-            U16 => format!("serializer.serialize_u16({})", value),
-            U32 => format!("serializer.serialize_u32({})", value),
-            U64 => format!("serializer.serialize_u64({})", value),
-            U128 => format!("serializer.serialize_u128({})", value),
-            F32 => format!("serializer.serialize_f32({})", value),
-            F64 => format!("serializer.serialize_f64({})", value),
-            Char => format!("serializer.serialize_char({})", value),
-            Str => format!("serializer.serialize_str({})", value),
-            Bytes => format!("serializer.serialize_bytes({})", value),
+            TypeName(_) => format!("{value}.serialize(serializer)"),
+            Unit => format!("serializer.serialize_unit({value})"),
+            Bool => format!("serializer.serialize_bool({value})"),
+            I8 => format!("serializer.serialize_i8({value})"),
+            I16 => format!("serializer.serialize_i16({value})"),
+            I32 => format!("serializer.serialize_i32({value})"),
+            I64 => format!("serializer.serialize_i64({value})"),
+            I128 => format!("serializer.serialize_i128({value})"),
+            U8 => format!("serializer.serialize_u8({value})"),
+            U16 => format!("serializer.serialize_u16({value})"),
+            U32 => format!("serializer.serialize_u32({value})"),
+            U64 => format!("serializer.serialize_u64({value})"),
+            U128 => format!("serializer.serialize_u128({value})"),
+            F32 => format!("serializer.serialize_f32({value})"),
+            F64 => format!("serializer.serialize_f64({value})"),
+            Char => format!("serializer.serialize_char({value})"),
+            Str => format!("serializer.serialize_str({value})"),
+            Bytes => format!("serializer.serialize_bytes({value})"),
             _ => format!(
                 "TraitHelpers.serialize_{}({}, serializer)",
                 common::mangle_type(format),
@@ -405,7 +404,7 @@ serializer.sort_map_entries(offsets)
                             2 => "value.third".to_string(),
                             _ => unreachable!(),
                         },
-                        _ => format!("value.field{}", index),
+                        _ => format!("value.field{index}"),
                     };
                     writeln!(self.out, "{}", self.quote_serialize_value(&expr, format))?;
                 }
@@ -571,7 +570,7 @@ return obj
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect(),
@@ -605,7 +604,7 @@ return obj
             path.push(field.name.to_string());
             if let Some(doc) = self.generator.config.comments.get(&path) {
                 let text = textwrap::indent(doc, "// ").replace("\n\n", "\n//\n");
-                write!(self.out, "{}", text)?;
+                write!(self.out, "{text}")?;
             }
             let separator = if index + 1 == fields.len() { "" } else { "," };
             writeln!(
@@ -631,18 +630,18 @@ return obj
         self.output_comment(name)?;
         match (variant_base, fields.is_empty()) {
             (Some(base), true) => {
-                writeln!(self.out, "object {} : {}() {{", name, base)?;
+                writeln!(self.out, "object {name} : {base}() {{")?;
             }
             (Some(base), false) => {
-                writeln!(self.out, "data class {}(", name)?;
+                writeln!(self.out, "data class {name}(")?;
                 self.output_fields_in_constructor(name, fields)?;
-                writeln!(self.out, ") : {}() {{", base)?;
+                writeln!(self.out, ") : {base}() {{")?;
             }
             (None, true) => {
-                writeln!(self.out, "class {} {{", name)?;
+                writeln!(self.out, "class {name} {{")?;
             }
             (None, false) => {
-                writeln!(self.out, "data class {}(", name)?;
+                writeln!(self.out, "data class {name}(")?;
                 self.output_fields_in_constructor(name, fields)?;
                 writeln!(self.out, ") {{")?;
             }
@@ -657,13 +656,12 @@ return obj
             };
             writeln!(
                 self.out,
-                "\n@Throws(com.novi.serde.SerializationError::class)\n{}fun serialize(serializer: com.novi.serde.Serializer) {{",
-                prefix
+                "\n@Throws(com.novi.serde.SerializationError::class)\n{prefix}fun serialize(serializer: com.novi.serde.Serializer) {{"
             )?;
             self.out.indent();
             writeln!(self.out, "serializer.increase_container_depth()")?;
             if let Some(index) = variant_index {
-                writeln!(self.out, "serializer.serialize_variant_index({})", index)?;
+                writeln!(self.out, "serializer.serialize_variant_index({index})")?;
             }
             for field in fields {
                 writeln!(
@@ -688,13 +686,12 @@ return obj
                 if fields.is_empty() {
                     writeln!(
                         self.out,
-                        "\n@Throws(com.novi.serde.DeserializationError::class)\nfun load(deserializer: com.novi.serde.Deserializer): {} {{",
-                        name
+                        "\n@Throws(com.novi.serde.DeserializationError::class)\nfun load(deserializer: com.novi.serde.Deserializer): {name} {{"
                     )?;
                     self.out.indent();
                     writeln!(self.out, "deserializer.increase_container_depth()")?;
                     writeln!(self.out, "deserializer.decrease_container_depth()")?;
-                    writeln!(self.out, "return {}", name)?;
+                    writeln!(self.out, "return {name}")?;
                     self.out.unindent();
                     writeln!(self.out, "}}")?;
                 } else {
@@ -702,8 +699,7 @@ return obj
                     self.out.indent();
                     writeln!(
                         self.out,
-                        "@Throws(com.novi.serde.DeserializationError::class)\nfun load(deserializer: com.novi.serde.Deserializer): {} {{",
-                        name
+                        "@Throws(com.novi.serde.DeserializationError::class)\nfun load(deserializer: com.novi.serde.Deserializer): {name} {{"
                     )?;
                     self.out.indent();
                     writeln!(self.out, "deserializer.increase_container_depth()")?;
@@ -725,7 +721,7 @@ return obj
                             .collect::<Vec<_>>()
                             .join(", ")
                     );
-                    writeln!(self.out, "return {}", result)?;
+                    writeln!(self.out, "return {result}")?;
                     self.out.unindent();
                     writeln!(self.out, "}}")?;
                     self.out.unindent();
@@ -736,8 +732,7 @@ return obj
                 self.out.indent();
                 writeln!(
                     self.out,
-                    "@Throws(com.novi.serde.DeserializationError::class)\nfun deserialize(deserializer: com.novi.serde.Deserializer): {} {{",
-                    name
+                    "@Throws(com.novi.serde.DeserializationError::class)\nfun deserialize(deserializer: com.novi.serde.Deserializer): {name} {{"
                 )?;
                 self.out.indent();
                 writeln!(self.out, "deserializer.increase_container_depth()")?;
@@ -751,7 +746,7 @@ return obj
                 }
                 writeln!(self.out, "deserializer.decrease_container_depth()")?;
                 let result = if fields.is_empty() {
-                    format!("{}()", name)
+                    format!("{name}()")
                 } else {
                     format!(
                         "{}({})",
@@ -763,7 +758,7 @@ return obj
                             .join(", ")
                     )
                 };
-                writeln!(self.out, "return {}", result)?;
+                writeln!(self.out, "return {result}")?;
                 self.out.unindent();
                 writeln!(self.out, "}}")?;
 
@@ -780,13 +775,12 @@ return obj
                 self.out,
                 r#"
 override fun equals(other: Any?): Boolean {{
-    return other is {0}
+    return other is {name}
 }}
 
 override fun hashCode(): Int {{
     return 7
-}}"#,
-                name
+}}"#
             )?;
         }
 
@@ -802,7 +796,7 @@ override fun hashCode(): Int {{
     ) -> Result<()> {
         writeln!(self.out)?;
         self.output_comment(name)?;
-        writeln!(self.out, "sealed class {} {{", name)?;
+        writeln!(self.out, "sealed class {name} {{")?;
         self.enter_class(name);
         if self.generator.config.serialization {
             writeln!(
@@ -813,8 +807,7 @@ override fun hashCode(): Int {{
             self.out.indent();
             writeln!(
                 self.out,
-                "@Throws(com.novi.serde.DeserializationError::class)\nfun deserialize(deserializer: com.novi.serde.Deserializer): {} {{",
-                name
+                "@Throws(com.novi.serde.DeserializationError::class)\nfun deserialize(deserializer: com.novi.serde.Deserializer): {name} {{"
             )?;
             self.out.indent();
             writeln!(
@@ -828,8 +821,7 @@ override fun hashCode(): Int {{
             }
             writeln!(
                 self.out,
-                "else -> throw com.novi.serde.DeserializationError(\"Unknown variant index for {}: \" + index)",
-                name
+                "else -> throw com.novi.serde.DeserializationError(\"Unknown variant index for {name}: \" + index)"
             )?;
             self.out.unindent();
             writeln!(self.out, "}}")?;
@@ -902,7 +894,7 @@ fun {1}Deserialize(input: ByteArray): {0} {{
                 .iter()
                 .enumerate()
                 .map(|(i, f)| Named {
-                    name: format!("field{}", i),
+                    name: format!("field{i}"),
                     value: f.clone(),
                 })
                 .collect::<Vec<_>>(),
