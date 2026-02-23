@@ -2500,7 +2500,7 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "alloy-sol-types",
  "anyhow",
@@ -2526,7 +2526,7 @@ dependencies = [
 
 [[package]]
 name = "serde-generate-bin"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "serde",
  "serde-generate",

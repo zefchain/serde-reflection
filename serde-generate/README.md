@@ -23,6 +23,7 @@ The following programming languages are fully supported as target languages:
 * Swift 5.3
 * OCaml
 * Dart >= 3
+* Kotlin
 
 The following languages are partially supported and/or still considered under development:
 
