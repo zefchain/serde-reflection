@@ -10,11 +10,11 @@ readme = "README.md"
 keywords = ["data-structures", "serialization", "serde"]
 categories = ["encoding", "development-tools"]
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.88.0"
 
 [dependencies]
 serde-generate = { path = "../serde-generate", version = "0.33.0", default-features = false }
-structopt = "0.3.21"
+clap = { version = "4", features = ["derive"] }
 serde-reflection = { path = "../serde-reflection", version = "0.5.2" }
 serde_yaml = "0.8.17"
 

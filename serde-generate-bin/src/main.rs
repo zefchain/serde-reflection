@@ -35,10 +35,9 @@ use serde_generate::typescript;
 use serde_generate::{CodeGeneratorConfig, Encoding, SourceInstaller};
 use serde_reflection::Registry;
 use std::path::PathBuf;
-use structopt::{clap::arg_enum, StructOpt};
+use clap::{Parser, ValueEnum};
 
-arg_enum! {
-#[derive(Debug, StructOpt)]
+#[derive(Clone, Debug, ValueEnum)]
 enum Language {
     Python3,
     Cpp,
@@ -47,65 +46,64 @@ enum Language {
     Java,
     Go,
     Dart,
+    #[value(name = "typescript")]
     TypeScript,
+    #[value(name = "csharp")]
     CSharp,
     Swift,
+    #[value(name = "ocaml")]
     OCaml,
     Kotlin,
 }
-}
 
-arg_enum! {
-#[derive(Debug, StructOpt, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, ValueEnum, PartialEq, Eq, PartialOrd, Ord)]
 enum Runtime {
     Serde,
     Bincode,
     Bcs,
 }
-}
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[command(
     name = "Serde code generator",
     about = "Generate code for Serde containers"
 )]
 struct Options {
     /// Path to the YAML-encoded Serde formats.
-    #[structopt(parse(from_os_str))]
     input: Option<PathBuf>,
 
     /// Language for code generation.
-    #[structopt(long, possible_values = &Language::variants(), case_insensitive = true, default_value = "Python3")]
+    #[arg(long, value_enum, ignore_case = true, default_value = "python3")]
     language: Language,
 
     /// Directory where to write generated modules (otherwise print code on stdout).
-    #[structopt(long)]
+    #[arg(long)]
     target_source_dir: Option<PathBuf>,
 
     /// Optional runtimes to install in the `target_source_dir` (if applicable).
     /// Also triggers the generation of specialized methods for each runtime.
-    #[structopt(long, possible_values = &Runtime::variants(), case_insensitive = true)]
+    #[arg(long, value_enum, ignore_case = true)]
     with_runtimes: Vec<Runtime>,
 
     /// Module name for the Serde formats installed in the `target_source_dir`.
     /// Rust crates may contain a version number separated with a colon, e.g. "test:1.2.0".
     /// (By default, the installer will use version "0.1.0".)
-    #[structopt(long)]
+    #[arg(long)]
     module_name: Option<String>,
 
     /// Optional package name (Python) or module path (Go) where to find Serde runtime dependencies.
-    #[structopt(long)]
+    #[arg(long)]
     #[cfg_attr(not(any(feature = "python3", feature = "golang")), allow(dead_code))]
     serde_package_name: Option<String>,
 
     /// Translate enums without variant data (c-style enums) into their equivalent in the target language,
     /// if the target language and the generator code support them.
-    #[structopt(long)]
+    #[arg(long)]
     use_c_style_enums: bool,
 
     /// Avoid creating a package spec file defining dependencies for the chosen language.
     /// Takes effect only for languages that have a package manifest format.
-    #[structopt(long)]
+    #[arg(long)]
     skip_package_manifest: bool,
 }
 
@@ -147,7 +145,7 @@ macro_rules! require_feature {
 }
 
 fn main() {
-    let options = Options::from_args();
+    let options = Options::parse();
     #[cfg(any(feature = "python3", feature = "golang"))]
     let serde_package_name_opt = options.serde_package_name.clone();
     let named_registry_opt = match &options.input {
