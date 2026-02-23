@@ -9,7 +9,6 @@ use std::{
     process::Command,
 };
 use tempfile::{tempdir, TempDir};
-use which::which;
 
 fn test_that_kotlin_code_compiles_with_config(config: &CodeGeneratorConfig) -> (TempDir, PathBuf) {
     let registry = test_utils::get_registry().unwrap();
@@ -21,7 +20,7 @@ fn test_that_kotlin_code_compiles_with_config(config: &CodeGeneratorConfig) -> (
     installer.install_bincode_runtime().unwrap();
     installer.install_bcs_runtime().unwrap();
 
-    maybe_compile_kotlin(dir.path());
+    compile_kotlin(dir.path());
 
     let path = module_path(dir.path(), config.module_name());
     (dir, path)
@@ -108,10 +107,6 @@ fn test_that_kotlin_code_compiles_with_custom_code() {
     assert!(content.contains("fun me(): SerdeData"));
 }
 
-fn find_kotlin_compiler() -> Option<PathBuf> {
-    which("kotlinc-native").ok()
-}
-
 fn collect_kotlin_sources(root: &Path, output: &mut Vec<PathBuf>) -> std::io::Result<()> {
     for entry in std::fs::read_dir(root)? {
         let entry = entry?;
@@ -125,17 +120,8 @@ fn collect_kotlin_sources(root: &Path, output: &mut Vec<PathBuf>) -> std::io::Re
     Ok(())
 }
 
-fn maybe_compile_kotlin(dir: &Path) {
-    let compiler = match find_kotlin_compiler() {
-        Some(path) => {
-            println!("Kotlin/Native compiler found: {}", path.display());
-            path
-        }
-        None => {
-            eprintln!("Skipping Kotlin/Native compilation test: compiler not found");
-            return;
-        }
-    };
+fn compile_kotlin(dir: &Path) {
+    let compiler = "kotlinc-native";
 
     let mut sources = Vec::new();
     collect_kotlin_sources(dir, &mut sources).unwrap();
@@ -151,7 +137,10 @@ fn maybe_compile_kotlin(dir: &Path) {
         args.push(source.to_str().unwrap().to_string());
     }
 
-    let output = Command::new(compiler).args(&args).output().unwrap();
+    let output = Command::new(compiler)
+        .args(&args)
+        .output()
+        .expect("Failed to run kotlinc-native.");
     if !output.status.success() {
         eprintln!(
             "Kotlin compile stdout:\n{}",
