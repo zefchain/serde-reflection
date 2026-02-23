@@ -9,7 +9,7 @@
 //! '''
 
 use serde_generate::{
-    cpp, csharp, dart, golang, java, ocaml, python3, rust, solidity, swift, typescript,
+    cpp, csharp, dart, golang, java, kotlin, ocaml, python3, rust, solidity, swift, typescript,
     CodeGeneratorConfig, Encoding, SourceInstaller,
 };
 use serde_reflection::Registry;
@@ -30,6 +30,7 @@ enum Language {
     CSharp,
     Swift,
     OCaml,
+    Kotlin,
 }
 }
 
@@ -180,6 +181,9 @@ fn main() {
                     Language::OCaml => ocaml::CodeGenerator::new(&config)
                         .output(&mut out, &registry)
                         .unwrap(),
+                    Language::Kotlin => {
+                        panic!("Code generation in Kotlin requires `--target-source-dir`")
+                    }
                 }
             }
         }
@@ -202,6 +206,7 @@ fn main() {
                     Language::CSharp => Box::new(csharp::Installer::new(install_dir)),
                     Language::Swift => Box::new(swift::Installer::new(install_dir)),
                     Language::OCaml => Box::new(ocaml::Installer::new(install_dir)),
+                    Language::Kotlin => Box::new(kotlin::Installer::new(install_dir)),
                 };
 
             if let Some((registry, name)) = named_registry_opt {
