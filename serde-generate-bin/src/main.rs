@@ -82,7 +82,7 @@ struct Options {
 
     /// Optional runtimes to install in the `target_source_dir` (if applicable).
     /// Also triggers the generation of specialized methods for each runtime.
-    #[arg(long, value_enum, ignore_case = true)]
+    #[arg(long, value_enum, ignore_case = true, num_args = 1..)]
     with_runtimes: Vec<Runtime>,
 
     /// Module name for the Serde formats installed in the `target_source_dir`.
