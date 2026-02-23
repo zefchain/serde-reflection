@@ -24,7 +24,7 @@ serde = { version = "1.0.126", features = ["derive"] }
 serde_bytes = "0.11.5"
 
 [features]
-default = ["cpp", "csharp", "dart", "golang", "java", "kotlin", "ocaml", "python3", "rust", "swift", "typescript", "solidity"]
+default = ["cpp", "csharp", "dart", "golang", "java", "kotlin", "ocaml", "python3", "rust", "swift"]
 cpp = ["serde-generate/cpp"]
 csharp = ["serde-generate/csharp"]
 dart = ["serde-generate/dart"]

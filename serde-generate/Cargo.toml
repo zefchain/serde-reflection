@@ -42,7 +42,7 @@ revm = { version = "34.0.0", default-features = false, features = ["std", "secp2
 serde_json = "1.0.115"
 
 [features]
-default = ["cpp", "csharp", "dart", "golang", "java", "kotlin", "ocaml", "python3", "rust", "swift", "typescript", "solidity"]
+default = ["cpp", "csharp", "dart", "golang", "java", "kotlin", "ocaml", "python3", "rust", "swift"]
 cpp = []
 csharp = ["include_dir"]
 dart = ["include_dir"]
