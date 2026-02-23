@@ -1,10 +1,17 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use serde_reflection::Format;
-
-pub(crate) fn mangle_type(format: &Format) -> String {
-    use Format::*;
+#[cfg(any(
+    feature = "csharp",
+    feature = "dart",
+    feature = "golang",
+    feature = "java",
+    feature = "kotlin",
+    feature = "swift",
+    feature = "typescript",
+))]
+pub(crate) fn mangle_type(format: &serde_reflection::Format) -> String {
+    use serde_reflection::Format::*;
     match format {
         TypeName(x) => x.to_string(),
         Unit => "unit".into(),
@@ -42,6 +49,7 @@ pub(crate) fn mangle_type(format: &Format) -> String {
     }
 }
 
+#[cfg(feature = "ocaml")]
 pub(crate) fn uppercase_first_letter(s: &str) -> String {
     let mut c = s.chars();
     match c.next() {
@@ -50,6 +58,7 @@ pub(crate) fn uppercase_first_letter(s: &str) -> String {
     }
 }
 
+#[cfg(feature = "swift")]
 pub(crate) fn lowercase_first_letter(s: &str) -> String {
     let mut c = s.chars();
     match c.next() {
