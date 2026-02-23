@@ -207,6 +207,19 @@ fun main() {{
     if !compile_and_run_kotlin(sources, output_path) {}
 }
 
+#[test]
+fn test_kotlin_bcs_runtime_autotest() {
+    let dir = tempdir().unwrap();
+    let installer = kotlin::Installer::new(dir.path().to_path_buf());
+    installer.install_serde_runtime().unwrap();
+    installer.install_bcs_runtime().unwrap();
+
+    let mut sources = Vec::new();
+    collect_kotlin_sources(dir.path(), &mut sources).unwrap();
+    let output_path = dir.path().join("kotlin_bcs_autotest");
+    compile_and_run_kotlin_with_entry(sources, output_path, Some("com.novi.bcs.main"));
+}
+
 fn quote_bytes(bytes: &[u8]) -> String {
     format!(
         "byteArrayOf({})",
@@ -251,6 +264,14 @@ fn resolve_executable(output_path: &Path) -> PathBuf {
 }
 
 fn compile_and_run_kotlin(sources: Vec<PathBuf>, output_path: PathBuf) -> bool {
+    compile_and_run_kotlin_with_entry(sources, output_path, None)
+}
+
+fn compile_and_run_kotlin_with_entry(
+    sources: Vec<PathBuf>,
+    output_path: PathBuf,
+    entry_point: Option<&str>,
+) -> bool {
     let compiler = match find_kotlin_compiler() {
         Some(path) => {
             println!("Kotlin/Native compiler found: {}", path.display());
@@ -268,6 +289,10 @@ fn compile_and_run_kotlin(sources: Vec<PathBuf>, output_path: PathBuf) -> bool {
         "-o".to_string(),
         output_path.to_str().unwrap().to_string(),
     ];
+    if let Some(entry) = entry_point {
+        args.push("-e".to_string());
+        args.push(entry.to_string());
+    }
     for source in &sources {
         args.push(source.to_str().unwrap().to_string());
     }
