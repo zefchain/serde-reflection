@@ -95,6 +95,7 @@ struct Options {
 
     /// Optional package name (Python) or module path (Go) where to find Serde runtime dependencies.
     #[structopt(long)]
+    #[cfg_attr(not(any(feature = "python3", feature = "golang")), allow(dead_code))]
     serde_package_name: Option<String>,
 
     /// Translate enums without variant data (c-style enums) into their equivalent in the target language,
@@ -147,6 +148,7 @@ macro_rules! require_feature {
 
 fn main() {
     let options = Options::from_args();
+    #[cfg(any(feature = "python3", feature = "golang"))]
     let serde_package_name_opt = options.serde_package_name.clone();
     let named_registry_opt = match &options.input {
         None => None,
@@ -166,7 +168,9 @@ fn main() {
     let runtimes: std::collections::BTreeSet<_> = options.with_runtimes.into_iter().collect();
 
     match options.target_source_dir {
-        None => {
+        None =>
+        {
+            #[allow(unused_variables, unused_mut)]
             if let Some((registry, name)) = named_registry_opt {
                 let config = get_codegen_config(
                     name,
@@ -243,6 +247,7 @@ fn main() {
             }
         }
 
+        #[allow(unused_variables, unreachable_code)]
         Some(install_dir) => {
             let installer: Box<dyn SourceInstaller<Error = Box<dyn std::error::Error>>> =
                 match options.language {

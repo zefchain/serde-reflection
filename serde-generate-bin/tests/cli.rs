@@ -1,6 +1,13 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+#[cfg(any(
+    feature = "python3",
+    feature = "rust",
+    feature = "cpp",
+    feature = "java",
+    feature = "ocaml"
+))]
 use std::process::Command;
 use tempfile::tempdir;
 
