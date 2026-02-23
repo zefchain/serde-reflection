@@ -10,11 +10,11 @@ readme = "README.md"
 keywords = ["data-structures", "serialization", "serde"]
 categories = ["encoding", "development-tools"]
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.82.0"
 
 [dependencies]
 serde-generate = { path = "../serde-generate", version = "0.33.0", default-features = false }
-structopt = "0.3.21"
+clap = { version = "4", features = ["derive"] }
 serde-reflection = { path = "../serde-reflection", version = "0.5.2" }
 serde_yaml = "0.8.17"
 
@@ -24,7 +24,7 @@ serde = { version = "1.0.126", features = ["derive"] }
 serde_bytes = "0.11.5"
 
 [features]
-default = ["cpp", "csharp", "dart", "golang", "java", "kotlin", "ocaml", "python3", "rust", "swift", "typescript", "solidity"]
+default = ["cpp", "csharp", "dart", "golang", "java", "kotlin", "ocaml", "python3", "rust", "swift"]
 cpp = ["serde-generate/cpp"]
 csharp = ["serde-generate/csharp"]
 dart = ["serde-generate/dart"]
