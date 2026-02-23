@@ -10,7 +10,7 @@ readme = "README.md"
 keywords = ["data-structures", "serialization", "serde"]
 categories = ["encoding", "development-tools"]
 edition = "2021"
-rust-version = "1.88.0"
+rust-version = "1.82.0"
 exclude = [
     # Readme template that doesn't need to be included.
     "README.tpl",
@@ -52,6 +52,7 @@ kotlin = ["include_dir"]
 ocaml = ["phf", "include_dir"]
 python3 = []
 rust = []
+# Note: the "solidity" feature requires Rust 1.88+ due to revm and alloy-eip* dev-dependencies.
 solidity = ["phf"]
 swift = ["include_dir"]
 typescript = ["include_dir"]
