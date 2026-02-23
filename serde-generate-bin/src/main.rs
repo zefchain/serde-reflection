@@ -8,6 +8,7 @@
 //! cargo run -- --help
 //! '''
 
+use clap::{Parser, ValueEnum};
 #[cfg(feature = "cpp")]
 use serde_generate::cpp;
 #[cfg(feature = "csharp")]
@@ -35,7 +36,6 @@ use serde_generate::typescript;
 use serde_generate::{CodeGeneratorConfig, Encoding, SourceInstaller};
 use serde_reflection::Registry;
 use std::path::PathBuf;
-use clap::{Parser, ValueEnum};
 
 #[derive(Clone, Debug, ValueEnum)]
 enum Language {
