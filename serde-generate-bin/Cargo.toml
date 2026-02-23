@@ -13,7 +13,7 @@ edition = "2021"
 rust-version = "1.70"
 
 [dependencies]
-serde-generate = { path = "../serde-generate", version = "0.32.0" }
+serde-generate = { path = "../serde-generate", version = "0.32.0", default-features = false }
 structopt = "0.3.21"
 serde-reflection = { path = "../serde-reflection", version = "0.5.2" }
 serde_yaml = "0.8.17"
@@ -22,6 +22,21 @@ serde_yaml = "0.8.17"
 tempfile = "3.2"
 serde = { version = "1.0.126", features = ["derive"] }
 serde_bytes = "0.11.5"
+
+[features]
+default = ["cpp", "csharp", "dart", "golang", "java", "kotlin", "ocaml", "python3", "rust", "swift", "typescript", "solidity"]
+cpp = ["serde-generate/cpp"]
+csharp = ["serde-generate/csharp"]
+dart = ["serde-generate/dart"]
+golang = ["serde-generate/golang"]
+java = ["serde-generate/java"]
+kotlin = ["serde-generate/kotlin"]
+ocaml = ["serde-generate/ocaml"]
+python3 = ["serde-generate/python3"]
+rust = ["serde-generate/rust"]
+solidity = ["serde-generate/solidity"]
+swift = ["serde-generate/swift"]
+typescript = ["serde-generate/typescript"]
 
 [[bin]]
 name = "serdegen"
