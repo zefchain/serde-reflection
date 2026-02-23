@@ -52,7 +52,7 @@ kotlin = ["include_dir"]
 ocaml = ["phf", "include_dir"]
 python3 = []
 rust = []
-solidity = []
+solidity = ["phf"]
 swift = ["include_dir"]
 typescript = ["include_dir"]
 

@@ -16,8 +16,6 @@ env:
   RUST_BACKTRACE: short
   RUSTFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
-  # https://stackoverflow.com/questions/59119904/process-terminated-couldnt-find-a-valid-icu-package-installed-on-the-system-in
-  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
 
 jobs:
   lint:
@@ -47,6 +45,7 @@ jobs:
         run: |
           cargo clippy --locked --workspace --all-features --all-targets
 
+  # Core tests: analyzer, test_utils, indent (no language runtimes needed)
   tests:
     runs-on: ubuntu-latest
 
@@ -54,6 +53,118 @@ jobs:
       - uses: actions/checkout@v3
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test (dev)
+        run: cargo test --locked --no-default-features
+
+      - name: Test (release)
+        run: cargo test --locked --release --no-default-features
+
+  # Languages that need no extra runtime setup (clang++/javac/cargo available on ubuntu)
+  test-simple:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        feature: [cpp, java, rust]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test (dev) - ${{ matrix.feature }}
+        run: cargo test --locked --no-default-features --features ${{ matrix.feature }}
+
+      - name: Test (release) - ${{ matrix.feature }}
+        run: cargo test --locked --release --no-default-features --features ${{ matrix.feature }}
+
+  test-csharp:
+    runs-on: ubuntu-latest
+
+    env:
+      # https://stackoverflow.com/questions/59119904/process-terminated-couldnt-find-a-valid-icu-package-installed-on-the-system-in
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Test (dev) - csharp
+        run: cargo test --locked --no-default-features --features csharp
+
+      - name: Test (release) - csharp
+        run: cargo test --locked --release --no-default-features --features csharp
+
+  test-dart:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.5.3
+
+      - name: Test (dev) - dart
+        run: cargo test --locked --no-default-features --features dart
+
+      - name: Test (release) - dart
+        run: cargo test --locked --release --no-default-features --features dart
+
+  test-golang:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '~1.22.0'
+
+      - name: Test (dev) - golang
+        run: cargo test --locked --no-default-features --features golang
+
+      - name: Test (release) - golang
+        run: cargo test --locked --release --no-default-features --features golang
+
+  test-kotlin:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
 
       - name: Ensure Kotlin/Native Directory Exists
         run: mkdir -p /home/runner/.kotlin-native
@@ -63,7 +174,7 @@ jobs:
         with:
           path: /home/runner/.kotlin-native
           key: kotlin-native-v2.3.10-linux-x86_64
-      - name: Setup Additional Languages (kotlin/native)
+      - name: Setup Kotlin/Native
         if: ${{ steps.cache-kotlin-native.outputs.cache-hit != 'true' }}
         run: |
           KOTLIN_NATIVE_URL="https://github.com/JetBrains/kotlin/releases/download/v2.3.10/kotlin-native-prebuilt-linux-x86_64-2.3.10.tar.gz"
@@ -75,7 +186,84 @@ jobs:
       - name: Add Kotlin/Native to PATH
         run: echo "/home/runner/.kotlin-native/kotlin-native-prebuilt-linux-x86_64-2.3.10/bin" >> $GITHUB_PATH
 
-      - name: Setup Additional Languages (solidity)
+      - name: Test (dev) - kotlin
+        run: cargo test --locked --no-default-features --features kotlin
+
+      - name: Test (release) - kotlin
+        run: cargo test --locked --release --no-default-features --features kotlin
+
+  test-ocaml:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.0
+          opam-disable-sandboxing: true
+
+      - name: Setup OCaml packages
+        run: |
+          eval $(opam env)
+          opam install -y stdint uutf ppxlib
+
+      - name: Test (dev) - ocaml
+        run: |
+          eval $(opam env)
+          cargo test --locked --no-default-features --features ocaml
+
+      - name: Test (release) - ocaml
+        run: |
+          eval $(opam env)
+          cargo test --locked --release --no-default-features --features ocaml
+
+  test-python3:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Setup Python packages
+        run: |
+          python3 -m pip install pyre-check==0.0.59
+          python3 -m pip install numpy==1.20.1
+          echo '/github/home/.local/bin' >> $GITHUB_PATH
+
+      - name: Test (dev) - python3
+        run: cargo test --locked --no-default-features --features python3
+
+      - name: Test (release) - python3
+        run: cargo test --locked --release --no-default-features --features python3
+
+  test-solidity:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Foundry
         uses: foundry-rs/foundry-toolchain@v1.2.0
       - name: Ensure Solc Directory Exists
         run: mkdir -p /home/runner/.solc
@@ -93,45 +281,27 @@ jobs:
           version: v0.8.25
       - name: Add Solc to PATH
         run: echo "/home/runner/.solc" >> $GITHUB_PATH
-      - name: List the content of the Solc cache
-        run: ls /home/runner/.solc/v0.8.25/solc-static-linux
-      - name: Create a Solc symbolic link
+      - name: Create Solc symbolic link
         run: ln -sf /home/runner/.solc/v0.8.25/solc-static-linux /home/runner/.solc/solc
-      - name: Check if Solc is in PATH
-        run: which solc || echo "Solc not found in PATH"
 
-      - name: Setup Additional Languages (python3)
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
+      - name: Test (dev) - solidity
+        run: cargo test --locked --no-default-features --features solidity
 
-      - name: Setup Additional Languages (python3 packages)
-        run: |
-          python3 -m pip install pyre-check==0.0.59
-          python3 -m pip install numpy==1.20.1
-          echo '/github/home/.local/bin' >> $GITHUB_PATH
+      - name: Test (release) - solidity
+        run: cargo test --locked --release --no-default-features --features solidity
 
-      - name: Setup Additional Languages (.Net)
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '6.0.x'
+  test-swift:
+    runs-on: ubuntu-latest
 
-      - name: Setup Additional Languages (golang)
-        uses: actions/setup-go@v3
-        with:
-          go-version: '~1.22.0'
+    steps:
+      - uses: actions/checkout@v3
 
-      - name: Setup Additional Languages (deno)
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Setup Additional Languages (dart)
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: 3.5.3
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
 
-      - name: Setup Additional Languages (swift)
+      - name: Setup Swift
         # TODO: Use the release version again once
         # https://github.com/swift-actions/setup-swift/pull/680
         # is merged
@@ -140,55 +310,30 @@ jobs:
           # older swift versions are having gpg issues https://github.com/swift-actions/setup-swift/issues/520
           swift-version: "5.10.1"
 
-      - name: Setup Additional Languages (ocaml)
-        uses: ocaml/setup-ocaml@v3
+      - name: Test (dev) - swift
+        run: cargo test --locked --no-default-features --features swift
+
+      - name: Test (release) - swift
+        run: cargo test --locked --release --no-default-features --features swift
+
+  test-typescript:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
         with:
-          ocaml-compiler: 5.0
-          opam-disable-sandboxing: true
+          deno-version: v1.x
 
-      - name: Setup Additional Languages (ocaml packages)
-        run: |
-          eval $(opam env)
-          opam install -y stdint uutf ppxlib
+      - name: Test (dev) - typescript
+        run: cargo test --locked --no-default-features --features typescript
 
-      - name: Version Information
-        run: |
-          rustc --version
-          cargo --version
-          rustup --version
-          python3 --version
-          pyre --version
-          clang++ --version
-          javac -version
-          go version
-          dotnet --list-sdks
-          deno --version
-          dart --version
-          swift --version
-          kotlinc-native -version
-          eval $(opam env)
-          ocaml --version
-
-      - name: Compile (dev tests)
-        run: cargo test --no-run --locked
-
-      # It's faster to `test` before `build` according to
-      # https://github.com/rust-lang/rust-analyzer/blob/97b357e41b99ee3d5dd72a1640f6c74e4f4d6b64/.github/workflows/ci.yaml#L55
-      - name: Compile (dev serde-reflection)
-        run: cargo build --locked --all-targets
-
-      - name: Test (dev)
-        run: |
-          eval $(opam env)
-          cargo test
-
-      - name: Compile (release tests)
-        run: cargo test --no-run --locked --release --all-features
-
-      - name: Compile (release serde-reflection)
-        run: cargo build --locked --release --all-targets --all-features
-
-      - name: Test (release)
-        run: |
-          eval $(opam env)
-          cargo test --locked --release --all-features
+      - name: Test (release) - typescript
+        run: cargo test --locked --release --no-default-features --features typescript

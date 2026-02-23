@@ -1,6 +1,13 @@
 // Copyright (c) Facebook, Inc. and its affiliates
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+#[cfg(any(
+    feature = "python3",
+    feature = "rust",
+    feature = "cpp",
+    feature = "java",
+    feature = "ocaml"
+))]
 use std::process::Command;
 use tempfile::tempdir;
 
@@ -118,6 +125,7 @@ mod test_utils {
     }
 }
 
+#[cfg(feature = "python3")]
 #[test]
 fn test_that_installed_python_code_parses() {
     let registry = test_utils::get_registry().unwrap();
@@ -160,6 +168,7 @@ fn test_that_installed_python_code_parses() {
     assert!(status.success());
 }
 
+#[cfg(feature = "python3")]
 #[test]
 fn test_that_installed_python_code_with_package_parses() {
     let registry = test_utils::get_registry().unwrap();
@@ -212,6 +221,7 @@ __all__ = ["bcs", "serde_types", "serde_binary", "bincode", "test_types"]
     assert!(status.success());
 }
 
+#[cfg(feature = "rust")]
 #[test]
 fn test_that_installed_rust_code_compiles() {
     let registry = test_utils::get_registry().unwrap();
@@ -255,6 +265,7 @@ fn create_test_yaml() {
     std::fs::write(yaml_path, serde_yaml::to_string(&registry).unwrap()).unwrap();
 }
 
+#[cfg(feature = "cpp")]
 #[test]
 fn test_that_installed_cpp_code_compiles() {
     let registry = test_utils::get_registry().unwrap();
@@ -294,6 +305,7 @@ fn test_that_installed_cpp_code_compiles() {
     assert!(status.success());
 }
 
+#[cfg(feature = "java")]
 #[test]
 fn test_that_installed_java_code_compiles() {
     let registry = test_utils::get_registry().unwrap();
@@ -347,6 +359,7 @@ fn test_that_installed_java_code_compiles() {
     assert!(status.success());
 }
 
+#[cfg(feature = "ocaml")]
 #[test]
 fn test_that_installed_ocaml_code_compiles() {
     let registry = test_utils::get_registry().unwrap();
