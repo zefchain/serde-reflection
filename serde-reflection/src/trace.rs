@@ -12,7 +12,7 @@ use erased_discriminant::Discriminant;
 use once_cell::sync::Lazy;
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 use std::any::TypeId;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A map of container formats.
 pub type Registry = BTreeMap<String, ContainerFormat>;
@@ -34,6 +34,11 @@ pub struct Tracer {
 
     /// Discriminant associated with each variant of each enum.
     pub(crate) discriminants: BTreeMap<(TypeId, VariantId<'static>), Discriminant>,
+
+    /// Enum variants whose serialized `VariantFormat` is already complete.
+    /// Keyed by (enum_name, variant_name). This allows `deserialize_enum` to skip
+    /// re-exploring variants that do not need further tracing.
+    pub(crate) serialized_variants: BTreeSet<(String, String)>,
 }
 
 /// Type of untraced enum variants
@@ -191,6 +196,7 @@ impl Tracer {
             registry: BTreeMap::new(),
             incomplete_enums: BTreeMap::new(),
             discriminants: BTreeMap::new(),
+            serialized_variants: BTreeSet::new(),
         }
     }
 
@@ -367,6 +373,8 @@ impl Tracer {
         variant: VariantFormat,
         variant_value: Value,
     ) -> Result<(Format, Value)> {
+        let mut normalized_variant = variant.clone();
+        let is_complete = normalized_variant.normalize().is_ok();
         let mut variants = BTreeMap::new();
         variants.insert(
             variant_index,
@@ -377,6 +385,10 @@ impl Tracer {
         );
         let format = ContainerFormat::Enum(variants);
         let value = Value::Variant(variant_index, Box::new(variant_value));
+        if is_complete {
+            self.serialized_variants
+                .insert((name.to_string(), variant_name.to_string()));
+        }
         self.record_container(samples, name, format, value, false)
     }
 
