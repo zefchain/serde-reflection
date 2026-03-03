@@ -442,6 +442,14 @@ impl<'de, 'a> de::Deserializer<'de> for Deserializer<'de, 'a> {
             {
                 continue;
             }
+            // Skip variants that were already fully traced during serialization.
+            if self
+                .tracer
+                .serialized_variants
+                .contains(&(enum_name.to_string(), variant_name.to_string()))
+            {
+                continue;
+            }
             // Insert into known_variants with a provisional index.
             let provisional_index = provisional_min + i as u32;
             let variant = known_variants
