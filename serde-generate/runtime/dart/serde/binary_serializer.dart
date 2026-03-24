@@ -101,8 +101,6 @@ abstract class BinarySerializer {
   }
 
   void serializeInt64(int value) {
-    // ByteData.setInt64 throws UnsupportedError on Dart web (JS numbers are
-    // 64-bit doubles). Use manual byte-splitting which works on all platforms.
     BigInt number = BigInt.from(value);
     final byteMask = BigInt.from(0xFF);
     var bdata = Uint8List(8);
