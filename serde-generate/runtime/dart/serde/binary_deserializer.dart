@@ -79,9 +79,11 @@ abstract class BinaryDeserializer {
   }
 
   int deserializeInt64() {
-    final result = input.getInt64(_offset, Endian.little);
+    // ByteData.getInt64 throws UnsupportedError on Dart web (JS numbers are
+    // 64-bit doubles). Use the manual BigInt path which works on all platforms.
+    final number = _bytesToBigInt(8, signed: true);
     _offset += 8;
-    return result;
+    return number.toInt();
   }
 
   double deserializeFloat32() {
