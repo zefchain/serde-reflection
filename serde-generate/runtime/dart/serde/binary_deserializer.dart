@@ -79,9 +79,9 @@ abstract class BinaryDeserializer {
   }
 
   int deserializeInt64() {
-    final result = input.getInt64(_offset, Endian.little);
+    final number = _bytesToBigInt(8, signed: true);
     _offset += 8;
-    return result;
+    return number.toInt();
   }
 
   double deserializeFloat32() {

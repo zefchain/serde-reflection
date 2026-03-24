@@ -95,6 +95,52 @@ void main() {
     expect(() => serializer.serializeInt32(-2147483649), throwsException);
   });
 
+  test('serializeInt64', () {
+    final serializer = BincodeSerializer();
+    serializer.serializeInt64(1);
+    expect(serializer.bytes,
+        Uint8List.fromList([1, 0, 0, 0, 0, 0, 0, 0]));
+    final deserializer = BincodeDeserializer(serializer.bytes);
+    expect(deserializer.deserializeInt64(), 1);
+  });
+
+  test('serializeInt64 negative', () {
+    final serializer = BincodeSerializer();
+    serializer.serializeInt64(-1);
+    expect(serializer.bytes,
+        Uint8List.fromList([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]));
+    final deserializer = BincodeDeserializer(serializer.bytes);
+    expect(deserializer.deserializeInt64(), -1);
+  });
+
+  test('serializeInt64 max safe integer', () {
+    // 2^53 - 1 (JS MAX_SAFE_INTEGER) — largest value portable across all platforms
+    final serializer = BincodeSerializer();
+    serializer.serializeInt64(9007199254740991);
+    expect(serializer.bytes,
+        Uint8List.fromList([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F, 0x00]));
+    final deserializer = BincodeDeserializer(serializer.bytes);
+    expect(deserializer.deserializeInt64(), 9007199254740991);
+  });
+
+  test('serializeInt64 min safe integer', () {
+    // -(2^53 - 1) (JS MIN_SAFE_INTEGER)
+    final serializer = BincodeSerializer();
+    serializer.serializeInt64(-9007199254740991);
+    expect(serializer.bytes,
+        Uint8List.fromList([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, 0xFF]));
+    final deserializer = BincodeDeserializer(serializer.bytes);
+    expect(deserializer.deserializeInt64(), -9007199254740991);
+  });
+
+  test('serializeInt64 typical timestamp', () {
+    // A realistic epoch-millis value (2026-03-23T00:00:00Z)
+    final serializer = BincodeSerializer();
+    serializer.serializeInt64(1774243200000);
+    final deserializer = BincodeDeserializer(serializer.bytes);
+    expect(deserializer.deserializeInt64(), 1774243200000);
+  });
+
   test('serializeString', () {
     final serializer = BincodeSerializer();
     serializer.serializeString('dummy text / ダミーテキスト');
