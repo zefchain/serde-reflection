@@ -602,3 +602,129 @@ contract ExampleCode {{
     test_contract(bytecode.clone(), fct_args);
     Ok(())
 }
+
+// Wide struct of varied field types. With the old codegen pattern (one stack
+// local per decoded field, plus the tuple-return slot), Yul ran out of the
+// 16-slot stack budget when this deserializer is inlined into an external
+// entry point. With the direct-into-result codegen the stack stays flat and
+// the deserializer round-trips correctly regardless of width.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct WideMixedStruct {
+    pub a: bool,
+    pub b: u8,
+    pub c: u16,
+    pub d: u32,
+    pub e: u64,
+    pub f: u128,
+    pub g: i8,
+    pub h: i16,
+    pub i: i32,
+    pub j: i64,
+    pub k: i128,
+    pub l: String,
+    #[serde(with = "serde_bytes")]
+    pub m: Vec<u8>,
+    pub n: Vec<u32>,
+    pub o: Option<u64>,
+    pub p: [u8; 32],
+    pub q: bool,
+    pub r: u64,
+    pub s: u128,
+    pub t: String,
+}
+
+#[test]
+fn test_wide_struct_deserialize_round_trip() -> anyhow::Result<()> {
+    let registry = get_registry_from_type::<WideMixedStruct>();
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+    function test_deserialization(bytes calldata input) external pure {{
+        Library.WideMixedStruct memory t = Library.bcs_deserialize_WideMixedStruct(input);
+        // Spot-check fields across the range to ensure each result.<field>
+        // assignment landed in the right struct slot.
+        require(t.a == true, "field a");
+        require(t.f == 0x0102030405060708090a0b0c0d0e0f10, "field f");
+        require(t.k == -1, "field k");
+        require(keccak256(bytes(t.l)) == keccak256(bytes("hello")), "field l");
+        require(t.m.length == 4, "field m length");
+        require(t.m[0] == 0xaa && t.m[3] == 0xdd, "field m bytes");
+        require(t.n.length == 3 && t.n[2] == 99, "field n");
+        require(t.o.has_value && t.o.value == 0xfeedbeefdeadc0de, "field o");
+        require(t.p[0] == 0x01 && t.p[31] == 0x20, "field p");
+        require(bytes(t.t).length == 5, "field t");
+
+        // Round-trip: serialize back and assert byte-equality with the input.
+        bytes memory input_rev = Library.bcs_serialize_WideMixedStruct(t);
+        require(input_rev.length == input.length, "round-trip length");
+        for (uint256 idx = 0; idx < input.length; idx++) {{
+            require(input[idx] == input_rev[idx], "round-trip byte");
+        }}
+    }}
+}}
+"#
+        )?;
+    }
+
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    let t = WideMixedStruct {
+        a: true,
+        b: 0x42,
+        c: 0x4243,
+        d: 0xdead_beef,
+        e: 0x0102_0304_0506_0708,
+        f: 0x0102_0304_0506_0708_090a_0b0c_0d0e_0f10,
+        g: -1,
+        h: -2,
+        i: -3,
+        j: -4,
+        k: -1,
+        l: "hello".to_string(),
+        m: vec![0xaa, 0xbb, 0xcc, 0xdd],
+        n: vec![1, 2, 99],
+        o: Some(0xfeed_beef_dead_c0de),
+        p: {
+            let mut a = [0u8; 32];
+            for (i, x) in a.iter_mut().enumerate() {
+                *x = (i + 1) as u8;
+            }
+            a
+        },
+        q: false,
+        r: 0,
+        s: 0,
+        t: "world".to_string(),
+    };
+    let expected_input = bcs::to_bytes(&t).unwrap();
+
+    sol! {
+        function test_deserialization(bytes calldata input);
+    }
+    let input = Bytes::copy_from_slice(&expected_input);
+    let fct_args = test_deserializationCall { input };
+    let fct_args = fct_args.abi_encode().into();
+
+    test_contract(bytecode, fct_args);
+    Ok(())
+}

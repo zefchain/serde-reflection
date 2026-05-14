@@ -894,6 +894,13 @@ function bcs_serialize_{name}({name} memory input)
                     };
                     writeln!(out, "    {block};")?;
                 }
+                // Deserialize fields directly into the `result` struct in memory.
+                // Holding each decoded field as a stack local until the final
+                // constructor call burns ~2 stack slots per field, which trips
+                // Yul's 16-slot limit for structs with >7 or so fields. Writing
+                // into `result.<field>` mstores the value straight into memory
+                // and immediately frees the slot, keeping the stack flat at
+                // O(1) regardless of field count.
                 writeln!(
                     out,
                     r#"}}
@@ -901,33 +908,22 @@ function bcs_serialize_{name}({name} memory input)
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     internal
     pure
-    returns (uint256, {name} memory)
+    returns (uint256, {name} memory result)
 {{
     uint256 new_pos;"#
                 )?;
                 for (index, named_format) in formats.iter().enumerate() {
-                    let data_location = sol_registry.data_location(&named_format.value);
-                    let qualified_code_name = sol_registry.qualified_code_name(&named_format.value);
                     let key_name = named_format.value.key_name();
                     let safe_name = safe_variable(&named_format.name);
                     let start_pos = if index == 0 { "pos" } else { "new_pos" };
                     let deser_fn =
                         sol_registry.qualified_fn_name("bcs_deserialize_offset", &key_name);
-                    writeln!(out, "    {qualified_code_name}{data_location} {safe_name};")?;
                     writeln!(
                         out,
-                        "    (new_pos, {safe_name}) = {deser_fn}({start_pos}, input);"
+                        "    (new_pos, result.{safe_name}) = {deser_fn}({start_pos}, input);"
                     )?;
                 }
-                writeln!(
-                    out,
-                    "    return (new_pos, {name}({}));",
-                    formats
-                        .iter()
-                        .map(|named_format| safe_variable(&named_format.name))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )?;
+                writeln!(out, "    return (new_pos, result);")?;
                 writeln!(out, "}}")?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
             }
