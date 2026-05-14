@@ -1549,13 +1549,13 @@ function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
     while (true) {{
         if (uint8(input[pos + idx]) < 128) {{
             uint256 result = 0;
-            uint256 power = 1;
+            uint256 shift = 0;
             for (uint256 u=0; u<idx; u++) {{
                 uint8 val = uint8(input[pos + u]) - 128;
-                result += power * uint256(val);
-                power *= 128;
+                result |= uint256(val) << shift;
+                shift += 7;
             }}
-            result += power * uint8(input[pos + idx]);
+            result |= uint256(uint8(input[pos + idx])) << shift;
             return (pos + idx + 1, result);
         }}
         idx += 1;
