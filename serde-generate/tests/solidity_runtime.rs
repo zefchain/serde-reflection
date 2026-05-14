@@ -602,3 +602,88 @@ contract ExampleCode {{
     test_contract(bytecode.clone(), fct_args);
     Ok(())
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BytesPayload {
+    #[serde(with = "serde_bytes")]
+    data: Vec<u8>,
+}
+
+fn run_bytes_roundtrip(
+    evm_version: serde_generate::EvmVersion,
+    payload: Vec<u8>,
+) -> anyhow::Result<()> {
+    let registry = get_registry_from_type::<BytesPayload>();
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name).with_evm_version(evm_version);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+        let expected_len = payload.len();
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+    function test_deserialization(bytes calldata input) external {{
+        Library.BytesPayload memory t = Library.bcs_deserialize_BytesPayload(input);
+        require(t.data.length == {expected_len}, "incorrect bytes length");
+        bytes memory input_rev = Library.bcs_serialize_BytesPayload(t);
+        require(input.length == input_rev.length, "round-trip length mismatch");
+        for (uint256 i = 0; i < input.length; i++) {{
+            require(input[i] == input_rev[i], "round-trip byte mismatch");
+        }}
+    }}
+}}
+"#
+        )?;
+    }
+
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    let t = BytesPayload { data: payload };
+    let expected_input = bcs::to_bytes(&t).unwrap();
+
+    sol! {
+        function test_deserialization(bytes calldata input);
+    }
+    let input = Bytes::copy_from_slice(&expected_input);
+    let fct_args = test_deserializationCall { input };
+    let fct_args = fct_args.abi_encode().into();
+
+    test_contract(bytecode, fct_args);
+    Ok(())
+}
+
+// Cover the bulk-copy code path in bcs_deserialize_offset_bytes at the
+// boundaries where the word-loop (Shanghai) and MCOPY (Cancun) implementations
+// differ: empty, sub-word, exactly one word, one word + one byte, and a
+// kilobyte that exercises the loop at scale.
+#[test]
+fn test_bytes_copy_shanghai() {
+    for len in [0_usize, 1, 31, 32, 33, 1024] {
+        let payload: Vec<u8> = (0..len).map(|i| (i & 0xff) as u8).collect();
+        run_bytes_roundtrip(serde_generate::EvmVersion::Shanghai, payload).unwrap();
+    }
+}
+
+#[test]
+fn test_bytes_copy_cancun() {
+    for len in [0_usize, 1, 31, 32, 33, 1024] {
+        let payload: Vec<u8> = (0..len).map(|i| (i & 0xff) as u8).collect();
+        run_bytes_roundtrip(serde_generate::EvmVersion::Cancun, payload).unwrap();
+    }
+}

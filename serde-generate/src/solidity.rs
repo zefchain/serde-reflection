@@ -3,7 +3,7 @@
 
 use crate::{
     indent::{IndentConfig, IndentedWriter},
-    CodeGeneratorConfig,
+    CodeGeneratorConfig, EvmVersion,
 };
 use heck::SnakeCase;
 use phf::phf_set;
@@ -33,6 +33,37 @@ fn get_data_location(need_memory: bool) -> String {
         true => " memory".to_string(),
         false => "".to_string(),
     }
+}
+
+/// Emit a Solidity snippet that bulk-copies `len` bytes from
+/// `input[src_off .. src_off + len]` into `dst[0 .. len]`.
+///
+/// On Cancun (and later) this expands to a single `MCOPY` (EIP-5656).
+/// On Shanghai it expands to a word-by-word assembly memcpy. The trailing
+/// partial word writes into the padding bytes that `new bytes(len)` rounds
+/// up to (the data slot is allocated in 32-byte chunks), so the write stays
+/// within the allocation. The identity precompile (`0x04`) is not usable
+/// here because Solidity classifies any `staticcall`/`gas()` use as
+/// state-reading and would reject these `pure` deserializers.
+fn bytes_copy_snippet(evm_version: EvmVersion, dst: &str, len: &str, src_off: &str) -> String {
+    let body = match evm_version {
+        EvmVersion::Shanghai => format!(
+            r#"let _dst := add({dst}, 0x20)
+            let _src := add(add(input, 0x20), {src_off})
+            let _end := add(_dst, {len})
+            for {{ }} lt(_dst, _end) {{ }} {{
+                mstore(_dst, mload(_src))
+                _dst := add(_dst, 0x20)
+                _src := add(_src, 0x20)
+            }}"#
+        ),
+        EvmVersion::Cancun | EvmVersion::Latest => {
+            format!("mcopy(add({dst}, 0x20), add(add(input, 0x20), {src_off}), {len})")
+        }
+    };
+    format!(
+        "if ({len} > 0) {{\n        assembly (\"memory-safe\") {{\n            {body}\n        }}\n    }}"
+    )
 }
 
 fn output_generic_bcs_deserialize<T: std::io::Write>(
@@ -158,7 +189,11 @@ impl Primitive {
         matches!(self, Primitive::Unit | Primitive::Bytes | Primitive::Str)
     }
 
-    pub fn output<T: std::io::Write>(&self, out: &mut IndentedWriter<T>) -> Result<()> {
+    pub fn output<T: std::io::Write>(
+        &self,
+        out: &mut IndentedWriter<T>,
+        evm_version: EvmVersion,
+    ) -> Result<()> {
         use Primitive::*;
         match self {
             Unit => writeln!(
@@ -571,6 +606,7 @@ function bcs_deserialize_offset_bytes1(uint256 pos, bytes memory input)
                 )?;
             }
             Str => {
+                let copy = bytes_copy_snippet(evm_version, "result_bytes", "shift", "new_pos");
                 writeln!(
                     out,
                     r#"
@@ -615,9 +651,7 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input)
         }}
     }}
     bytes memory result_bytes = new bytes(shift);
-    for (uint256 i=0; i<shift; i++) {{
-        result_bytes[i] = input[new_pos + i];
-    }}
+    {copy}
     string memory result = string(result_bytes);
     return (new_pos + shift, result);
 }}
@@ -625,6 +659,7 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input)
                 )?;
             }
             Bytes => {
+                let copy = bytes_copy_snippet(evm_version, "result", "len", "new_pos");
                 writeln!(
                     out,
                     r#"
@@ -647,9 +682,7 @@ function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input)
     uint256 new_pos;
     (new_pos, len) = bcs_deserialize_offset_len(pos, input);
     bytes memory result = new bytes(len);
-    for (uint256 u=0; u<len; u++) {{
-        result[u] = input[new_pos + u];
-    }}
+    {copy}
     return (new_pos + len, result);
 }}"#
                 )?;
@@ -714,7 +747,7 @@ impl SolFormat {
         use SolFormat::*;
         match self {
             Primitive(primitive) => {
-                primitive.output(out)?;
+                primitive.output(out, sol_registry.evm_version)?;
                 let full_name = primitive.name();
                 let need_memory = primitive.need_memory();
                 output_generic_bcs_deserialize(out, &full_name, &full_name, need_memory)?;
@@ -1209,6 +1242,7 @@ struct SolRegistry {
     /// Maps external type key_names to their qualified module prefix.
     /// e.g., "Account" → "BridgeTypes"
     external_modules: HashMap<String, String>,
+    evm_version: EvmVersion,
 }
 
 impl SolRegistry {
@@ -1618,7 +1652,10 @@ impl<'a> CodeGenerator<'a> {
             generator: self,
         };
 
-        let mut sol_registry = SolRegistry::default();
+        let mut sol_registry = SolRegistry {
+            evm_version: self.config.evm_version,
+            ..SolRegistry::default()
+        };
         // External definitions: module name → list of type names defined in that module.
         // Types present in both the registry and external_definitions are treated as
         // external — they are imported rather than generated locally. This is the
