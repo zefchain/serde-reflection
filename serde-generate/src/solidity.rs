@@ -492,11 +492,25 @@ function bcs_serialize_uint64(uint64 input)
     returns (bytes memory)
 {{
     bytes memory result = new bytes(8);
-    uint64 value = input;
-    result[0] = bytes1(uint8(value));
-    for (uint i=1; i<8; i++) {{
-        value = value >> 8;
-        result[i] = bytes1(uint8(value));
+    // EVM has no native byte-swap. The 8-term chain below relocates each
+    // input byte to its little-endian position in the low 8 bytes of
+    // `swapped`. Each term masks one source byte and shifts it to the
+    // target position; combined, they reverse the byte order.
+    // BCS is little-endian; mstore is big-endian, so the swap is needed.
+    uint256 swapped =
+        ((uint256(input) & 0xff)               << 56) |
+        ((uint256(input) & 0xff00)             << 40) |
+        ((uint256(input) & 0xff0000)           << 24) |
+        ((uint256(input) & 0xff000000)         <<  8) |
+        ((uint256(input) & 0xff00000000)       >>  8) |
+        ((uint256(input) & 0xff0000000000)     >> 24) |
+        ((uint256(input) & 0xff000000000000)   >> 40) |
+        ((uint256(input) & 0xff00000000000000) >> 56);
+    assembly ("memory-safe") {{
+        // Shift the 8-byte swapped value to the top of the 32-byte word
+        // so mstore deposits it at result[0..8]. The trailing 24 zero bytes
+        // overwrite the round-up padding allocated by `new bytes(8)`.
+        mstore(add(result, 0x20), shl(192, swapped))
     }}
     return result;
 }}
@@ -506,11 +520,26 @@ function bcs_deserialize_offset_uint64(uint256 pos, bytes memory input)
     pure
     returns (uint256, uint64)
 {{
-    uint64 value = uint8(input[pos + 7]);
-    for (uint256 i=0; i<7; i++) {{
-        value = value << 8;
-        value += uint8(input[pos + 6 - i]);
+    // Bounds check: mload reads 32 bytes, but we only consume the top 8.
+    // The check is on the 8 bytes we actually decode; the require also
+    // makes the trailing read inside the assembly block legal, since
+    // `bytes memory` data slots are allocated rounded up to 32 bytes.
+    require(pos + 8 <= input.length, "uint64 deserialize: out of bounds");
+    uint256 raw;
+    assembly ("memory-safe") {{
+        // Load 32 bytes starting at input[pos], then drop the trailing 24 bytes.
+        // After shr(192), `raw` holds the 8 BCS bytes in big-endian layout.
+        raw := shr(192, mload(add(add(input, 0x20), pos)))
     }}
+    uint64 value = uint64(
+        ((raw & 0xff)               << 56) |
+        ((raw & 0xff00)             << 40) |
+        ((raw & 0xff0000)           << 24) |
+        ((raw & 0xff000000)         <<  8) |
+        ((raw & 0xff00000000)       >>  8) |
+        ((raw & 0xff0000000000)     >> 24) |
+        ((raw & 0xff000000000000)   >> 40) |
+        ((raw & 0xff00000000000000) >> 56));
     return (pos + 8, value);
 }}"#
                 )?;
@@ -525,11 +554,33 @@ function bcs_serialize_uint128(uint128 input)
     returns (bytes memory)
 {{
     bytes memory result = new bytes(16);
-    uint128 value = input;
-    result[0] = bytes1(uint8(value));
-    for (uint i=1; i<16; i++) {{
-        value = value >> 8;
-        result[i] = bytes1(uint8(value));
+    // EVM has no native byte-swap. The 16-term chain below relocates each
+    // input byte to its little-endian position in the low 16 bytes of
+    // `swapped`. Each term masks one source byte and shifts it to the
+    // target position; combined, they reverse the byte order.
+    // BCS is little-endian; mstore is big-endian, so the swap is needed.
+    uint256 swapped =
+        ((uint256(input) & 0xff)                                 << 120) |
+        ((uint256(input) & 0xff00)                               << 104) |
+        ((uint256(input) & 0xff0000)                             <<  88) |
+        ((uint256(input) & 0xff000000)                           <<  72) |
+        ((uint256(input) & 0xff00000000)                         <<  56) |
+        ((uint256(input) & 0xff0000000000)                       <<  40) |
+        ((uint256(input) & 0xff000000000000)                     <<  24) |
+        ((uint256(input) & 0xff00000000000000)                   <<   8) |
+        ((uint256(input) & 0xff0000000000000000)                 >>   8) |
+        ((uint256(input) & 0xff000000000000000000)               >>  24) |
+        ((uint256(input) & 0xff00000000000000000000)             >>  40) |
+        ((uint256(input) & 0xff0000000000000000000000)           >>  56) |
+        ((uint256(input) & 0xff000000000000000000000000)         >>  72) |
+        ((uint256(input) & 0xff00000000000000000000000000)       >>  88) |
+        ((uint256(input) & 0xff0000000000000000000000000000)     >> 104) |
+        ((uint256(input) & 0xff000000000000000000000000000000)   >> 120);
+    assembly ("memory-safe") {{
+        // Shift the 16-byte swapped value to the top of the 32-byte word
+        // so mstore deposits it at result[0..16]. The trailing 16 zero bytes
+        // overwrite the round-up padding allocated by `new bytes(16)`.
+        mstore(add(result, 0x20), shl(128, swapped))
     }}
     return result;
 }}
@@ -539,11 +590,34 @@ function bcs_deserialize_offset_uint128(uint256 pos, bytes memory input)
     pure
     returns (uint256, uint128)
 {{
-    uint128 value = uint8(input[pos + 15]);
-    for (uint256 i=0; i<15; i++) {{
-        value = value << 8;
-        value += uint8(input[pos + 14 - i]);
+    // Bounds check: mload reads 32 bytes, but we only consume the top 16.
+    // The check is on the 16 bytes we actually decode; the require also
+    // makes the trailing read inside the assembly block legal, since
+    // `bytes memory` data slots are allocated rounded up to 32 bytes.
+    require(pos + 16 <= input.length, "uint128 deserialize: out of bounds");
+    uint256 raw;
+    assembly ("memory-safe") {{
+        // Load 32 bytes starting at input[pos], then drop the trailing 16 bytes.
+        // After shr(128), `raw` holds the 16 BCS bytes in big-endian layout.
+        raw := shr(128, mload(add(add(input, 0x20), pos)))
     }}
+    uint128 value = uint128(
+        ((raw & 0xff)                                 << 120) |
+        ((raw & 0xff00)                               << 104) |
+        ((raw & 0xff0000)                             <<  88) |
+        ((raw & 0xff000000)                           <<  72) |
+        ((raw & 0xff00000000)                         <<  56) |
+        ((raw & 0xff0000000000)                       <<  40) |
+        ((raw & 0xff000000000000)                     <<  24) |
+        ((raw & 0xff00000000000000)                   <<   8) |
+        ((raw & 0xff0000000000000000)                 >>   8) |
+        ((raw & 0xff000000000000000000)               >>  24) |
+        ((raw & 0xff00000000000000000000)             >>  40) |
+        ((raw & 0xff0000000000000000000000)           >>  56) |
+        ((raw & 0xff000000000000000000000000)         >>  72) |
+        ((raw & 0xff00000000000000000000000000)       >>  88) |
+        ((raw & 0xff0000000000000000000000000000)     >> 104) |
+        ((raw & 0xff000000000000000000000000000000)   >> 120));
     return (pos + 16, value);
 }}"#
                 )?;

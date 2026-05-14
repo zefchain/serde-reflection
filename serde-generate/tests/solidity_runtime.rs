@@ -196,6 +196,33 @@ fn test_vector_serialization_types() {
     test_vector_serialization(t).unwrap();
 }
 
+// Round-trip uint64/uint128 with byte-distinct values to catch endian bugs in
+// the byte-swap + mstore-based (de)serializers.
+#[test]
+fn test_uint64_endian_boundaries() {
+    let cases_u64: &[u64] = &[0, 1, 0xff, 0x100, 0x0102_0304_0506_0708, u64::MAX];
+    for v in cases_u64 {
+        let t = TestVec { vec: vec![*v] };
+        test_vector_serialization(t).unwrap();
+    }
+}
+
+#[test]
+fn test_uint128_endian_boundaries() {
+    let cases_u128: &[u128] = &[
+        0,
+        1,
+        0xff,
+        0x100,
+        0x0102_0304_0506_0708_090a_0b0c_0d0e_0f10,
+        u128::MAX,
+    ];
+    for v in cases_u128 {
+        let t = TestVec { vec: vec![*v] };
+        test_vector_serialization(t).unwrap();
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum SimpleEnumTestType {
     ChoiceA,
@@ -600,5 +627,139 @@ contract ExampleCode {{
     let fct_args = fct_args.abi_encode().into();
 
     test_contract(bytecode.clone(), fct_args);
+    Ok(())
+}
+
+// Run a contract call that is expected to revert. Mirrors `test_contract` but
+// asserts ExecutionResult::Revert / Halt rather than Success.
+fn test_contract_expect_revert(bytecode: Bytes, encoded_args: Bytes) {
+    let mut database = CacheDB::new(EmptyDB::default());
+    let deployer = Address::ZERO;
+    let contract_address = {
+        let deploy_nonce = nonce(&database, &deployer);
+        let result = Context::mainnet()
+            .with_db(&mut database)
+            .modify_cfg_chained(|cfg| {
+                cfg.limit_contract_code_size = Some(usize::MAX);
+            })
+            .modify_tx_chained(|tx| {
+                tx.caller = deployer;
+                tx.nonce = deploy_nonce;
+                tx.kind = TxKind::Create;
+                tx.data = bytecode;
+                tx.gas_limit = u64::MAX;
+                tx.value = U256::ZERO;
+            })
+            .build_mainnet()
+            .replay_commit()
+            .unwrap();
+
+        let ExecutionResult::Success { output, .. } = result else {
+            panic!("The TxKind::Create execution failed");
+        };
+        let Output::Create(_, Some(contract_address)) = output else {
+            panic!("Failure to create the contract");
+        };
+        contract_address
+    };
+
+    let call_nonce = nonce(&database, &deployer);
+    let result = Context::mainnet()
+        .with_db(&mut database)
+        .modify_cfg_chained(|cfg| {
+            cfg.limit_contract_code_size = Some(usize::MAX);
+        })
+        .modify_tx_chained(|tx| {
+            tx.caller = deployer;
+            tx.nonce = call_nonce;
+            tx.kind = TxKind::Call(contract_address);
+            tx.data = encoded_args;
+            tx.gas_limit = u64::MAX;
+            tx.value = U256::ZERO;
+        })
+        .build_mainnet()
+        .replay_commit()
+        .unwrap();
+
+    match result {
+        ExecutionResult::Revert { .. } | ExecutionResult::Halt { .. } => {}
+        ExecutionResult::Success { .. } => {
+            panic!("expected revert, but the call succeeded");
+        }
+    }
+}
+
+// The byte-swap deserializers `bcs_deserialize_offset_uint64` /
+// `bcs_deserialize_offset_uint128` use an `mload` that reads 32 bytes from
+// memory. The previous byte-by-byte loop got bounds checks for free via
+// Solidity's `input[pos + i]` indexing; the new implementation must enforce
+// them explicitly. This test confirms that truncated inputs revert rather
+// than silently returning a garbage value.
+#[test]
+fn test_uint_deserialize_truncated_input_reverts() -> anyhow::Result<()> {
+    #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+    struct WithU64U128 {
+        a: u64,
+        b: u128,
+    }
+    let registry = get_registry_from_type::<WithU64U128>();
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    {
+        let mut test_library_file = File::create(path.join("Library.sol"))?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    {
+        let mut test_code_file = File::create(path.join("test_code.sol"))?;
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+    function test_truncated_uint64(bytes calldata input) external pure {{
+        bytes memory mem_input = input;
+        Library.bcs_deserialize_offset_uint64(0, mem_input);
+    }}
+
+    function test_truncated_uint128(bytes calldata input) external pure {{
+        bytes memory mem_input = input;
+        Library.bcs_deserialize_offset_uint128(0, mem_input);
+    }}
+}}
+"#
+        )?;
+    }
+
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    sol! {
+        function test_truncated_uint64(bytes calldata input);
+        function test_truncated_uint128(bytes calldata input);
+    }
+
+    // 7-byte input: one short of the 8 bytes uint64 needs.
+    {
+        let input = Bytes::copy_from_slice(&[0u8; 7]);
+        let fct_args = test_truncated_uint64Call { input };
+        let fct_args = fct_args.abi_encode().into();
+        test_contract_expect_revert(bytecode.clone(), fct_args);
+    }
+
+    // 15-byte input: one short of the 16 bytes uint128 needs.
+    {
+        let input = Bytes::copy_from_slice(&[0u8; 15]);
+        let fct_args = test_truncated_uint128Call { input };
+        let fct_args = fct_args.abi_encode().into();
+        test_contract_expect_revert(bytecode.clone(), fct_args);
+    }
+
     Ok(())
 }
