@@ -196,6 +196,110 @@ fn test_vector_serialization_types() {
     test_vector_serialization(t).unwrap();
 }
 
+// Exercise the LEB128 length-prefix encoder/decoder at each byte-count boundary.
+// Single-byte LEB128 covers len < 128 (fast path). Two-byte covers 128..16384.
+// Three-byte covers 16384..2**21.
+#[test]
+fn test_varint_length_boundaries() {
+    for len in [1_usize, 127, 128, 129, 16383, 16384, 16385] {
+        let mut vec = vec![0_u8; len];
+        vec[0] = 42;
+        let t = TestVec { vec };
+        test_vector_serialization(t).unwrap();
+    }
+}
+
+// Drive `bcs_serialize_len` / `bcs_deserialize_offset_len` directly with
+// values that force the unchecked count and emit loops through every
+// LEB128 byte-count from 1 up to the full uint256 maximum (37 bytes).
+// Building Vec<u8> payloads large enough to hit 4+ byte LEB128 lengths
+// would be impractical, so the test bypasses the TestVec wrapper and
+// calls the library helpers directly from a thin Solidity harness.
+#[test]
+fn test_varint_unchecked_loop_coverage() -> anyhow::Result<()> {
+    let registry = get_registry_from_type::<TestVec<u8>>();
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    {
+        let mut test_library_file = File::create(path.join("Library.sol"))?;
+        let name = "Library".to_string();
+        let config = CodeGeneratorConfig::new(name);
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // (Solidity literal, expected encoded byte count).
+    // Each line straddles a 7-bit byte boundary, so the count loop and
+    // the emit loop together cover every iteration depth up to 37.
+    let cases: &[(&str, usize)] = &[
+        ("0", 1),
+        ("127", 1),
+        ("128", 2),
+        ("16383", 2),
+        ("16384", 3),
+        ("2097151", 3),
+        ("2097152", 4),
+        ("268435455", 4),
+        ("268435456", 5),
+        ("34359738367", 5),
+        ("34359738368", 6),
+        ("4398046511103", 6),
+        ("4398046511104", 7),
+        ("562949953421311", 7),
+        ("562949953421312", 8),
+        ("72057594037927935", 8),
+        ("72057594037927936", 9),
+        ("9223372036854775807", 9),
+        ("9223372036854775808", 10),
+        ("type(uint256).max", 37),
+    ];
+
+    let mut asserts = String::new();
+    for (literal, expected_len) in cases {
+        use std::fmt::Write as _;
+        writeln!(asserts, "        _check({literal}, {expected_len});")?;
+    }
+
+    {
+        let mut test_code_file = File::create(path.join("test_code.sol"))?;
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+    function _check(uint256 x, uint256 expected_len) internal pure {{
+        bytes memory enc = Library.bcs_serialize_len(x);
+        require(enc.length == expected_len, "byte count mismatch");
+        (uint256 new_pos, uint256 decoded) = Library.bcs_deserialize_offset_len(0, enc);
+        require(new_pos == enc.length, "new_pos mismatch");
+        require(decoded == x, "round-trip value mismatch");
+    }}
+
+    function test_deserialization(bytes calldata) external pure {{
+{asserts}    }}
+}}
+"#
+        )?;
+    }
+
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    sol! {
+        function test_deserialization(bytes calldata input);
+    }
+    let fct_args = test_deserializationCall {
+        input: Bytes::new(),
+    };
+    let fct_args = fct_args.abi_encode().into();
+
+    test_contract(bytecode, fct_args);
+    Ok(())
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum SimpleEnumTestType {
     ChoiceA,

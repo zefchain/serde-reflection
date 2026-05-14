@@ -1703,22 +1703,33 @@ function bcs_serialize_len(uint256 x)
     pure
     returns (bytes memory)
 {{
-    bytes memory result;
-    bytes1 entry;
-    while (true) {{
-        if (x < 128) {{
-            entry = bytes1(uint8(x));
-            return abi.encodePacked(result, entry);
-        }} else {{
-            uint256 xb = x >> 7;
-            uint256 remainder = x - (xb << 7);
-            require(remainder < 128);
-            entry = bytes1(uint8(remainder) + 128);
-            result = abi.encodePacked(result, entry);
-            x = xb;
+    // Fast path: single-byte LEB128 when the top bit is unused.
+    if (x < 128) {{
+        bytes memory result = new bytes(1);
+        result[0] = bytes1(uint8(x));
+        return result;
+    }}
+    // Multi-byte LEB128: count required bytes, then allocate once.
+    // Each step shrinks y by 7 bits and bumps count by 1; for any
+    // uint256 input count tops out at 37, so the arithmetic can't
+    // overflow.
+    uint256 count = 1;
+    uint256 y = x;
+    unchecked {{
+        while (y >= 128) {{
+            y >>= 7;
+            count++;
         }}
     }}
-    require(false, "This line is unreachable");
+    bytes memory result = new bytes(count);
+    uint256 last = count - 1;
+    unchecked {{
+        for (uint256 i = 0; i < last; i++) {{
+            result[i] = bytes1(uint8((x & 0x7f) | 0x80));
+            x >>= 7;
+        }}
+    }}
+    result[last] = bytes1(uint8(x));
     return result;
 }}
 
