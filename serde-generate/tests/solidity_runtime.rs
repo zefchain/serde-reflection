@@ -415,6 +415,248 @@ contract ExampleCode {{
     Ok(())
 }
 
+/// Regression test for ULEB128-encoded variant indices: an enum with >= 128
+/// variants forces the discriminant to use more than one byte, exercising the
+/// fix that made `choice` a `uint64` encoded/decoded via `bcs_serialize_len` /
+/// `bcs_deserialize_offset_len` instead of a single `uint8` byte.
+#[test]
+fn test_enum_uleb128_variant_index() -> anyhow::Result<()> {
+    use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
+    use std::collections::BTreeMap;
+
+    // 199 Unit variants + 1 NewType(u32) variant at index 199. The non-trivial
+    // tail forces the complex (struct-backed) Enum codepath in the generator.
+    let mut variants: BTreeMap<u32, Named<VariantFormat>> = BTreeMap::new();
+    for i in 0..199u32 {
+        variants.insert(
+            i,
+            Named {
+                name: format!("V{i}"),
+                value: VariantFormat::Unit,
+            },
+        );
+    }
+    variants.insert(
+        199,
+        Named {
+            name: "WithPayload".into(),
+            value: VariantFormat::NewType(Box::new(Format::U32)),
+        },
+    );
+
+    let mut registry = Registry::new();
+    registry.insert("BigEnum".into(), ContainerFormat::Enum(variants));
+
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let config = CodeGeneratorConfig::new("Library".to_string());
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+
+    function test_round_trip(bytes calldata input, uint64 expected_choice) external {{
+        Library.BigEnum memory t = Library.bcs_deserialize_BigEnum(input);
+        require(t.choice == expected_choice, "wrong choice");
+        bytes memory input_rev = Library.bcs_serialize_BigEnum(t);
+        require(input.length == input_rev.length, "length mismatch");
+        for (uint256 i=0; i<input.length; i++) {{
+            require(input[i] == input_rev[i], "byte mismatch");
+        }}
+    }}
+
+}}
+"#
+        )?;
+    }
+
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    sol! {
+        function test_round_trip(bytes calldata input, uint64 expected_choice);
+    }
+
+    // (encoded BCS bytes, expected variant index).
+    // - 0:   single-byte ULEB128
+    // - 127: largest single-byte ULEB128
+    // - 128: smallest two-byte ULEB128 (exercises continuation)
+    // - 199: two-byte ULEB128 + u32 payload (the NewType variant)
+    let cases: Vec<(Vec<u8>, u64)> = vec![
+        (vec![0x00], 0),
+        (vec![0x7f], 127),
+        (vec![0x80, 0x01], 128),
+        ({
+            let mut v = vec![0xc7, 0x01];
+            v.extend_from_slice(&0xdead_beef_u32.to_le_bytes());
+            v
+        }, 199),
+    ];
+
+    for (input_bytes, expected_choice) in cases {
+        let input = Bytes::copy_from_slice(&input_bytes);
+        let fct_args = test_round_tripCall {
+            input,
+            expected_choice,
+        };
+        let fct_args = fct_args.abi_encode().into();
+        test_contract(bytecode.clone(), fct_args);
+    }
+
+    Ok(())
+}
+
+/// Regression test for sparse Serde variant indices.
+///
+/// `ContainerFormat::Enum` is a `BTreeMap<u32, ...>`, so the variant indices
+/// are not required to be contiguous `0..N-1`. The generator must preserve
+/// each variant's original index in the BCS encoding (rather than re-numbering
+/// them by position). This test checks dispatch, validation, and the
+/// precomputed multi-byte ULEB128 discriminant for a NewType variant at a
+/// sparse, multi-byte index.
+#[test]
+fn test_enum_sparse_variant_indices() -> anyhow::Result<()> {
+    use serde_reflection::{ContainerFormat, Format, Named, Registry, VariantFormat};
+    use std::collections::BTreeMap;
+
+    let mut variants: BTreeMap<u32, Named<VariantFormat>> = BTreeMap::new();
+    variants.insert(
+        0,
+        Named {
+            name: "Zero".into(),
+            value: VariantFormat::Unit,
+        },
+    );
+    variants.insert(
+        5,
+        Named {
+            name: "Five".into(),
+            value: VariantFormat::Unit,
+        },
+    );
+    variants.insert(
+        128,
+        Named {
+            name: "OneTwentyEight".into(),
+            value: VariantFormat::Unit,
+        },
+    );
+    variants.insert(
+        300,
+        Named {
+            name: "WithPayload".into(),
+            value: VariantFormat::NewType(Box::new(Format::U32)),
+        },
+    );
+
+    let mut registry = Registry::new();
+    registry.insert("Sparse".into(), ContainerFormat::Enum(variants));
+
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let config = CodeGeneratorConfig::new("Library".to_string());
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // Spot-check the generated source: discriminant 300 = ULEB128 0xac 0x02.
+    let generated = std::fs::read_to_string(&test_library_path)?;
+    assert!(
+        generated.contains(r#"hex"ac02""#),
+        "generator should embed the precomputed ULEB128 for index 300 (0xac 0x02):\n{generated}"
+    );
+    // Index 5 collapses to a single byte 0x05.
+    assert!(
+        generated.contains(r#"hex"05""#),
+        "generator should embed the precomputed ULEB128 for index 5 (0x05):\n{generated}"
+    );
+    // The deserializer must validate against the actual sparse index set,
+    // not `choice < N`.
+    assert!(
+        generated.contains("choice == 0 || choice == 5 || choice == 128 || choice == 300"),
+        "deserializer should validate against the sparse index set:\n{generated}"
+    );
+
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+
+    function test_round_trip(bytes calldata input, uint64 expected_choice) external {{
+        Library.Sparse memory t = Library.bcs_deserialize_Sparse(input);
+        require(t.choice == expected_choice, "wrong choice");
+        bytes memory input_rev = Library.bcs_serialize_Sparse(t);
+        require(input.length == input_rev.length, "length mismatch");
+        for (uint256 i=0; i<input.length; i++) {{
+            require(input[i] == input_rev[i], "byte mismatch");
+        }}
+    }}
+
+}}
+"#
+        )?;
+    }
+
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    sol! {
+        function test_round_trip(bytes calldata input, uint64 expected_choice);
+    }
+
+    // (encoded BCS bytes, expected variant index).
+    let cases: Vec<(Vec<u8>, u64)> = vec![
+        // index 0   — single-byte ULEB128
+        (vec![0x00], 0),
+        // index 5   — single-byte ULEB128, sparse
+        (vec![0x05], 5),
+        // index 128 — first two-byte ULEB128, sparse
+        (vec![0x80, 0x01], 128),
+        // index 300 — two-byte ULEB128 + u32 payload
+        ({
+            let mut v = vec![0xac, 0x02];
+            v.extend_from_slice(&0xdead_beef_u32.to_le_bytes());
+            v
+        }, 300),
+    ];
+
+    for (input_bytes, expected_choice) in cases {
+        let input = Bytes::copy_from_slice(&input_bytes);
+        let fct_args = test_round_tripCall {
+            input,
+            expected_choice,
+        };
+        let fct_args = fct_args.abi_encode().into();
+        test_contract(bytecode.clone(), fct_args);
+    }
+
+    Ok(())
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ComplexStruct {
     v1: [u8; 32],

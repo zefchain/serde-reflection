@@ -659,6 +659,45 @@ function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input)
     }
 }
 
+/// One variant of a complex (struct-backed) enum.
+///
+/// `index` is the variant index from the original Serde registry (the
+/// `BTreeMap` key in `ContainerFormat::Enum`), preserved verbatim so the
+/// generated BCS encoding agrees with the source. `uleb128` is its ULEB128
+/// encoding, precomputed at parse time so the generated Solidity can embed
+/// the discriminant bytes as a `hex"..."` literal and skip a runtime call to
+/// `bcs_serialize_len`.
+#[derive(Clone, Debug, PartialEq)]
+struct EnumVariant {
+    index: u64,
+    uleb128: Vec<u8>,
+    name: String,
+    value: Option<SolFormat>,
+}
+
+fn uleb128_encode(mut value: u64) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    loop {
+        let byte = (value & 0x7f) as u8;
+        value >>= 7;
+        if value == 0 {
+            bytes.push(byte);
+            return bytes;
+        }
+        bytes.push(byte | 0x80);
+    }
+}
+
+fn hex_literal(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(2 + bytes.len() * 2 + 1);
+    s.push_str("hex\"");
+    for b in bytes {
+        s.push_str(&format!("{b:02x}"));
+    }
+    s.push('"');
+    s
+}
+
 #[derive(Clone, Debug, PartialEq)]
 enum SolFormat {
     /// One of the primitive types defined elsewhere
@@ -681,7 +720,7 @@ enum SolFormat {
     /// A complex enum encapsulated as a solidity struct.
     Enum {
         name: String,
-        formats: Vec<Named<Option<SolFormat>>>,
+        variants: Vec<EnumVariant>,
     },
     /// A Tuplearray of N U8 has the native type bytesN
     BytesN { size: usize },
@@ -700,7 +739,7 @@ impl SolFormat {
             TupleArray { format, size } => format!("tuplearray{}_{}", size, format.key_name()),
             Struct { name, formats: _ } => name.to_string(),
             SimpleEnum { name, names: _ } => name.to_string(),
-            Enum { name, formats: _ } => name.to_string(),
+            Enum { name, variants: _ } => name.to_string(),
             BytesN { size } => format!("bytes{size}"),
             OptionBool => "OptionBool".to_string(),
         }
@@ -944,7 +983,7 @@ function bcs_serialize_{name}({name} input)
     pure
     returns (bytes memory)
 {{
-    return abi.encodePacked(input);
+    return bcs_serialize_len(uint256(input));
 }}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
@@ -952,14 +991,16 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     pure
     returns (uint256, {name})
 {{
-    uint8 choice = uint8(input[pos]);"#
+    uint256 new_pos;
+    uint256 choice;
+    (new_pos, choice) = bcs_deserialize_offset_len(pos, input);"#
                 )?;
                 for (idx, name_choice) in names.iter().enumerate() {
                     writeln!(
                         out,
                         r#"
     if (choice == {idx}) {{
-        return (pos + 1, {name}.{name_choice});
+        return (new_pos, {name}.{name_choice});
     }}"#
                     )?;
                 }
@@ -971,30 +1012,33 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 )?;
                 output_generic_bcs_deserialize(out, name, name, false)?;
             }
-            Enum { name, formats } => {
-                let number_names = formats.len();
+            Enum { name, variants } => {
                 writeln!(
                     out,
                     r#"
 struct {name} {{
-    uint8 choice;"#
+    uint64 choice;"#
                 )?;
-                for (idx, named_format) in formats.iter().enumerate() {
-                    let variant_name = named_format.name.clone();
-                    writeln!(out, "    // choice={idx} corresponds to {variant_name}")?;
-                    if let Some(format) = &named_format.value {
+                for variant in variants {
+                    let variant_index = variant.index;
+                    let variant_name = &variant.name;
+                    writeln!(
+                        out,
+                        "    // choice={variant_index} corresponds to {variant_name}"
+                    )?;
+                    if let Some(format) = &variant.value {
                         let qualified_code_name = sol_registry.qualified_code_name(format);
-                        let snake_name = safe_variable(&named_format.name.to_snake_case());
+                        let snake_name = safe_variable(&variant.name.to_snake_case());
                         writeln!(out, "    {qualified_code_name} {snake_name};")?;
                     }
                 }
                 writeln!(out, "}}")?;
                 let mut entries = Vec::new();
                 let mut type_vars = Vec::new();
-                for named_format in formats {
-                    if let Some(format) = &named_format.value {
+                for variant in variants {
+                    if let Some(format) = &variant.value {
                         let data_location = sol_registry.data_location(format);
-                        let snake_name = safe_variable(&named_format.name.to_snake_case());
+                        let snake_name = safe_variable(&variant.name.to_snake_case());
                         let qualified_code_name = sol_registry.qualified_code_name(format);
                         let type_var = format!("{qualified_code_name}{data_location} {snake_name}");
                         type_vars.push(type_var);
@@ -1003,10 +1047,11 @@ struct {name} {{
                         type_vars.push(String::new());
                     }
                 }
-                let entries = entries.join(", ");
-                for (choice, named_format_i) in formats.iter().enumerate() {
-                    let snake_name = named_format_i.name.to_snake_case();
-                    let type_var = &type_vars[choice];
+                let entries_csv = entries.join(", ");
+                for (slot, variant) in variants.iter().enumerate() {
+                    let snake_name = variant.name.to_snake_case();
+                    let type_var = &type_vars[slot];
+                    let variant_index = variant.index;
                     writeln!(
                         out,
                         r#"
@@ -1016,12 +1061,15 @@ function {name}_case_{snake_name}({type_var})
     returns ({name} memory)
 {{"#
                     )?;
-                    for (i_choice, type_var) in type_vars.iter().enumerate() {
-                        if !type_var.is_empty() && choice != i_choice {
-                            writeln!(out, "    {type_var};")?;
+                    for (i_slot, other_type_var) in type_vars.iter().enumerate() {
+                        if !other_type_var.is_empty() && slot != i_slot {
+                            writeln!(out, "    {other_type_var};")?;
                         }
                     }
-                    writeln!(out, "    return {name}(uint8({choice}), {entries});")?;
+                    writeln!(
+                        out,
+                        "    return {name}(uint64({variant_index}), {entries_csv});"
+                    )?;
                     writeln!(out, "}}")?;
                 }
                 writeln!(
@@ -1033,19 +1081,26 @@ function bcs_serialize_{name}({name} memory input)
     returns (bytes memory)
 {{"#
                 )?;
-                for (idx, named_format) in formats.iter().enumerate() {
-                    if let Some(format) = &named_format.value {
+                for variant in variants {
+                    let variant_index = variant.index;
+                    let discriminant_hex = hex_literal(&variant.uleb128);
+                    writeln!(out, "    if (input.choice == {variant_index}) {{")?;
+                    if let Some(format) = &variant.value {
                         let key_name = format.key_name();
-                        let snake_name = safe_variable(&named_format.name.to_snake_case());
+                        let snake_name = safe_variable(&variant.name.to_snake_case());
                         let ser_fn = sol_registry.qualified_fn_name("bcs_serialize", &key_name);
-                        writeln!(out, "    if (input.choice == {idx}) {{")?;
-                        writeln!(out, "        return abi.encodePacked(input.choice, {ser_fn}(input.{snake_name}));")?;
-                        writeln!(out, "    }}")?;
+                        writeln!(
+                            out,
+                            "        return abi.encodePacked({discriminant_hex}, {ser_fn}(input.{snake_name}));"
+                        )?;
+                    } else {
+                        writeln!(out, "        return {discriminant_hex};")?;
                     }
+                    writeln!(out, "    }}")?;
                 }
                 writeln!(
                     out,
-                    r#"    return abi.encodePacked(input.choice);
+                    r#"    revert("invalid variant index");
 }}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
@@ -1054,36 +1109,49 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     returns (uint256, {name} memory)
 {{
     uint256 new_pos;
-    uint8 choice;
-    (new_pos, choice) = bcs_deserialize_offset_uint8(pos, input);"#
+    uint256 choice_raw;
+    (new_pos, choice_raw) = bcs_deserialize_offset_len(pos, input);
+    require(choice_raw <= type(uint64).max, "variant index does not fit in uint64");
+    uint64 choice = uint64(choice_raw);"#
                 )?;
-                let mut entries = Vec::new();
-                for (idx, named_format) in formats.iter().enumerate() {
-                    if let Some(format) = &named_format.value {
+                let is_contiguous = variants
+                    .iter()
+                    .enumerate()
+                    .all(|(i, v)| v.index == i as u64);
+                let validity_check = if is_contiguous {
+                    format!("choice < {}", variants.len())
+                } else {
+                    variants
+                        .iter()
+                        .map(|v| format!("choice == {}", v.index))
+                        .collect::<Vec<_>>()
+                        .join(" || ")
+                };
+                writeln!(out, "    require({validity_check}, \"invalid variant index\");")?;
+                for variant in variants {
+                    if let Some(format) = &variant.value {
                         let data_location = sol_registry.data_location(format);
-                        let snake_name = safe_variable(&named_format.name.to_snake_case());
+                        let snake_name = safe_variable(&variant.name.to_snake_case());
                         let qualified_code_name = sol_registry.qualified_code_name(format);
                         let key_name = format.key_name();
                         let deser_fn =
                             sol_registry.qualified_fn_name("bcs_deserialize_offset", &key_name);
+                        let variant_index = variant.index;
                         writeln!(
                             out,
                             "    {qualified_code_name}{data_location} {snake_name};"
                         )?;
-                        writeln!(out, "    if (choice == {idx}) {{")?;
+                        writeln!(out, "    if (choice == {variant_index}) {{")?;
                         writeln!(
                             out,
                             "        (new_pos, {snake_name}) = {deser_fn}(new_pos, input);"
                         )?;
                         writeln!(out, "    }}")?;
-                        entries.push(snake_name);
                     }
                 }
-                writeln!(out, "    require(choice < {number_names});")?;
-                let entries = entries.join(", ");
                 writeln!(
                     out,
-                    r#"    return (new_pos, {name}(choice, {entries}));
+                    r#"    return (new_pos, {name}(choice, {entries_csv}));
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
@@ -1185,18 +1253,16 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
             // Option deserializer calls bcs_deserialize_offset_bool for the tag.
             Option(format) => vec![format.key_name(), "bool".to_string()],
             TupleArray { format, size: _ } => vec![format.key_name()],
-            // Enum deserializer calls bcs_deserialize_offset_uint8 for the choice tag.
-            Enum { name: _, formats } => {
-                let mut deps: Vec<String> = formats
-                    .iter()
-                    .flat_map(|format| match &format.value {
-                        None => vec![],
-                        Some(format) => vec![format.key_name()],
-                    })
-                    .collect();
-                deps.push("uint8".to_string());
-                deps
-            }
+            // Variant index bytes are precomputed (hex literal on serialize) and
+            // decoded via the preamble's `bcs_deserialize_offset_len` helper, so
+            // the enum's own dependencies are just the payload-bearing variants.
+            Enum { name: _, variants } => variants
+                .iter()
+                .flat_map(|variant| match &variant.value {
+                    None => vec![],
+                    Some(format) => vec![format.key_name()],
+                })
+                .collect(),
             BytesN { size: _ } => vec![],
             OptionBool => vec![],
         }
@@ -1459,24 +1525,29 @@ impl SolRegistry {
                     !map.is_empty(),
                     "The enum should be non-trivial in solidity"
                 );
-                assert!(map.len() < 256, "The enum should have at most 256 entries");
                 let is_trivial = map
                     .iter()
                     .all(|(_, v)| matches!(v.value, VariantFormat::Unit));
-                if is_trivial {
+                // The native-Solidity SimpleEnum path uses the Solidity enum's
+                // own discriminant (positional 0..N-1), so it can only be used
+                // when the BCS variant indices are exactly 0,1,...,N-1.
+                let is_contiguous = map
+                    .keys()
+                    .enumerate()
+                    .all(|(i, k)| u64::from(*k) == i as u64);
+                if is_trivial && is_contiguous && map.len() <= 256 {
+                    // Solidity native enums are limited to 256 entries.
                     let names = map
                         .into_values()
                         .map(|named_format| named_format.name)
                         .collect();
                     SolFormat::SimpleEnum { name, names }
                 } else {
-                    let choice_sol_format = SolFormat::Primitive(Primitive::U8);
-                    self.insert(choice_sol_format);
-                    let mut formats = Vec::new();
-                    for (_key, value) in map {
+                    let mut variants = Vec::new();
+                    for (key, value) in map {
                         use VariantFormat::*;
-                        let name_red = value.name;
-                        let concat_name = format!("{name}_{name_red}");
+                        let variant_name = value.name;
+                        let concat_name = format!("{name}_{variant_name}");
                         let entry = match value.value {
                             VariantFormat::Unit => None,
                             NewType(format) => Some(self.parse_format(*format)),
@@ -1494,13 +1565,15 @@ impl SolRegistry {
                             Struct(formats) => Some(self.parse_struct_format(concat_name, formats)),
                             Variable(_) => panic!("Variable is not supported for solidity"),
                         };
-                        let format = Named {
-                            name: name_red,
+                        let index = u64::from(key);
+                        variants.push(EnumVariant {
+                            index,
+                            uleb128: uleb128_encode(index),
+                            name: variant_name,
                             value: entry,
-                        };
-                        formats.push(format);
+                        });
                     }
-                    SolFormat::Enum { name, formats }
+                    SolFormat::Enum { name, variants }
                 }
             }
         };
@@ -1526,7 +1599,7 @@ impl SolRegistry {
             SimpleEnum { name: _, names: _ } => false,
             Enum {
                 name: _,
-                formats: _,
+                variants: _,
             } => true,
             BytesN { size: _ } => false,
             OptionBool => false,
@@ -1584,7 +1657,9 @@ impl SolRegistry {
     }
 
     /// Returns true if any locally-needed type uses the `bcs_serialize_len` /
-    /// `bcs_deserialize_offset_len` preamble functions (Seq, Str, Bytes).
+    /// `bcs_deserialize_offset_len` preamble functions: Seq, Str, Bytes use them
+    /// for length prefixes, and Enum / SimpleEnum use them for ULEB128-encoded
+    /// variant indices.
     fn needs_preamble(&self, needed: &HashSet<String>) -> bool {
         needed.iter().any(|key| {
             self.names.get(key).is_some_and(|f| {
@@ -1593,6 +1668,8 @@ impl SolRegistry {
                     SolFormat::Seq(_)
                         | SolFormat::Primitive(Primitive::Str)
                         | SolFormat::Primitive(Primitive::Bytes)
+                        | SolFormat::Enum { .. }
+                        | SolFormat::SimpleEnum { .. }
                 )
             })
         })
