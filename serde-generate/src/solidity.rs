@@ -689,10 +689,11 @@ fn uleb128_encode(mut value: u64) -> Vec<u8> {
 }
 
 fn hex_literal(bytes: &[u8]) -> String {
+    use std::fmt::Write;
     let mut s = String::with_capacity(2 + bytes.len() * 2 + 1);
     s.push_str("hex\"");
     for b in bytes {
-        s.push_str(&format!("{b:02x}"));
+        write!(s, "{b:02x}").expect("writing to String is infallible");
     }
     s.push('"');
     s
@@ -717,10 +718,13 @@ enum SolFormat {
     Option(Box<SolFormat>),
     /// A Tuplearray encapsulated as a solidity struct.
     TupleArray { format: Box<SolFormat>, size: usize },
-    /// A complex enum encapsulated as a solidity struct.
+    /// A complex enum encapsulated as a solidity struct. `is_contiguous` is
+    /// precomputed at parse time so the codegen's validity check can be a
+    /// simple `choice < N` instead of a chained `||` over each `variant.index`.
     Enum {
         name: String,
         variants: Vec<EnumVariant>,
+        is_contiguous: bool,
     },
     /// A Tuplearray of N U8 has the native type bytesN
     BytesN { size: usize },
@@ -739,7 +743,11 @@ impl SolFormat {
             TupleArray { format, size } => format!("tuplearray{}_{}", size, format.key_name()),
             Struct { name, formats: _ } => name.to_string(),
             SimpleEnum { name, names: _ } => name.to_string(),
-            Enum { name, variants: _ } => name.to_string(),
+            Enum {
+                name,
+                variants: _,
+                is_contiguous: _,
+            } => name.to_string(),
             BytesN { size } => format!("bytes{size}"),
             OptionBool => "OptionBool".to_string(),
         }
@@ -1012,7 +1020,11 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 )?;
                 output_generic_bcs_deserialize(out, name, name, false)?;
             }
-            Enum { name, variants } => {
+            Enum {
+                name,
+                variants,
+                is_contiguous,
+            } => {
                 writeln!(
                     out,
                     r#"
@@ -1122,11 +1134,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     require(choice_raw <= type(uint64).max, "variant index does not fit in uint64");
     uint64 choice = uint64(choice_raw);"#
                 )?;
-                let is_contiguous = variants
-                    .iter()
-                    .enumerate()
-                    .all(|(i, v)| v.index == i as u64);
-                let validity_check = if is_contiguous {
+                let validity_check = if *is_contiguous {
                     format!("choice < {}", variants.len())
                 } else {
                     variants
@@ -1135,7 +1143,10 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                         .collect::<Vec<_>>()
                         .join(" || ")
                 };
-                writeln!(out, "    require({validity_check}, \"invalid variant index\");")?;
+                writeln!(
+                    out,
+                    "    require({validity_check}, \"invalid variant index\");"
+                )?;
                 for variant in variants {
                     if let Some(format) = &variant.value {
                         let data_location = sol_registry.data_location(format);
@@ -1264,7 +1275,11 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
             // Variant index bytes are precomputed (hex literal on serialize) and
             // decoded via the preamble's `bcs_deserialize_offset_uleb128` helper, so
             // the enum's own dependencies are just the payload-bearing variants.
-            Enum { name: _, variants } => variants
+            Enum {
+                name: _,
+                variants,
+                is_contiguous: _,
+            } => variants
                 .iter()
                 .flat_map(|variant| match &variant.value {
                     None => vec![],
@@ -1581,7 +1596,11 @@ impl SolRegistry {
                             value: entry,
                         });
                     }
-                    SolFormat::Enum { name, variants }
+                    SolFormat::Enum {
+                        name,
+                        variants,
+                        is_contiguous,
+                    }
                 }
             }
         };
@@ -1608,6 +1627,7 @@ impl SolRegistry {
             Enum {
                 name: _,
                 variants: _,
+                is_contiguous: _,
             } => true,
             BytesN { size: _ } => false,
             OptionBool => false,
