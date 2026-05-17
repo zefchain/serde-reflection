@@ -763,6 +763,112 @@ contract ExampleCode {{
     Ok(())
 }
 
+/// Regression test for the SimpleEnum (native Solidity `enum`) path with
+/// variant indices >= 128, which require multi-byte ULEB128.
+///
+/// The previous SimpleEnum codec encoded the choice as a single byte
+/// (`abi.encodePacked(input)` / `uint8(input[pos])`), which silently produced
+/// wrong BCS for indices >= 128. The fix routes SimpleEnum through the same
+/// ULEB128 helper as the complex Enum path; this test pins that down.
+#[test]
+fn test_simple_enum_uleb128_variant_index() -> anyhow::Result<()> {
+    use serde_reflection::{ContainerFormat, Named, Registry, VariantFormat};
+    use std::collections::BTreeMap;
+
+    // 200 contiguous Unit variants → routes through SimpleEnum (is_trivial &&
+    // is_contiguous && len <= 256).
+    let mut variants: BTreeMap<u32, Named<VariantFormat>> = BTreeMap::new();
+    for i in 0..200u32 {
+        variants.insert(
+            i,
+            Named {
+                name: format!("V{i}"),
+                value: VariantFormat::Unit,
+            },
+        );
+    }
+
+    let mut registry = Registry::new();
+    registry.insert("BigSimple".into(), ContainerFormat::Enum(variants));
+
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let config = CodeGeneratorConfig::new("Library".to_string());
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // Confirm the SimpleEnum (native `enum`) path was selected and that the
+    // codec goes through ULEB128 rather than a single byte.
+    let generated = std::fs::read_to_string(&test_library_path)?;
+    assert!(
+        generated.contains("enum BigSimple {"),
+        "expected SimpleEnum path (native enum) for 200 trivial variants:\n{generated}"
+    );
+    assert!(
+        generated.contains("return bcs_serialize_uleb128(uint256(input));"),
+        "SimpleEnum serializer should go through bcs_serialize_uleb128:\n{generated}"
+    );
+
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+
+    function test_round_trip(bytes calldata input, uint8 expected_choice) external {{
+        Library.BigSimple t = Library.bcs_deserialize_BigSimple(input);
+        require(uint8(t) == expected_choice, "wrong choice");
+        bytes memory input_rev = Library.bcs_serialize_BigSimple(t);
+        require(input.length == input_rev.length, "length mismatch");
+        for (uint256 i=0; i<input.length; i++) {{
+            require(input[i] == input_rev[i], "byte mismatch");
+        }}
+    }}
+
+}}
+"#
+        )?;
+    }
+
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    sol! {
+        function test_round_trip(bytes calldata input, uint8 expected_choice);
+    }
+
+    // Exercise the single-byte (idx < 128) and multi-byte (idx >= 128) ULEB128
+    // paths. 128 is the smallest multi-byte index; 199 is the largest variant.
+    let cases: Vec<(Vec<u8>, u8)> = vec![
+        (vec![0x00], 0),
+        (vec![0x7f], 127),
+        (vec![0x80, 0x01], 128),
+        (vec![0xc7, 0x01], 199),
+    ];
+
+    for (input_bytes, expected_choice) in cases {
+        let input = Bytes::copy_from_slice(&input_bytes);
+        let fct_args = test_round_tripCall {
+            input,
+            expected_choice,
+        };
+        let fct_args = fct_args.abi_encode().into();
+        test_contract(bytecode.clone(), fct_args);
+    }
+
+    Ok(())
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ComplexStruct {
     v1: [u8; 32],
