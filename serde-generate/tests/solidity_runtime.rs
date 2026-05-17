@@ -500,11 +500,14 @@ contract ExampleCode {{
         (vec![0x00], 0),
         (vec![0x7f], 127),
         (vec![0x80, 0x01], 128),
-        ({
-            let mut v = vec![0xc7, 0x01];
-            v.extend_from_slice(&0xdead_beef_u32.to_le_bytes());
-            v
-        }, 199),
+        (
+            {
+                let mut v = vec![0xc7, 0x01];
+                v.extend_from_slice(&0xdead_beef_u32.to_le_bytes());
+                v
+            },
+            199,
+        ),
     ];
 
     for (input_bytes, expected_choice) in cases {
@@ -637,11 +640,14 @@ contract ExampleCode {{
         // index 128 — first two-byte ULEB128, sparse
         (vec![0x80, 0x01], 128),
         // index 300 — two-byte ULEB128 + u32 payload
-        ({
-            let mut v = vec![0xac, 0x02];
-            v.extend_from_slice(&0xdead_beef_u32.to_le_bytes());
-            v
-        }, 300),
+        (
+            {
+                let mut v = vec![0xac, 0x02];
+                v.extend_from_slice(&0xdead_beef_u32.to_le_bytes());
+                v
+            },
+            300,
+        ),
     ];
 
     for (input_bytes, expected_choice) in cases {
@@ -741,11 +747,8 @@ contract ExampleCode {{
         function test_round_trip(bytes calldata input, uint64 expected_choice);
     }
 
-    let cases: Vec<(Vec<u8>, u64)> = vec![
-        (vec![0x00], 0),
-        (vec![0x05], 5),
-        (vec![0x80, 0x01], 128),
-    ];
+    let cases: Vec<(Vec<u8>, u64)> =
+        vec![(vec![0x00], 0), (vec![0x05], 5), (vec![0x80, 0x01], 128)];
 
     for (input_bytes, expected_choice) in cases {
         let input = Bytes::copy_from_slice(&input_bytes);
