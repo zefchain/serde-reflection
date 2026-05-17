@@ -1504,6 +1504,20 @@ impl SolRegistry {
     fn parse_container_format(&mut self, container_format: Named<ContainerFormat>) {
         use ContainerFormat::*;
         let name = container_format.name;
+        // Container names must start with an ASCII uppercase letter. This is
+        // what guarantees that user-supplied names can never collide with the
+        // generated lowercase prefixes (`bcs_serialize_`, `bcs_deserialize_`,
+        // `bcs_deserialize_offset_`, `seq_`, `opt_`, ...) in function names —
+        // e.g. without it, a registry containing both `Foo` and `offset_Foo`
+        // would emit the same `bcs_deserialize_offset_Foo` for `Foo`'s
+        // positional deserializer and `offset_Foo`'s root. Real Rust type
+        // names are PascalCase, so for any registry built from real types this
+        // is a no-op; the check exists to catch synthetic registries.
+        assert!(
+            name.chars().next().is_some_and(|c| c.is_ascii_uppercase()),
+            "Solidity container name `{name}` must start with an ASCII uppercase letter \
+             to avoid collisions with generated lowercase prefixes."
+        );
         let sol_format = match container_format.value {
             UnitStruct => panic!("UnitStruct is not supported in solidity"),
             NewTypeStruct(format) => {

@@ -823,3 +823,24 @@ fn test_external_definitions_rejects_invalid_module_name() {
     ));
     let _ = generate_solidity(&config, &registry);
 }
+
+#[test]
+#[should_panic(expected = "must start with an ASCII uppercase letter")]
+fn test_rejects_lowercase_container_name() {
+    use serde_reflection::{ContainerFormat, Format, Named};
+
+    // A lowercase container name could collide with generated lowercase
+    // prefixes (e.g. `offset_Foo` vs `Foo`'s `bcs_deserialize_offset_Foo`),
+    // so the codegen rejects it up front.
+    let mut registry = Registry::new();
+    registry.insert(
+        "offset_foo".into(),
+        ContainerFormat::Struct(vec![Named {
+            name: "x".into(),
+            value: Format::U64,
+        }]),
+    );
+
+    let config = CodeGeneratorConfig::new("Test".into());
+    let _ = generate_solidity(&config, &registry);
+}
