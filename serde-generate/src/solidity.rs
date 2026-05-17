@@ -592,7 +592,7 @@ function bcs_serialize_string(string memory input)
             break;
         }}
     }}
-    bytes memory result_len = bcs_serialize_len(number_char);
+    bytes memory result_len = bcs_serialize_uleb128(number_char);
     return abi.encodePacked(result_len, input);
 }}
 
@@ -603,7 +603,7 @@ function bcs_deserialize_offset_string(uint256 pos, bytes memory input)
 {{
     uint256 len;
     uint256 new_pos;
-    (new_pos, len) = bcs_deserialize_offset_len(pos, input);
+    (new_pos, len) = bcs_deserialize_offset_uleb128(pos, input);
     uint256 shift = 0;
     for (uint256 i=0; i<len; i++) {{
         while (true) {{
@@ -634,7 +634,7 @@ function bcs_serialize_bytes(bytes memory input)
     returns (bytes memory)
 {{
     uint256 len = input.length;
-    bytes memory result = bcs_serialize_len(len);
+    bytes memory result = bcs_serialize_uleb128(len);
     return abi.encodePacked(result, input);
 }}
 
@@ -645,7 +645,7 @@ function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input)
 {{
     uint256 len;
     uint256 new_pos;
-    (new_pos, len) = bcs_deserialize_offset_len(pos, input);
+    (new_pos, len) = bcs_deserialize_offset_uleb128(pos, input);
     bytes memory result = new bytes(len);
     for (uint256 u=0; u<len; u++) {{
         result[u] = input[new_pos + u];
@@ -665,8 +665,8 @@ function bcs_deserialize_offset_bytes(uint256 pos, bytes memory input)
 /// `BTreeMap` key in `ContainerFormat::Enum`), preserved verbatim so the
 /// generated BCS encoding agrees with the source. `uleb128` is its ULEB128
 /// encoding, precomputed at parse time so the generated Solidity can embed
-/// the discriminant bytes as a `hex"..."` literal and skip a runtime call to
-/// `bcs_serialize_len`.
+/// the discriminant bytes as a `hex"..."` literal on the serialize side
+/// without calling `bcs_serialize_uleb128`.
 #[derive(Clone, Debug, PartialEq)]
 struct EnumVariant {
     index: u64,
@@ -823,7 +823,7 @@ function bcs_serialize_{key_name}({code_name} memory input)
     returns (bytes memory)
 {{
     uint256 len = input.length;
-    bytes memory result = bcs_serialize_len(len);
+    bytes memory result = bcs_serialize_uleb128(len);
     for (uint256 i=0; i<len; i++) {{
         result = abi.encodePacked(result, {inner_ser_fn}(input[i]));
     }}
@@ -837,7 +837,7 @@ function bcs_deserialize_offset_{key_name}(uint256 pos, bytes memory input)
 {{
     uint256 len;
     uint256 new_pos;
-    (new_pos, len) = bcs_deserialize_offset_len(pos, input);
+    (new_pos, len) = bcs_deserialize_offset_uleb128(pos, input);
     {qualified_inner_code_name}[] memory result;
     result = new {qualified_inner_code_name}[](len);
     {qualified_inner_code_name}{data_location} value;
@@ -983,7 +983,7 @@ function bcs_serialize_{name}({name} input)
     pure
     returns (bytes memory)
 {{
-    return bcs_serialize_len(uint256(input));
+    return bcs_serialize_uleb128(uint256(input));
 }}
 
 function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
@@ -993,7 +993,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
 {{
     uint256 new_pos;
     uint256 choice;
-    (new_pos, choice) = bcs_deserialize_offset_len(pos, input);"#
+    (new_pos, choice) = bcs_deserialize_offset_uleb128(pos, input);"#
                 )?;
                 for (idx, name_choice) in names.iter().enumerate() {
                     writeln!(
@@ -1110,7 +1110,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
 {{
     uint256 new_pos;
     uint256 choice_raw;
-    (new_pos, choice_raw) = bcs_deserialize_offset_len(pos, input);
+    (new_pos, choice_raw) = bcs_deserialize_offset_uleb128(pos, input);
     require(choice_raw <= type(uint64).max, "variant index does not fit in uint64");
     uint64 choice = uint64(choice_raw);"#
                 )?;
@@ -1254,7 +1254,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
             Option(format) => vec![format.key_name(), "bool".to_string()],
             TupleArray { format, size: _ } => vec![format.key_name()],
             // Variant index bytes are precomputed (hex literal on serialize) and
-            // decoded via the preamble's `bcs_deserialize_offset_len` helper, so
+            // decoded via the preamble's `bcs_deserialize_offset_uleb128` helper, so
             // the enum's own dependencies are just the payload-bearing variants.
             Enum { name: _, variants } => variants
                 .iter()
@@ -1656,10 +1656,9 @@ impl SolRegistry {
         needed
     }
 
-    /// Returns true if any locally-needed type uses the `bcs_serialize_len` /
-    /// `bcs_deserialize_offset_len` preamble functions: Seq, Str, Bytes use them
-    /// for length prefixes, and Enum / SimpleEnum use them for ULEB128-encoded
-    /// variant indices.
+    /// Returns true if any locally-needed type uses the `bcs_serialize_uleb128` /
+    /// `bcs_deserialize_offset_uleb128` preamble functions: Seq, Str, Bytes use them
+    /// for length prefixes, and Enum / SimpleEnum use them for variant indices.
     fn needs_preamble(&self, needed: &HashSet<String>) -> bool {
         needed.iter().any(|key| {
             self.names.get(key).is_some_and(|f| {
@@ -1775,7 +1774,7 @@ pragma solidity ^0.8.0;"#
         writeln!(
             self.out,
             r#"
-function bcs_serialize_len(uint256 x)
+function bcs_serialize_uleb128(uint256 x)
     internal
     pure
     returns (bytes memory)
@@ -1799,7 +1798,7 @@ function bcs_serialize_len(uint256 x)
     return result;
 }}
 
-function bcs_deserialize_offset_len(uint256 pos, bytes memory input)
+function bcs_deserialize_offset_uleb128(uint256 pos, bytes memory input)
     internal
     pure
     returns (uint256, uint256)
