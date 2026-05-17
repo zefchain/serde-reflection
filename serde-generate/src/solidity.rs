@@ -981,6 +981,11 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
             SimpleEnum { name, names } => {
                 let names_join = names.join(", ");
                 let number_names = names.len();
+                // A Solidity enum is internally a `uint8`, and 0.8.x reverts on
+                // out-of-range integer-to-enum conversion. We still guard with
+                // `choice < N` first because `uint8(choice)` silently truncates,
+                // so a malformed multi-byte ULEB128 like `0x85 0x02` (=261)
+                // would otherwise sneak in as variant 5.
                 writeln!(
                     out,
                     r#"
@@ -1001,21 +1006,9 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
 {{
     uint256 new_pos;
     uint256 choice;
-    (new_pos, choice) = bcs_deserialize_offset_uleb128(pos, input);"#
-                )?;
-                for (idx, name_choice) in names.iter().enumerate() {
-                    writeln!(
-                        out,
-                        r#"
-    if (choice == {idx}) {{
-        return (new_pos, {name}.{name_choice});
-    }}"#
-                    )?;
-                }
-                writeln!(
-                    out,
-                    r#"
-    require(choice < {number_names});
+    (new_pos, choice) = bcs_deserialize_offset_uleb128(pos, input);
+    require(choice < {number_names}, "invalid variant index");
+    return (new_pos, {name}(uint8(choice)));
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, name, name, false)?;
