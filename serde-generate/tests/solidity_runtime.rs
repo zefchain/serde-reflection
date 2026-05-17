@@ -657,6 +657,109 @@ contract ExampleCode {{
     Ok(())
 }
 
+/// Regression test for the trailing-comma bug in the complex-Enum codegen.
+///
+/// When an enum reaches the struct-backed `Enum` path with *no* payload-bearing
+/// variants, the generated struct has only the `choice` field. The case
+/// constructors and the deserializer return statement used to hardcode a comma
+/// after `choice`, producing invalid Solidity like `Foo(uint64(0), )`.
+///
+/// Two shapes hit this path:
+///   - sparse all-Unit enums (sparse indices disqualify SimpleEnum);
+///   - contiguous all-Unit enums with >256 variants (over the Solidity-enum cap).
+///
+/// This test exercises the sparse case; the fix covers both.
+#[test]
+fn test_enum_sparse_all_unit() -> anyhow::Result<()> {
+    use serde_reflection::{ContainerFormat, Named, Registry, VariantFormat};
+    use std::collections::BTreeMap;
+
+    let mut variants: BTreeMap<u32, Named<VariantFormat>> = BTreeMap::new();
+    for &(idx, name) in &[(0u32, "Zero"), (5, "Five"), (128, "OneTwentyEight")] {
+        variants.insert(
+            idx,
+            Named {
+                name: name.into(),
+                value: VariantFormat::Unit,
+            },
+        );
+    }
+
+    let mut registry = Registry::new();
+    registry.insert("AllUnitSparse".into(), ContainerFormat::Enum(variants));
+
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    let test_library_path = path.join("Library.sol");
+    {
+        let mut test_library_file = File::create(&test_library_path)?;
+        let config = CodeGeneratorConfig::new("Library".to_string());
+        let generator = solidity::CodeGenerator::new(&config);
+        generator.output(&mut test_library_file, &registry).unwrap();
+    }
+
+    // The bug manifests as `Foo(..., )` in the generated source; assert it
+    // never appears so a future regression fails at the unit-test layer
+    // before we even invoke solc.
+    let generated = std::fs::read_to_string(&test_library_path)?;
+    assert!(
+        !generated.contains(", )"),
+        "generator emitted a trailing comma in a struct constructor:\n{generated}"
+    );
+
+    let test_code_path = path.join("test_code.sol");
+    {
+        let mut test_code_file = File::create(&test_code_path)?;
+        writeln!(
+            test_code_file,
+            r#"/// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import "./Library.sol";
+
+contract ExampleCode {{
+
+    function test_round_trip(bytes calldata input, uint64 expected_choice) external {{
+        Library.AllUnitSparse memory t = Library.bcs_deserialize_AllUnitSparse(input);
+        require(t.choice == expected_choice, "wrong choice");
+        bytes memory input_rev = Library.bcs_serialize_AllUnitSparse(t);
+        require(input.length == input_rev.length, "length mismatch");
+        for (uint256 i=0; i<input.length; i++) {{
+            require(input[i] == input_rev[i], "byte mismatch");
+        }}
+    }}
+
+}}
+"#
+        )?;
+    }
+
+    let bytecode = get_bytecode(path, "test_code.sol", "ExampleCode")?;
+
+    sol! {
+        function test_round_trip(bytes calldata input, uint64 expected_choice);
+    }
+
+    let cases: Vec<(Vec<u8>, u64)> = vec![
+        (vec![0x00], 0),
+        (vec![0x05], 5),
+        (vec![0x80, 0x01], 128),
+    ];
+
+    for (input_bytes, expected_choice) in cases {
+        let input = Bytes::copy_from_slice(&input_bytes);
+        let fct_args = test_round_tripCall {
+            input,
+            expected_choice,
+        };
+        let fct_args = fct_args.abi_encode().into();
+        test_contract(bytecode.clone(), fct_args);
+    }
+
+    Ok(())
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ComplexStruct {
     v1: [u8; 32],

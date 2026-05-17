@@ -1047,7 +1047,15 @@ struct {name} {{
                         type_vars.push(String::new());
                     }
                 }
-                let entries_csv = entries.join(", ");
+                // If no variant carries a payload (sparse all-Unit enums or
+                // all-Unit enums with >256 variants both reach this path), the
+                // struct has only the `choice` field, so the suffix must be
+                // empty — otherwise we'd emit a trailing-comma `Foo(x, )`.
+                let entries_suffix = if entries.is_empty() {
+                    String::new()
+                } else {
+                    format!(", {}", entries.join(", "))
+                };
                 for (slot, variant) in variants.iter().enumerate() {
                     let snake_name = variant.name.to_snake_case();
                     let type_var = &type_vars[slot];
@@ -1068,7 +1076,7 @@ function {name}_case_{snake_name}({type_var})
                     }
                     writeln!(
                         out,
-                        "    return {name}(uint64({variant_index}), {entries_csv});"
+                        "    return {name}(uint64({variant_index}){entries_suffix});"
                     )?;
                     writeln!(out, "}}")?;
                 }
@@ -1151,7 +1159,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
                 }
                 writeln!(
                     out,
-                    r#"    return (new_pos, {name}(choice, {entries_csv}));
+                    r#"    return (new_pos, {name}(choice{entries_suffix}));
 }}"#
                 )?;
                 output_generic_bcs_deserialize(out, name, name, true)?;
