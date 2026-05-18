@@ -1107,7 +1107,7 @@ function bcs_deserialize_offset_{name}(uint256 pos, bytes memory input)
     returns (uint256, {name})
 {{
     {name} dest;
-    assembly {{
+    assembly ("memory-safe") {{
         dest := mload(add(add(input, 0x20), pos))
     }}
     return (pos + {size}, dest);
