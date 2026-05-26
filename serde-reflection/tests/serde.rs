@@ -407,6 +407,113 @@ fn test_mixed_tracing_for_multiple_enums() {
 }
 
 #[test]
+fn test_trace_type_revisits_partially_serialized_enum_variants() {
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+    enum E {
+        A,
+        B(Option<u32>),
+    }
+
+    let mut samples = Samples::new();
+    let mut tracer = Tracer::new(TracerConfig::default());
+
+    tracer.trace_value(&mut samples, &E::B(None)).unwrap();
+    tracer.trace_type::<E>(&samples).unwrap();
+
+    let registry = tracer.registry().unwrap();
+    let variants = match registry.get("E").unwrap() {
+        ContainerFormat::Enum(variants) => variants,
+        _ => panic!("should be an enum"),
+    };
+    assert_eq!(variants.len(), 2);
+    assert_eq!(variants.get(&0).unwrap().name, "A");
+    assert_eq!(variants.get(&1).unwrap().name, "B");
+    assert_eq!(
+        variants.get(&1).unwrap().value,
+        VariantFormat::NewType(Box::new(Format::Option(Box::new(Format::U32))))
+    );
+}
+
+#[test]
+fn test_trace_type_skips_fully_serialized_bytes_variant() {
+    use serde::de::{self, Visitor};
+    use std::fmt;
+
+    #[derive(PartialEq, Eq, Debug, Clone)]
+    struct Exact16([u8; 16]);
+
+    impl Serialize for Exact16 {
+        fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_bytes(&self.0)
+        }
+    }
+
+    impl<'de> Deserialize<'de> for Exact16 {
+        fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            struct Exact16Visitor;
+
+            impl<'de> Visitor<'de> for Exact16Visitor {
+                type Value = Exact16;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    formatter.write_str("exactly 16 bytes")
+                }
+
+                fn visit_bytes<E>(self, value: &[u8]) -> std::result::Result<Self::Value, E>
+                where
+                    E: de::Error,
+                {
+                    let bytes: [u8; 16] = value
+                        .try_into()
+                        .map_err(|_| E::invalid_length(value.len(), &self))?;
+                    Ok(Exact16(bytes))
+                }
+
+                fn visit_byte_buf<E>(self, value: Vec<u8>) -> std::result::Result<Self::Value, E>
+                where
+                    E: de::Error,
+                {
+                    self.visit_bytes(&value)
+                }
+            }
+
+            deserializer.deserialize_bytes(Exact16Visitor)
+        }
+    }
+
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
+    enum Message {
+        Noop,
+        Send(Exact16),
+    }
+
+    let mut samples = Samples::new();
+    let mut tracer = Tracer::new(TracerConfig::default());
+
+    tracer
+        .trace_value(&mut samples, &Message::Send(Exact16([7; 16])))
+        .unwrap();
+    tracer.trace_type::<Message>(&samples).unwrap();
+
+    let registry = tracer.registry().unwrap();
+    let variants = match registry.get("Message").unwrap() {
+        ContainerFormat::Enum(variants) => variants,
+        _ => panic!("should be an enum"),
+    };
+    assert_eq!(variants.len(), 2);
+    assert_eq!(
+        variants.get(&1).unwrap().value,
+        VariantFormat::NewType(Box::new(Format::Bytes))
+    );
+}
+
+#[test]
 fn test_value_recording_for_structs() {
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone)]
     struct R(u32);
