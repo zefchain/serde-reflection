@@ -1,6 +1,6 @@
 [package]
 name = "serde-name"
-version = "0.2.1"
+version = "0.3.0"
 description = "Extract the Serde name of structs and enums"
 documentation = "https://docs.rs/serde-name"
 repository = "https://github.com/zefchain/serde-reflection"
@@ -21,4 +21,4 @@ thiserror = "1.0.25"
 serde = { version = "1.0.126", features = ["derive"] }
 
 [dev-dependencies]
-serde-reflection = { path = "../serde-reflection", version = "0.5.2" }
+serde-reflection = { path = "../serde-reflection", version = "0.6.0" }

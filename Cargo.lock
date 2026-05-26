@@ -2534,7 +2534,7 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.33.0"
+version = "0.34.0"
 dependencies = [
  "alloy-sol-types",
  "anyhow",
@@ -2560,7 +2560,7 @@ dependencies = [
 
 [[package]]
 name = "serde-generate-bin"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "clap",
  "serde",
@@ -2573,7 +2573,7 @@ dependencies = [
 
 [[package]]
 name = "serde-name"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde-reflection",
@@ -2582,7 +2582,7 @@ dependencies = [
 
 [[package]]
 name = "serde-reflection"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "bcs",
  "bincode",
