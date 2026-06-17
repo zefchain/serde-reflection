@@ -844,3 +844,32 @@ fn test_rejects_lowercase_container_name() {
     let config = CodeGeneratorConfig::new("Test".into());
     let _ = generate_solidity(&config, &registry);
 }
+
+#[test]
+fn test_option_emits_bool_primitive_without_literal_bool_field() {
+    // An `Option<T>` field makes the generated `opt_*` (de)serializer read a one-byte bool tag, so
+    // the `bool` primitive helpers must be emitted even though no field is a literal `bool`.
+    // Regression: the helpers used to be emitted only when some container had a literal `bool`
+    // field, so a registry like this one produced `bcs_*_bool` calls with no definition.
+    #[derive(Serialize, Deserialize)]
+    struct Inner {
+        x: u64,
+    }
+    #[derive(Serialize, Deserialize)]
+    struct Outer {
+        maybe: Option<Inner>,
+    }
+
+    let registry = get_registry_from_type::<Outer>();
+    let config = CodeGeneratorConfig::new("test".to_string());
+    let code = generate_solidity(&config, &registry);
+
+    assert!(
+        code.contains("function bcs_serialize_bool("),
+        "Option field must emit the bcs_serialize_bool helper:\n{code}"
+    );
+    assert!(
+        code.contains("function bcs_deserialize_offset_bool("),
+        "Option field must emit the bcs_deserialize_offset_bool helper:\n{code}"
+    );
+}

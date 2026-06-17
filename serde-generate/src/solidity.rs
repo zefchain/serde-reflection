@@ -1326,6 +1326,15 @@ impl SolRegistry {
             SolFormat::TypeName(_) => {
                 // Typename entries do not need to be inserted.
             }
+            SolFormat::Option(_) => {
+                // The `opt_*` (de)serializer reads a one-byte bool tag, so emitting it requires the
+                // `bool` primitive helpers — even when no registry field is a literal `bool` (the
+                // `Option` dependency list already declares `"bool"`). Without this, generated code
+                // calls `bcs_*_bool` that is never defined.
+                self.names
+                    .insert("bool".to_string(), SolFormat::Primitive(Primitive::Bool));
+                self.names.insert(key_name, sol_format);
+            }
             _ => {
                 self.names.insert(key_name, sol_format);
             }
