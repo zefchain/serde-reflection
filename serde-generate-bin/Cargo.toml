@@ -13,7 +13,7 @@ edition = "2021"
 rust-version = "1.82.0"
 
 [dependencies]
-serde-generate = { path = "../serde-generate", version = "0.34.0", default-features = false }
+serde-generate = { path = "../serde-generate", version = "0.34.1", default-features = false }
 clap = { version = "4", features = ["derive"] }
 serde-reflection = { path = "../serde-reflection", version = "0.6.0" }
 serde_yaml = "0.8.17"
