@@ -14,6 +14,22 @@ pub struct CodeGeneratorConfig {
     pub custom_code: CustomCode,
     pub enums: EnumConfig,
     pub package_manifest: bool,
+    /// Target EVM version for the Solidity backend. Ignored by other backends.
+    pub evm_version: EvmVersion,
+}
+
+/// Target EVM version for the Solidity backend.
+///
+/// Selects which EVM instructions the generated code is allowed to use.
+/// `Shanghai` (the default) is the conservative choice that runs on every
+/// network currently supporting Solidity 0.8.x. `Cancun` (and `Latest`)
+/// enables `MCOPY` (EIP-5656) for bulk memory copies.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum EvmVersion {
+    #[default]
+    Shanghai,
+    Cancun,
+    Latest,
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -85,7 +101,14 @@ impl CodeGeneratorConfig {
                 output_type: HashMap::new(),
             },
             package_manifest: true,
+            evm_version: EvmVersion::default(),
         }
+    }
+
+    /// Target EVM version (Solidity backend only).
+    pub fn with_evm_version(mut self, evm_version: EvmVersion) -> Self {
+        self.evm_version = evm_version;
+        self
     }
 
     pub fn module_name(&self) -> &str {
