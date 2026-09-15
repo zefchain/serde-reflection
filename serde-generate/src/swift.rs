@@ -114,7 +114,7 @@ where
         let mut path = self.current_namespace.clone();
         path.push(name.to_string());
         if let Some(doc) = self.generator.config.comments.get(&path) {
-            let text = textwrap::indent(doc, "// ").replace("\n\n", "\n//\n");
+            let text = textwrap::indent(doc, "// ");
             write!(self.out, "{text}")?;
         }
         Ok(())

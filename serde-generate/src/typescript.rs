@@ -118,7 +118,7 @@ import {{ Optional, Seq, Tuple, ListTuple, unit, bool, int8, int16, int32, int64
     fn output_comment(&mut self, name: &str) -> std::io::Result<()> {
         let path = vec![name.to_string()];
         if let Some(doc) = self.generator.config.comments.get(&path) {
-            let text = textwrap::indent(doc, " * ").replace("\n\n", "\n *\n");
+            let text = textwrap::indent(doc, " * ");
             writeln!(self.out, "/**\n{text} */")?;
         }
         Ok(())
