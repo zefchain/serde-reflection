@@ -1,0 +1,7 @@
+name = "serde"
+version = "0.1.0"
+defaultTargets = ["Serde"]
+
+[[lean_lib]]
+name = "Serde"
+roots = ["Serde", "Serde.Lawful"]

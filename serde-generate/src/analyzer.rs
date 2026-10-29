@@ -92,3 +92,72 @@ where
     }
     result
 }
+
+/// Compute the strongly connected components of a dependency graph (Tarjan's algorithm).
+/// Components are returned in dependency order: each component only depends on itself and on
+/// components that appear before it. Children that are not keys of the map are ignored.
+pub fn strongly_connected_components<T>(children: &BTreeMap<T, BTreeSet<T>>) -> Vec<Vec<T>>
+where
+    T: Clone + std::cmp::Ord,
+{
+    struct State<'a, T> {
+        children: &'a BTreeMap<T, BTreeSet<T>>,
+        index: BTreeMap<T, usize>,
+        lowlink: BTreeMap<T, usize>,
+        stack: Vec<T>,
+        on_stack: BTreeSet<T>,
+        result: Vec<Vec<T>>,
+    }
+
+    fn visit<T: Clone + Ord>(state: &mut State<'_, T>, node: &T) {
+        let index = state.index.len();
+        state.index.insert(node.clone(), index);
+        state.lowlink.insert(node.clone(), index);
+        state.stack.push(node.clone());
+        state.on_stack.insert(node.clone());
+
+        for child in &state.children[node] {
+            if !state.children.contains_key(child) {
+                continue;
+            }
+            if !state.index.contains_key(child) {
+                visit(state, child);
+                let low = std::cmp::min(state.lowlink[node], state.lowlink[child]);
+                state.lowlink.insert(node.clone(), low);
+            } else if state.on_stack.contains(child) {
+                let low = std::cmp::min(state.lowlink[node], state.index[child]);
+                state.lowlink.insert(node.clone(), low);
+            }
+        }
+
+        if state.lowlink[node] == state.index[node] {
+            let mut component = Vec::new();
+            loop {
+                let member = state.stack.pop().expect("node should be on the stack");
+                state.on_stack.remove(&member);
+                let done = &member == node;
+                component.push(member);
+                if done {
+                    break;
+                }
+            }
+            component.sort();
+            state.result.push(component);
+        }
+    }
+
+    let mut state = State {
+        children,
+        index: BTreeMap::new(),
+        lowlink: BTreeMap::new(),
+        stack: Vec::new(),
+        on_stack: BTreeSet::new(),
+        result: Vec::new(),
+    };
+    for node in children.keys() {
+        if !state.index.contains_key(node) {
+            visit(&mut state, node);
+        }
+    }
+    state.result
+}

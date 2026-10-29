@@ -6,6 +6,30 @@ use maplit::{btreemap, btreeset};
 use serde_generate::analyzer;
 
 #[test]
+fn test_strongly_connected_components() {
+    use analyzer::strongly_connected_components as scc;
+    assert_eq!(
+        scc(&btreemap! {
+            1 => btreeset![2, 3],
+            2 => btreeset![],
+            3 => btreeset![2],
+        }),
+        vec![vec![2], vec![3], vec![1]]
+    );
+    // Cycles and self-loops; unknown children are ignored.
+    assert_eq!(
+        scc(&btreemap! {
+            1 => btreeset![2, 5],
+            2 => btreeset![3],
+            3 => btreeset![1, 4, 9],
+            4 => btreeset![4],
+            5 => btreeset![],
+        }),
+        vec![vec![4], vec![5], vec![1, 2, 3]]
+    );
+}
+
+#[test]
 fn test_topological_sort() {
     use analyzer::best_effort_topological_sort as tsort;
     // 2 nodes, no cycle
