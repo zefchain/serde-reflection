@@ -26,6 +26,7 @@
 //!
 //! * TypeScript 4 (packaged and tested with Deno) [(follow-up issue)](https://github.com/zefchain/serde-reflection/issues/58)
 //! * Solidity (tested with Revm) [(initial PR with discussion)](https://github.com/zefchain/serde-reflection/pull/61)
+//! * Lean 4 (packaged with Lake, tested with Lean 4.35; BCS and Bincode come with machine-checked proofs of correctness)
 //!
 //! ## Supported Encodings
 //!
@@ -163,6 +164,9 @@ pub mod java;
 /// Support for code-generation in Kotlin
 #[cfg(feature = "kotlin")]
 pub mod kotlin;
+/// Support for code-generation in Lean 4
+#[cfg(feature = "lean")]
+pub mod lean;
 /// Support for code-generation in OCaml
 #[cfg(feature = "ocaml")]
 pub mod ocaml;

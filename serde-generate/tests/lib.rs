@@ -23,6 +23,10 @@ mod java_runtime;
 mod kotlin_generation;
 #[cfg(feature = "kotlin")]
 mod kotlin_runtime;
+#[cfg(feature = "lean")]
+mod lean_generation;
+#[cfg(feature = "lean")]
+mod lean_runtime;
 #[cfg(feature = "ocaml")]
 mod ocaml_generation;
 #[cfg(feature = "ocaml")]

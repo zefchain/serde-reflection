@@ -21,6 +21,8 @@ use serde_generate::golang;
 use serde_generate::java;
 #[cfg(feature = "kotlin")]
 use serde_generate::kotlin;
+#[cfg(feature = "lean")]
+use serde_generate::lean;
 #[cfg(feature = "ocaml")]
 use serde_generate::ocaml;
 #[cfg(feature = "python3")]
@@ -54,6 +56,7 @@ enum Language {
     #[value(name = "ocaml")]
     OCaml,
     Kotlin,
+    Lean,
 }
 
 #[derive(Clone, Debug, ValueEnum, PartialEq, Eq, PartialOrd, Ord)]
@@ -241,6 +244,12 @@ fn main() {
                     Language::Kotlin => {
                         panic!("Code generation in Kotlin requires `--target-source-dir`")
                     }
+                    #[cfg(feature = "lean")]
+                    Language::Lean => lean::CodeGenerator::new(&config)
+                        .output(&mut out, &registry)
+                        .unwrap(),
+                    #[cfg(not(feature = "lean"))]
+                    Language::Lean => require_feature!("lean", "Lean"),
                 }
             }
         }
@@ -301,6 +310,10 @@ fn main() {
                     Language::Kotlin => Box::new(kotlin::Installer::new(install_dir)),
                     #[cfg(not(feature = "kotlin"))]
                     Language::Kotlin => require_feature!("kotlin", "Kotlin"),
+                    #[cfg(feature = "lean")]
+                    Language::Lean => Box::new(lean::Installer::new(install_dir)),
+                    #[cfg(not(feature = "lean"))]
+                    Language::Lean => require_feature!("lean", "Lean"),
                 };
 
             if let Some((registry, name)) = named_registry_opt {
