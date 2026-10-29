@@ -1,0 +1,11 @@
+name = "bcs"
+version = "0.1.0"
+defaultTargets = ["Bcs"]
+
+[[require]]
+name = "serde"
+path = "../serde"
+
+[[lean_lib]]
+name = "Bcs"
+roots = ["Bcs", "Bcs.Lawful"]

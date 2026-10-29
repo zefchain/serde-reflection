@@ -1,0 +1,11 @@
+name = "bincode"
+version = "0.1.0"
+defaultTargets = ["Bincode"]
+
+[[require]]
+name = "serde"
+path = "../serde"
+
+[[lean_lib]]
+name = "Bincode"
+roots = ["Bincode", "Bincode.Lawful"]
