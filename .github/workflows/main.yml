@@ -225,7 +225,8 @@ jobs:
           cargo test --locked --release --no-default-features --features ocaml
 
   test-python3:
-    runs-on: ubuntu-latest
+    # Python 3.9 (needed by the pinned packages below) is not available for Ubuntu 26.04.
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v3
@@ -291,7 +292,8 @@ jobs:
         run: cargo test --locked --release --no-default-features --features solidity
 
   test-swift:
-    runs-on: ubuntu-latest
+    # setup-swift does not support Ubuntu 26.04.
+    runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v3
