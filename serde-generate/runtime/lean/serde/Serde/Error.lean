@@ -33,7 +33,7 @@ inductive Error where
   | unsupported (what : String)
   /-- Any other error. -/
   | custom (message : String)
-  deriving Repr, BEq, Inhabited
+  deriving Repr, BEq
 
 instance : ToString Error where
   toString

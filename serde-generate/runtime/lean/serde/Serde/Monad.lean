@@ -67,8 +67,6 @@ instance : MonadExceptOf Error Ser where
   throw := Ser.throw
   tryCatch := Ser.tryCatch
 
-instance : Inhabited (Ser α) := ⟨Ser.throw default⟩
-
 /-- Applies `f` to the output. -/
 @[inline] def modify (f : ByteArray → ByteArray) : Ser Unit := ⟨fun _ out => .ok () (f out)⟩
 
@@ -120,8 +118,6 @@ namespace De
 instance : MonadExceptOf Error De where
   throw := De.throw
   tryCatch := De.tryCatch
-
-instance : Inhabited (De α) := ⟨De.throw default⟩
 
 /-- The input being deserialized. -/
 @[inline] def input : De ByteArray := ⟨fun ctx pos => .ok ctx.input pos⟩
