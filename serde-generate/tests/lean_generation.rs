@@ -169,7 +169,7 @@ namespace Foo
 structure Struct where
   x : UInt32
   y : UInt64
-  deriving Repr, BEq, Inhabited
+  deriving Repr, BEq, Nonempty
 
 abbrev CStyleEnum := Bool
 
@@ -251,7 +251,7 @@ Rec:
 
 #[test]
 fn test_lean_code_with_mutually_recursive_types() {
-    // `P` only has values through the variant `Q.stop`, which Lean's `deriving Inhabited`
+    // `P` only has values through the variant `Q.stop`, which Lean's `deriving Nonempty`
     // does not find.
     let registry: Registry = serde_yaml::from_str(
         r#"---
@@ -273,7 +273,7 @@ Q:
     let config = CodeGeneratorConfig::new("testing".to_string())
         .with_encodings(vec![Encoding::Bcs, Encoding::Bincode]);
     let (_dir, source) = test_that_lean_code_compiles_with_registry(&config, &registry, None);
-    assert!(source.contains("instance : Inhabited Q := ⟨Q.stop⟩\ninstance : Inhabited P"));
+    assert!(source.contains("instance : Nonempty Q := ⟨Q.stop⟩\ninstance : Nonempty P"));
     assert!(source.contains("instance : Bcs.InjectiveSerialize P"));
     assert!(source.contains("instance : Bincode.InjectiveSerialize P"));
 }

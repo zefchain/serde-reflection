@@ -23,7 +23,7 @@ import Bcs
 structure Point where
   x : UInt16
   label : Option String
-  deriving Inhabited
+  deriving Nonempty
 
 instance : Bcs.Serialize Point where
   serialize p := Bcs.Ser.container do
@@ -38,10 +38,10 @@ instance : Bcs.Deserialize Point where
 ```
 
 Only types that have values can be deserialized: `Deserialize` has a field
-`nonempty : Nonempty α`, found by instance inference (here, from `deriving Inhabited`). Types
+`nonempty : Nonempty α`, found by instance inference (here, from `deriving Nonempty`). Types
 without values, such as `structure S where s : S`, have no `Deserialize` instance. Generated
-code defines an `Inhabited` instance for every type, and `serde-generate` rejects registries
-containing types without values (external types must have an `Inhabited` instance).
+code defines a `Nonempty` instance for every type, and `serde-generate` rejects registries
+containing types without values (external types must have a `Nonempty` instance).
 
 Sequences are `Array`s, fixed-size arrays are `Vector`s, and maps are `Std.HashMap`s. As in
 Rust, BCS serializes the entries of a map sorted by the encodings of their keys, and the

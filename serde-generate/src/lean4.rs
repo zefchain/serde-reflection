@@ -43,7 +43,7 @@ struct LeanEmitter<'a, T> {
     /// proven and do not contain maps.
     injective: BTreeSet<String>,
     /// For each container, a value of the type (as a Lean term) and the rank at which it was
-    /// found, so that `Inhabited` instances only use instances defined before them.
+    /// found, so that `Nonempty` instances only use instances defined before them.
     witnesses: BTreeMap<String, (usize, String)>,
     /// Analysis of the containers, for maps and proofs.
     analysis: Analysis,
@@ -265,7 +265,7 @@ impl<'a> CodeGenerator<'a> {
                 })?;
         let components = analyzer::strongly_connected_components(&dependencies);
         let (proven, injective) = self.proven_containers(&components, registry);
-        let witnesses = self.inhabited_witnesses(registry)?;
+        let witnesses = self.nonempty_witnesses(registry)?;
         let analysis = self.analyze(&components, registry, &proven, &injective);
 
         let mut emitter = LeanEmitter {
@@ -316,10 +316,7 @@ impl<'a> CodeGenerator<'a> {
 impl CodeGenerator<'_> {
     /// Find a value of each container, as a Lean term. Types without values (such as
     /// `struct S(Box<S>)` or empty enums) cannot be deserialized, and are rejected.
-    fn inhabited_witnesses(
-        &self,
-        registry: &Registry,
-    ) -> Result<BTreeMap<String, (usize, String)>> {
+    fn nonempty_witnesses(&self, registry: &Registry) -> Result<BTreeMap<String, (usize, String)>> {
         let mut witnesses = BTreeMap::new();
         loop {
             let mut progress = false;
@@ -334,7 +331,7 @@ impl CodeGenerator<'_> {
                     ContainerFormat::Enum(variants) => variants.values().find_map(|variant| {
                         let formats = LeanEmitter::<Vec<u8>>::variant_formats(&variant.value);
                         inhabited(&formats).then(|| {
-                            let args = " default".repeat(formats.len());
+                            let args = " Classical.ofNonempty".repeat(formats.len());
                             format!(
                                 "⟨{type_name}.{}{args}⟩",
                                 escape(&variant.name.to_mixed_case())
@@ -347,8 +344,12 @@ impl CodeGenerator<'_> {
                             .into_iter()
                             .map(|(_, f)| f)
                             .collect::<Vec<_>>();
-                        inhabited(&formats)
-                            .then(|| format!("⟨⟨{}⟩⟩", vec!["default"; formats.len()].join(", ")))
+                        inhabited(&formats).then(|| {
+                            format!(
+                                "⟨⟨{}⟩⟩",
+                                vec!["Classical.ofNonempty"; formats.len()].join(", ")
+                            )
+                        })
                     }
                 };
                 if let Some(witness) = witness {
@@ -1380,7 +1381,7 @@ where
         for name in names {
             writeln!(
                 self.out,
-                "instance : Inhabited {} := {}",
+                "instance : Nonempty {} := {}",
                 escape(name),
                 self.witnesses[name].1
             )?;
