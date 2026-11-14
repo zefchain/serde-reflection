@@ -216,6 +216,9 @@ jobs:
       - name: Test (release) - lean4
         run: cargo test --locked --release --no-default-features --features lean4
 
+      - name: Build the Lean package at the root of the repository (for Reservoir)
+        run: lake build
+
   test-ocaml:
     runs-on: ubuntu-latest
 

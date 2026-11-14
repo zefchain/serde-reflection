@@ -8,6 +8,17 @@ Each directory is a standalone [Lake](https://github.com/leanprover/lean4/tree/m
 * `bcs`: [BCS](https://github.com/zefchain/bcs) serialization (depends on `serde`);
 * `bincode`: [Bincode](https://docs.rs/bincode/1.3.3/bincode/) serialization (depends on `serde`).
 
+`serde-generate` installs copies of these packages next to the generated code. Without generated
+code, the three libraries `Serde`, `Bcs`, and `Bincode` are also available as a single package,
+defined at the root of the repository:
+
+```toml
+[[require]]
+name = "serde-lean"
+git = "https://github.com/zefchain/serde-reflection"
+rev = "main"
+```
+
 The BCS and Bincode runtimes use separate type classes (`Bcs.Serialize`,
 `Bincode.Serialize`, ...), so supporting one encoding has no cost for the other. They re-export
 the shared encodings under their own names (e.g. `Bcs.Ser.u32` is `Serde.Ser.u32`), and define

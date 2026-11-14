@@ -105,6 +105,20 @@ fn install_runtime(installer: &lean4::Installer, runtime: Runtime) {
 }
 
 #[test]
+fn test_lean_toolchain_files() {
+    // The runtimes, and the package at the root of the repository (for Reservoir).
+    for path in [
+        "runtime/lean/serde/lean-toolchain",
+        "runtime/lean/bcs/lean-toolchain",
+        "runtime/lean/bincode/lean-toolchain",
+        "../lean-toolchain",
+    ] {
+        let toolchain = std::fs::read_to_string(path).unwrap();
+        assert_eq!(toolchain.trim(), lean4::LEAN_TOOLCHAIN, "{path}");
+    }
+}
+
+#[test]
 fn test_lean_bcs_runtime_on_simple_data() {
     test_lean_runtime_on_simple_data(Runtime::Bcs);
 }
