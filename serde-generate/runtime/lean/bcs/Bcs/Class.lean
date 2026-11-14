@@ -23,8 +23,8 @@ class Serialize (α : Type) where
 
 /--
 Deserializers. Only types that have values can be deserialized: the field `nonempty` is found
-by instance inference (e.g. from an `Inhabited` instance), so there is no instance for types
-without values such as `structure S where s : S`.
+by instance inference (e.g. from `deriving Nonempty`, or from an `Inhabited` instance), so there
+is no instance for types without values such as `structure S where s : S`.
 -/
 class Deserialize (α : Type) where
   deserialize : De α
