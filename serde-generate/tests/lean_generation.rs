@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::test_utils;
-use serde_generate::{lean, CodeGeneratorConfig, Encoding, SourceInstaller};
+use serde_generate::{lean4, CodeGeneratorConfig, Encoding, SourceInstaller};
 use serde_reflection::Registry;
 use std::process::Command;
 use tempfile::{tempdir, TempDir};
@@ -23,7 +23,7 @@ fn test_that_lean_code_compiles_with_registry(
     foo_module: Option<&str>,
 ) -> (TempDir, String) {
     let dir = tempdir().unwrap();
-    let installer = lean::Installer::new(dir.path().to_path_buf());
+    let installer = lean4::Installer::new(dir.path().to_path_buf());
     installer.install_bcs_runtime().unwrap();
     installer.install_bincode_runtime().unwrap();
     installer.install_module(config, registry).unwrap();
@@ -49,7 +49,7 @@ fn test_that_lean_code_compiles_with_registry(
 
     let source = std::fs::read_to_string(module_dir.join(format!(
         "{}.lean",
-        lean::lean_module_name(config.module_name()).replace('.', "/")
+        lean4::lean_module_name(config.module_name()).replace('.', "/")
     )))
     .unwrap();
     (dir, source)
@@ -351,7 +351,7 @@ Fine:
     .unwrap();
     let config = CodeGeneratorConfig::new("testing".to_string());
     let mut out = Vec::new();
-    let error = lean::CodeGenerator::new(&config)
+    let error = lean4::CodeGenerator::new(&config)
         .output(&mut out, &registry)
         .unwrap_err();
     assert_eq!(

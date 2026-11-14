@@ -23,9 +23,9 @@ mod java_runtime;
 mod kotlin_generation;
 #[cfg(feature = "kotlin")]
 mod kotlin_runtime;
-#[cfg(feature = "lean")]
+#[cfg(feature = "lean4")]
 mod lean_generation;
-#[cfg(feature = "lean")]
+#[cfg(feature = "lean4")]
 mod lean_runtime;
 #[cfg(feature = "ocaml")]
 mod ocaml_generation;

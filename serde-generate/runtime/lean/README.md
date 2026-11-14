@@ -144,4 +144,4 @@ instance : Bcs.LawfulSerialize Point where
 These proofs relate the Lean serializer and deserializer to each other. Compatibility with
 other implementations (the Rust crates `bcs` and `bincode`) is tested on sample encodings.
 
-The tests in `tests/` are run by `cargo test --features lean`.
+The tests in `tests/` are run by `cargo test --features lean4`.

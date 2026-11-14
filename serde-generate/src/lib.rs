@@ -165,8 +165,8 @@ pub mod java;
 #[cfg(feature = "kotlin")]
 pub mod kotlin;
 /// Support for code-generation in Lean 4
-#[cfg(feature = "lean")]
-pub mod lean;
+#[cfg(feature = "lean4")]
+pub mod lean4;
 /// Support for code-generation in OCaml
 #[cfg(feature = "ocaml")]
 pub mod ocaml;

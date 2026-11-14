@@ -3,7 +3,7 @@
 
 use crate::test_utils;
 use crate::test_utils::{Choice, Runtime, Test};
-use serde_generate::{lean, CodeGeneratorConfig, SourceInstaller};
+use serde_generate::{lean4, CodeGeneratorConfig, SourceInstaller};
 use std::{path::Path, process::Command};
 use tempfile::tempdir;
 
@@ -84,7 +84,7 @@ fn run_lean_main(dir: &Path, requires: &[&str], main_source: &str) -> std::proce
     std::fs::write(main_dir.join("lakefile.toml"), lakefile).unwrap();
     std::fs::write(
         main_dir.join("lean-toolchain"),
-        format!("{}\n", lean::LEAN_TOOLCHAIN),
+        format!("{}\n", lean4::LEAN_TOOLCHAIN),
     )
     .unwrap();
     std::fs::write(main_dir.join("Main.lean"), main_source).unwrap();
@@ -97,7 +97,7 @@ fn run_lean_main(dir: &Path, requires: &[&str], main_source: &str) -> std::proce
         .unwrap()
 }
 
-fn install_runtime(installer: &lean::Installer, runtime: Runtime) {
+fn install_runtime(installer: &lean4::Installer, runtime: Runtime) {
     match runtime {
         Runtime::Bcs => installer.install_bcs_runtime().unwrap(),
         Runtime::Bincode => installer.install_bincode_runtime().unwrap(),
@@ -117,7 +117,7 @@ fn test_lean_bincode_runtime_on_simple_data() {
 fn test_lean_runtime_on_simple_data(runtime: Runtime) {
     let registry = test_utils::get_simple_registry().unwrap();
     let dir = tempdir().unwrap();
-    let installer = lean::Installer::new(dir.path().to_path_buf());
+    let installer = lean4::Installer::new(dir.path().to_path_buf());
     install_runtime(&installer, runtime);
     let config =
         CodeGeneratorConfig::new("testing".to_string()).with_encodings(vec![runtime.into()]);
@@ -174,7 +174,7 @@ fn test_lean_bincode_runtime_on_supported_types() {
 fn test_lean_runtime_on_supported_types(runtime: Runtime) {
     let registry = test_utils::get_registry().unwrap();
     let dir = tempdir().unwrap();
-    let installer = lean::Installer::new(dir.path().to_path_buf());
+    let installer = lean4::Installer::new(dir.path().to_path_buf());
     install_runtime(&installer, runtime);
     let config =
         CodeGeneratorConfig::new("testing".to_string()).with_encodings(vec![runtime.into()]);
@@ -255,7 +255,7 @@ def main : IO UInt32 := do
 #[test]
 fn test_lean_runtime_unit_tests() {
     let dir = tempdir().unwrap();
-    let installer = lean::Installer::new(dir.path().to_path_buf());
+    let installer = lean4::Installer::new(dir.path().to_path_buf());
     installer.install_bcs_runtime().unwrap();
     installer.install_bincode_runtime().unwrap();
     let main_source = std::fs::read_to_string("runtime/lean/tests/Main.lean").unwrap();
