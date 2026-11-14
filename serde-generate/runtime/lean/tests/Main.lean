@@ -11,11 +11,11 @@ import Bincode.Lawful
 
 open Serde
 
-/-- A hand-written type with BCS support. -/
+/-- A hand-written type with BCS support and proofs, as in the README. -/
 structure Point where
   x : UInt16
   label : Option String
-  deriving Repr, BEq, Inhabited
+  deriving Repr, BEq, Nonempty
 
 instance : Bcs.Serialize Point where
   serialize p := Bcs.Ser.container do
@@ -23,8 +23,29 @@ instance : Bcs.Serialize Point where
     Bcs.serialize p.label
 
 instance : Bcs.Deserialize Point where
-  deserialize := Bcs.De.container do
-    return ⟨← Bcs.deserialize, ← Bcs.deserialize⟩
+  deserialize := Bcs.De.container <|
+    (fun (b : UInt16 × Option String) => Point.mk b.1 b.2) <$>
+      Bcs.De.prod Bcs.deserialize Bcs.deserialize
+
+instance : Bcs.LawfulSerialize Point where
+  correct := by
+    apply Serde.CorrectOn.container
+    intro d
+    exact Serde.Correct.map
+      (Serde.Correct.prod (Bcs.LawfulSerialize.correct d) (Bcs.LawfulSerialize.correct d))
+      (fun (p : Point) => (p.x, p.label)) (fun b => Point.mk b.1 b.2) (fun _ => rfl)
+
+instance : Bcs.InjectiveSerialize Point where
+  injective := by
+    apply Serde.InjectiveOn.container
+    intro d
+    exact Serde.Injective.map
+      (Serde.Injective.prod (Bcs.LawfulSerialize.correct d) (Bcs.LawfulSerialize.correct d)
+        (Bcs.InjectiveSerialize.injective d) (Bcs.InjectiveSerialize.injective d))
+      (fun (p : Point) => (p.x, p.label)) (fun b => Point.mk b.1 b.2) (fun p => by cases p; rfl)
+
+-- Encoding and decoding are inverse of each other.
+example : Bcs.fromBytes b = .ok p ↔ Bcs.toBytes (p : Point) = .ok b := Bcs.fromBytes_eq_ok_iff
 
 /-! The proofs of the runtimes only depend on the standard axioms. -/
 

@@ -31,8 +31,9 @@ instance : Bcs.Serialize Point where
     Bcs.serialize p.label
 
 instance : Bcs.Deserialize Point where
-  deserialize := Bcs.De.container do
-    return ⟨← Bcs.deserialize, ← Bcs.deserialize⟩
+  deserialize := Bcs.De.container <|
+    (fun (b : UInt16 × Option String) => Point.mk b.1 b.2) <$>
+      Bcs.De.prod Bcs.deserialize Bcs.deserialize
 
 #eval Bcs.toBytes (Point.mk 1 (some "a"))  -- 1 0 1 1 97
 ```
@@ -121,24 +122,33 @@ both formats, except for types that depend on external definitions (and for Binc
 that contain floats). The equivalence relations of generated types (`T.serdeEquiv`) are shared
 by both formats.
 
-Hand-written instances can be proved correct in the same way, e.g. for the type `Point`
-above, when the deserializer is written with `Bcs.De.prod`:
+Hand-written instances can be proved correct in the same way, by combining the lemmas
+`Serde.CorrectOn.container`, `Serde.Correct.map`, and `Serde.Correct.prod` (and
+`Serde.correct_enum` for enums), as in generated code. The proofs are simplest when the
+deserializer is written with `Bcs.De.prod`, as for the type `Point` above:
 
 ```lean
 import Bcs.Lawful
-
-instance : Bcs.Deserialize Point where
-  deserialize := Bcs.De.container <|
-    (fun (b : UInt16 × Option String) => Point.mk b.1 b.2) <$>
-      Bcs.De.prod Bcs.deserialize Bcs.deserialize
 
 instance : Bcs.LawfulSerialize Point where
   correct := by
     apply Serde.CorrectOn.container
     intro d
-    exact (Bcs.LawfulSerialize.correct d |>.prod (Bcs.LawfulSerialize.correct d)).map
-      (fun (p : Point) => (p.x, p.label)) (fun (b : UInt16 × Option String) => Point.mk b.1 b.2)
-      (fun _ => rfl)
+    exact Serde.Correct.map
+      (Serde.Correct.prod (Bcs.LawfulSerialize.correct d) (Bcs.LawfulSerialize.correct d))
+      (fun (p : Point) => (p.x, p.label)) (fun b => Point.mk b.1 b.2) (fun _ => rfl)
+
+instance : Bcs.InjectiveSerialize Point where
+  injective := by
+    apply Serde.InjectiveOn.container
+    intro d
+    exact Serde.Injective.map
+      (Serde.Injective.prod (Bcs.LawfulSerialize.correct d) (Bcs.LawfulSerialize.correct d)
+        (Bcs.InjectiveSerialize.injective d) (Bcs.InjectiveSerialize.injective d))
+      (fun (p : Point) => (p.x, p.label)) (fun b => Point.mk b.1 b.2) (fun p => by cases p; rfl)
+
+-- Encoding and decoding are inverse of each other.
+example : Bcs.fromBytes b = .ok p ↔ Bcs.toBytes (p : Point) = .ok b := Bcs.fromBytes_eq_ok_iff
 ```
 
 These proofs relate the Lean serializer and deserializer to each other. Compatibility with
