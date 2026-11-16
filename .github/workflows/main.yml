@@ -192,6 +192,33 @@ jobs:
       - name: Test (release) - kotlin
         run: cargo test --locked --release --no-default-features --features kotlin
 
+  test-lean4:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Lean
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          # Keep in sync with `serde_generate::lean4::LEAN_TOOLCHAIN`.
+          $HOME/.elan/bin/elan toolchain install leanprover/lean4:v4.35.0
+
+      - name: Test (dev) - lean4
+        run: cargo test --locked --no-default-features --features lean4
+
+      - name: Test (release) - lean4
+        run: cargo test --locked --release --no-default-features --features lean4
+
+      - name: Build the Lean package at the root of the repository (for Reservoir)
+        run: lake build
+
   test-ocaml:
     runs-on: ubuntu-latest
 

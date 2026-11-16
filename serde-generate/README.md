@@ -29,6 +29,7 @@ The following languages are partially supported and/or still considered under de
 
 * TypeScript 4 (packaged and tested with Deno) [(follow-up issue)](https://github.com/zefchain/serde-reflection/issues/58)
 * Solidity (tested with Revm) [(initial PR with discussion)](https://github.com/zefchain/serde-reflection/pull/61)
+* Lean 4 (packaged with Lake, tested with Lean 4.35; BCS and Bincode come with machine-checked proofs of correctness)
 
 ### Supported Encodings
 
