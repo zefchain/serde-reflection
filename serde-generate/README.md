@@ -24,12 +24,12 @@ The following programming languages are fully supported as target languages:
 * OCaml
 * Dart >= 3
 * Kotlin
+* Lean 4 (packaged with Lake, tested with Lean 4.35; BCS and Bincode come with machine-checked proofs of correctness)
 
 The following languages are partially supported and/or still considered under development:
 
 * TypeScript 4 (packaged and tested with Deno) [(follow-up issue)](https://github.com/serde-tools/serde-reflection/issues/58)
 * Solidity (tested with Revm) [(initial PR with discussion)](https://github.com/serde-tools/serde-reflection/pull/61)
-* Lean 4 (packaged with Lake, tested with Lean 4.35; BCS and Bincode come with machine-checked proofs of correctness)
 
 ### Supported Encodings
 

@@ -94,8 +94,8 @@ Currently, `serde-generate` generates type definitions and supports [Bincode](ht
 * OCaml
 * Dart
 * Kotlin
+* Lean 4
 * Typescript (in progress)
-* Lean 4 (in progress)
 
 
 ## Benefits
