@@ -10,3 +10,4 @@ bin/
 .vscode/
 _build/
 /.lake
+/serde-generate/runtime/lean/*/lake-manifest.json
