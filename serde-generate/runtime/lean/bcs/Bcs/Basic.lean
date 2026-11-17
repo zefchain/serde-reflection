@@ -9,7 +9,7 @@ import Std.Data.HashMap
 # Binary Canonical Serialization (BCS)
 
 Serialization and deserialization primitives for the
-[BCS format](https://github.com/zefchain/bcs).
+[BCS format](https://github.com/serde-tools/bcs).
 
 `Bcs.Ser` and `Bcs.De` are the monads `Serde.Ser` and `Serde.De`, shared by all formats.
 The encodings that BCS shares with other formats (fixed-width integers, options, pairs, ...)

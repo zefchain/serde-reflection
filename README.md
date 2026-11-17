@@ -1,10 +1,10 @@
-The repository [`zefchain/serde-reflection`](https://github.com/zefchain/serde-reflection) is based on Facebook's repository [`novifinancial/serde-reflection`](https://github.com/novifinancial/serde-reflection).
+The repository [`serde-tools/serde-reflection`](https://github.com/serde-tools/serde-reflection) is based on Facebook's repository [`novifinancial/serde-reflection`](https://github.com/novifinancial/serde-reflection).
 
-We are now maintaining the project [here](https://github.com/zefchain/serde-reflection) and will continue releasing updates to [crates.io](crates.io) under the same package names.
+We are now maintaining the project [here](https://github.com/serde-tools/serde-reflection) and will continue releasing updates to [crates.io](crates.io) under the same package names.
 
 # serde-reflection: Format Description and Code Generation for Serde
 
-[![Build Status](https://github.com/zefchain/serde-reflection/actions/workflows/main.yml/badge.svg)](https://github.com/zefchain/serde-reflection/actions/workflows/main.yml)
+[![Build Status](https://github.com/serde-tools/serde-reflection/actions/workflows/main.yml/badge.svg)](https://github.com/serde-tools/serde-reflection/actions/workflows/main.yml)
 [![License](https://img.shields.io/badge/license-Apache-green.svg)](LICENSE-APACHE)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE-MIT)
 

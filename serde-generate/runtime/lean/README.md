@@ -5,7 +5,7 @@ Each directory is a standalone [Lake](https://github.com/leanprover/lean4/tree/m
 * `serde`: definitions shared by all formats: errors, 128-bit integers, the serialization
   monads `Serde.Ser` and `Serde.De`, the encodings common to BCS and Bincode (fixed-width
   integers, options, pairs, fixed-size arrays, ...), and the proof framework (`Serde.Lawful`);
-* `bcs`: [BCS](https://github.com/zefchain/bcs) serialization (depends on `serde`);
+* `bcs`: [BCS](https://github.com/serde-tools/bcs) serialization (depends on `serde`);
 * `bincode`: [Bincode](https://docs.rs/bincode/1.3.3/bincode/) serialization (depends on `serde`).
 
 `serde-generate` installs copies of these packages next to the generated code. Without generated
@@ -15,7 +15,7 @@ defined at the root of the repository:
 ```toml
 [[require]]
 name = "serde-lean"
-git = "https://github.com/zefchain/serde-reflection"
+git = "https://github.com/serde-tools/serde-reflection"
 rev = "main"
 ```
 
