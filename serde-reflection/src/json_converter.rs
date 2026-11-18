@@ -59,7 +59,7 @@
 //! ```
 //!
 //! This approach is particularly useful for cryptographic applications where you need to
-//! compute hashes of JSON values using a binary format like [BCS](https://github.com/diem/bcs).
+//! compute hashes of JSON values using a binary format like [BCS](https://github.com/serde-tools/bcs).
 
 use crate::{ContainerFormat, Format, Named, Registry, VariantFormat};
 use serde::de::{DeserializeSeed, MapAccess, SeqAccess, Visitor};

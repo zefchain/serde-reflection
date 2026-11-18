@@ -121,7 +121,7 @@ enums) with "reasonable" implementations of the Serde traits `Serialize` and
 At this time, `HashSet<T>` and `BTreeSet<T>` are treated as sequences (i.e. vectors)
 by Serde.
 
-Cryptographic applications using [BCS](https:/github.com/diem/bcs) **must** use
+Cryptographic applications using [BCS](https://github.com/serde-tools/bcs) **must** use
 `HashMap<T, ()>` and `BTreeMap<T, ()>` instead. Using `HashSet<T>` or `BTreeSet<T>`
 will compile but BCS-deserialization will not enforce canonicity (meaning unique,
 well-ordered serialized elements in this case). In the case of `HashSet<T>`,
@@ -291,13 +291,13 @@ must not contain unknown parts.
 
 Whenever we traverse the graph of type declarations using deserialization callbacks, the type
 system requires us to return valid Rust values of type `V::Value`, where `V` is the type of
-a given `visitor`. This contraint limits the way we can stop graph traversal to only a few cases.
+a given `visitor`. This constraint limits the way we can stop graph traversal to only a few cases.
 
 The first 4 cases are what we have called *possible recursion points* above:
 
 * while visiting an `Option<T>` for the second time, we choose to return the value `None` to stop;
-* while visiting an `Seq<T>` for the second time, we choose to return the empty sequence `[]`;
-* while visiting an `Map<K, V>` for the second time, we choose to return the empty map `{}`;
+* while visiting a `Seq<T>` for the second time, we choose to return the empty sequence `[]`;
+* while visiting a `Map<K, V>` for the second time, we choose to return the empty map `{}`;
 * while visiting an `enum T` for the second time, we choose to return the first variant, i.e.
   a "base case" by assumption (1) above.
 

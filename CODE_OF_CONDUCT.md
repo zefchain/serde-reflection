@@ -1,3 +1,6 @@
 # Code of Conduct
 
-Please see Libra's [Code of Conduct](https://developers.libra.org/docs/policies/code-of-conduct), which describes the expectations for interactions within the community.
+This project follows the [Rust Code of Conduct](https://www.rust-lang.org/policies/code-of-conduct), which describes the
+expectations for interactions within the community.
+
+To report a violation, please contact the maintainers listed in [`.github/CODEOWNERS`](.github/CODEOWNERS).
